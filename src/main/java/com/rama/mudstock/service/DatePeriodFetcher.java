@@ -36,16 +36,37 @@ public class DatePeriodFetcher {
         Map<DatePeriod, String> result = new EnumMap<>(DatePeriod.class);
         for (DatePeriod dp : DatePeriod.values()) {
             LocalDate target = earningsDate.plusDays(dp.getDaysOffset());
+            // original target (before weekend-adjustment) used to determine availability
+            LocalDate originalTarget = target;
             // adjust weekends per rules:
             // - OneWeekBefore: if target is Sat/Sun -> move back to previous Friday
             // - OneWeekAfter, TwoWeekAfter: if target is Sat/Sun -> move forward to next Monday
             target = adjustForWeekend(dp, target);
+            // If the original target falls on a weekend, mark status = NULL and skip fetching
+            switch (originalTarget.getDayOfWeek()) {
+                case SATURDAY:
+                case SUNDAY:
+                    log.info("Original target {} for {} (period {}) is weekend — marking status done and skipping", originalTarget, ticker, dp);
+                    try {
+                        entryRepository.setEntryStatusToDone(earningsDateId, stockId, dp.getDbValue());
+                    } catch (Exception ux) {
+                        log.error("Failed to set status done for {} {} {}: {}", earningsDateId, stockId, dp, ux.getMessage());
+                    }
+                    continue;
+            }
             LocalDate now = LocalDate.now();
             if (!now.isAfter(target)) {
                 log.info("Target date {} for {} (period {}) not reached (now={}), skipping remaining periods for this ticker", target, ticker, dp, now);
                 break;
             }
             try {
+                // Only fetch if the entry is still marked as 'new'
+                String currentStatus = entryRepository.getEntryStatus(earningsDateId, stockId, dp.getDbValue());
+                if (currentStatus == null || !"new".equalsIgnoreCase(currentStatus)) {
+                    log.info("Skipping fetch for {} {} {} because status is not 'new' (status={})", earningsDateId, stockId, dp, currentStatus);
+                    continue;
+                }
+
                 String body = massiveService.fetchOpenClose(ticker, target);
                 result.put(dp, body);
                 log.info("Fetched {} for {} on {} (len={})", dp, ticker, target, body == null ? 0 : body.length());
