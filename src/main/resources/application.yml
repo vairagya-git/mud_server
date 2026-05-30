@@ -18,3 +18,13 @@ server:
 alphavantage:
   function: TIME_SERIES_DAILY
   apikey: ${ALPHA_VANTAGE_API_KEY:ISIX6TNS4RRINGGI}
+
+# Cron expression for earnings poll (Spring cron with seconds field)
+earnings:
+  cron: "0 0/1 * * * *" # every 5 minutes
+  api:
+    calls-per-minute: 5
+
+massive:
+  base-url: https://api.massive.com/v1/open-close
+  apikey: ${MASSIVE_API_KEY:0jSwNlbvfYIgQ8OAVJsZ7T1sEmpWm7JV}
