@@ -67,9 +67,24 @@ public class DatePeriodFetcher {
                     continue;
                 }
 
-                String body = massiveService.fetchOpenClose(ticker, target);
-                result.put(dp, body);
-                log.info("Fetched {} for {} on {} (len={})", dp, ticker, target, body == null ? 0 : body.length());
+                String body = null;
+                try {
+                    body = massiveService.fetchOpenClose(ticker, target);
+                    result.put(dp, body);
+                    log.info("Fetched {} for {} on {} (len={})", dp, ticker, target, body == null ? 0 : body.length());
+                } catch (org.springframework.web.client.HttpClientErrorException hce) {
+                    if (hce.getStatusCode() == org.springframework.http.HttpStatus.NOT_FOUND) {
+                        // Market closed or no data for this date — mark entry as done and skip
+                        log.info("No data (404) for {} on {} — marking entry done", ticker, target);
+                        try {
+                            entryRepository.setEntryStatusToDone(earningsDateId, stockId, dp.getDbValue());
+                        } catch (Exception ux) {
+                            log.error("Failed to set status done for {} {} {}: {}", earningsDateId, stockId, dp, ux.getMessage());
+                        }
+                        continue;
+                    }
+                    throw hce;
+                }
 
                 if (body != null) {
                     try {
@@ -81,7 +96,10 @@ public class DatePeriodFetcher {
                         BigDecimal volume = node.hasNonNull("volume") ? new BigDecimal(node.get("volume").asText()) : null;
                         String from = node.hasNonNull("from") ? node.get("from").asText() : null;
 
-                        entryRepository.updateEntryForEarningsDate(earningsDateId, stockId, dp.getDbValue(), from, open, high, low, close, volume);
+                        int updated = entryRepository.updateEntryForEarningsDate(earningsDateId, stockId, dp.getDbValue(), from, open, high, low, close, volume);
+                        if (updated == 0) {
+                            log.info("No row updated for {} {} {} — it may have been processed already", earningsDateId, stockId, dp);
+                        }
                     } catch (Exception jex) {
                         log.error("Failed to parse/fill entry for {} on {}: {}", ticker, target, jex.getMessage());
                     }

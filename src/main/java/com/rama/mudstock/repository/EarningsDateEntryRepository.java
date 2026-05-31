@@ -49,4 +49,10 @@ public class EarningsDateEntryRepository {
         String sql = "UPDATE earnings_date_entry SET `status` = 'done' WHERE earnings_date_id = ? AND stock_id = ? AND datePeriod = ?";
         return jdbc.update(sql, earningsDateId, stockId, datePeriod);
     }
+
+    public boolean allEntriesDoneForEarningsDate(Long earningsDateId) {
+        String sql = "SELECT COUNT(*) FROM earnings_date_entry WHERE earnings_date_id = ? AND (status IS NULL OR status <> 'done')";
+        Integer count = jdbc.queryForObject(sql, Integer.class, earningsDateId);
+        return count != null && count == 0;
+    }
 }

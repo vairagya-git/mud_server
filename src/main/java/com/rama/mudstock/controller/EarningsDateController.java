@@ -38,7 +38,7 @@ public class EarningsDateController {
             v.setStockSymbol(sym.get(ed.getStockId()));
             v.setQuarter(ed.getQuarter());
             v.setReleaseTime(ed.getReleaseTime());
-            v.setState(ed.getState());
+            v.setState(ed.getStatus());
             v.setEarningsDate(ed.getEarningsDate());
             view.add(v);
         }
@@ -52,7 +52,7 @@ public class EarningsDateController {
         model.addAttribute("ed", ed);
         model.addAttribute("stocks", service.allStocks());
         model.addAttribute("releaseOptions", EarningsDate.ReleaseTime.values());
-        model.addAttribute("stateOptions", EarningsDate.State.values());
+        model.addAttribute("stateOptions", EarningsDate.Status.values());
         return "earnings/form";
     }
 
@@ -67,7 +67,7 @@ public class EarningsDateController {
         ed.setStockId(stockId);
         ed.setQuarter(quarter);
         ed.setReleaseTime(releaseTime);
-        ed.setState(EarningsDate.State.NEW); // state is always NEW on save; ignore form value
+        ed.setStatus(EarningsDate.Status.NEW); // status is always NEW on save; ignore form value
         ed.setEarningsDate(earningsDate);
         service.save(ed);
         return "redirect:/earnings";
@@ -79,7 +79,7 @@ public class EarningsDateController {
         model.addAttribute("ed", ed);
         model.addAttribute("stocks", service.allStocks());
         model.addAttribute("releaseOptions", EarningsDate.ReleaseTime.values());
-        model.addAttribute("stateOptions", EarningsDate.State.values());
+        model.addAttribute("stateOptions", EarningsDate.Status.values());
         return "earnings/form";
     }
 

@@ -8,7 +8,7 @@ public class EarningsDateView {
     private String stockSymbol;
     private String quarter;
     private EarningsDate.ReleaseTime releaseTime;
-    private EarningsDate.State state;
+    private EarningsDate.Status state;
     private LocalDate earningsDate;
 
     public EarningsDateView() {}
@@ -28,8 +28,8 @@ public class EarningsDateView {
     public EarningsDate.ReleaseTime getReleaseTime() { return releaseTime; }
     public void setReleaseTime(EarningsDate.ReleaseTime releaseTime) { this.releaseTime = releaseTime; }
 
-    public EarningsDate.State getState() { return state; }
-    public void setState(EarningsDate.State state) { this.state = state; }
+    public EarningsDate.Status getState() { return state; }
+    public void setState(EarningsDate.Status state) { this.state = state; }
 
     public LocalDate getEarningsDate() { return earningsDate; }
     public void setEarningsDate(LocalDate earningsDate) { this.earningsDate = earningsDate; }

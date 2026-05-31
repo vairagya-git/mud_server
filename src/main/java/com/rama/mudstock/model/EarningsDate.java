@@ -7,11 +7,11 @@ public class EarningsDate {
     private Long stockId;
     private String quarter;
     private ReleaseTime releaseTime;
-    private State state;
+    private Status status;
     private LocalDate earningsDate;
 
     public enum ReleaseTime { AFTER_MARKET, BEFORE_MARKET }
-    public enum State { NEW, PROCESSING, PROCESSED }
+    public enum Status { NEW, PROCESSING, PROCESSED }
 
     public EarningsDate() {}
 
@@ -29,8 +29,8 @@ public class EarningsDate {
     public ReleaseTime getReleaseTime() { return releaseTime; }
     public void setReleaseTime(ReleaseTime releaseTime) { this.releaseTime = releaseTime; }
 
-    public State getState() { return state; }
-    public void setState(State state) { this.state = state; }
+    public Status getStatus() { return status; }
+    public void setStatus(Status status) { this.status = status; }
 
     public LocalDate getEarningsDate() { return earningsDate; }
     public void setEarningsDate(LocalDate earningsDate) { this.earningsDate = earningsDate; }

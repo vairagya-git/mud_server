@@ -30,7 +30,7 @@ public class EarningsDateService {
     public EarningsDate save(EarningsDate e) {
         // ensure state default NEW for new entries
         boolean isNew = e.getId() == null;
-        if (isNew && e.getState() == null) e.setState(EarningsDate.State.NEW);
+        if (isNew && e.getStatus() == null) e.setStatus(EarningsDate.Status.NEW);
         EarningsDate saved = repo.save(e);
         // create earnings_date_entry rows for each period when a new earnings_date is created
         if (isNew) {

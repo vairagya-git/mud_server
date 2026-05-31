@@ -32,8 +32,8 @@ public class EarningsDateRepository {
             e.setQuarter(rs.getString("quarter"));
             String rt = rs.getString("releaseTime");
             if (rt != null) e.setReleaseTime(EarningsDate.ReleaseTime.valueOf(rt));
-            String st = rs.getString("state");
-            if (st != null) e.setState(EarningsDate.State.valueOf(st));
+            String st = rs.getString("status");
+            if (st != null) e.setStatus(EarningsDate.Status.valueOf(st));
             java.sql.Date d = rs.getDate("earnings_date");
             if (d != null) e.setEarningsDate(d.toLocalDate());
             return e;
@@ -56,14 +56,14 @@ public class EarningsDateRepository {
     }
 
     private EarningsDate insert(EarningsDate e) {
-        String sql = "INSERT INTO earnings_date (stock_id, quarter, releaseTime, state, earnings_date) VALUES (?,?,?,?,?)";
+        String sql = "INSERT INTO earnings_date (stock_id, quarter, releaseTime, status, earnings_date) VALUES (?,?,?,?,?)";
         KeyHolder kh = new GeneratedKeyHolder();
         jdbc.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             ps.setLong(1, e.getStockId());
             ps.setString(2, e.getQuarter());
             ps.setString(3, e.getReleaseTime() == null ? null : e.getReleaseTime().name());
-            ps.setString(4, e.getState() == null ? EarningsDate.State.NEW.name() : e.getState().name());
+            ps.setString(4, e.getStatus() == null ? EarningsDate.Status.NEW.name() : e.getStatus().name());
             ps.setDate(5, e.getEarningsDate() == null ? null : java.sql.Date.valueOf(e.getEarningsDate()));
             return ps;
         }, kh);
@@ -73,12 +73,12 @@ public class EarningsDateRepository {
     }
 
     private void update(EarningsDate e) {
-        String sql = "UPDATE earnings_date SET stock_id=?, quarter=?, releaseTime=?, state=?, earnings_date=? WHERE id=?";
+        String sql = "UPDATE earnings_date SET stock_id=?, quarter=?, releaseTime=?, status=?, earnings_date=? WHERE id=?";
         jdbc.update(sql,
             e.getStockId(),
             e.getQuarter(),
             e.getReleaseTime() == null ? null : e.getReleaseTime().name(),
-            e.getState() == null ? null : e.getState().name(),
+            e.getStatus() == null ? null : e.getStatus().name(),
             e.getEarningsDate() == null ? null : java.sql.Date.valueOf(e.getEarningsDate()),
             e.getId());
     }

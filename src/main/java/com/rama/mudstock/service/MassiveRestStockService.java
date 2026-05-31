@@ -5,7 +5,9 @@ import java.time.format.DateTimeFormatter;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -40,6 +42,10 @@ public class MassiveRestStockService {
         String url = String.format("%s/%s/%s?adjusted=true&apiKey=%s", baseUrl, ticker, dateStr, apiKey);
         try {
             return rest.getForObject(url, String.class);
+        } catch (HttpClientErrorException hce) {
+            // Let caller handle 404 (market closed) specifically; rethrow for higher-level handling
+            if (hce.getStatusCode() == HttpStatus.NOT_FOUND) throw hce;
+            throw new RuntimeException("Failed to fetch open/close from Massive API (client error)", hce);
         } catch (RestClientException e) {
             throw new RuntimeException("Failed to fetch open/close from Massive API", e);
         }
