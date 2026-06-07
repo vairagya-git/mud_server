@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Watchlist</title>
+    <style>
+        body { font-family: Arial, Helvetica, sans-serif; padding: 20px }
+        label { display:block; margin:8px 0 }
+        input[type=text] { padding:8px; width:300px }
+    </style>
+</head>
+<body>
+<h1>Add Watchlist</h1>
+<form th:action="@{/stock-watchlist/watchlist}" method="post">
+    <label>Name:
+        <input type="text" name="name" required />
+    </label>
+    <button type="submit">Create Watchlist</button>
+</form>
+<p><a th:href="@{/stock-watchlist/watchlists}">Back to Watchlists</a></p>
+</body>
+</html>

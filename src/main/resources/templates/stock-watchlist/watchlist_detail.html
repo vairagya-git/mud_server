@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${watchlist.name} + ' - Watchlist'">Watchlist</title>
+    <style>
+        body { font-family: Arial, Helvetica, sans-serif; padding: 20px }
+        table { border-collapse: collapse; width: 100% }
+        th, td { border: 1px solid #ddd; padding: 8px }
+        th { background:#f4f4f4 }
+        .actions { display:flex; gap:8px }
+    </style>
+</head>
+<body>
+<h1 th:text="${watchlist.name}">Watchlist Name</h1>
+
+<h3>Stocks in this Watchlist</h3>
+<table>
+    <thead>
+    <tr><th>ID</th><th>Ticker</th><th>Action</th></tr>
+    </thead>
+    <tbody>
+    <tr th:each="s : ${watchlist.stocks}">
+        <td th:text="${s.id}"></td>
+        <td th:text="${s.ticker}"></td>
+        <td>
+            <form th:action="@{/stock-watchlist/watchlists/{id}/removeStock(id=${watchlist.id})}" method="post" style="display:inline">
+                <input type="hidden" name="stockId" th:value="${s.id}" />
+                <button type="submit">Remove</button>
+            </form>
+        </td>
+    </tr>
+    </tbody>
+</table>
+
+<h3>Add stock (quick)</h3>
+<form th:action="@{/stock-watchlist/watchlists/addStock}" method="post">
+    <input type="hidden" name="watchlistId" th:value="${watchlist.id}" />
+    <label>Existing stock:
+        <select name="stockId">
+            <option value="" selected>-- choose --</option>
+            <option th:each="s : ${allStocks}" th:value="${s.id}" th:text="${s.ticker}"></option>
+        </select>
+    </label>
+    <label>Or add new stock (provide CUSIP/CIK/CL/Country):</label>
+    <label>Ticker:
+        <input type="text" name="ticker" placeholder="e.g. MSFT" />
+    </label>
+    
+    <label>Name:
+        <input type="text" name="name" />
+    </label>
+    <label>CUSIP:
+        <input type="text" name="cusip" />
+    </label>
+    <label>CIK:
+        <input type="text" name="cik" />
+    </label>
+    <label>CL:
+        <input type="text" name="cl" />
+    </label>
+    <label>Country:
+        <input type="text" name="country" />
+    </label>
+    <button type="submit">Add</button>
+</form>
+
+<p><a th:href="@{/stock-watchlist}">Back to Manage</a></p>
+</body>
+</html>

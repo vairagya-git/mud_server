@@ -92,7 +92,7 @@ public class EarningsDateController {
             String q = parts[1].trim();
             String rtRaw = parts[2].trim();
             String dateRaw = parts[3].trim().replace('/', '-');
-            java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy");
+            java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("d-M-yyyy");
             try {
                 java.time.LocalDate dt = java.time.LocalDate.parse(dateRaw, fmt);
                 com.rama.mudstock.model.Stock stock = service.findOrCreateStockByTicker(ticker);

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>All Watchlists</title>
+    <style>
+        body { font-family: Arial, Helvetica, sans-serif; padding: 20px }
+        table { border-collapse: collapse; width: 100% }
+        th, td { border: 1px solid #ddd; padding: 8px }
+        th { background:#f4f4f4 }
+    </style>
+</head>
+<body>
+<h1>All Watchlists</h1>
+<table>
+    <thead>
+    <tr><th>ID</th><th>Name</th></tr>
+    </thead>
+    <tbody>
+    <tr th:each="w : ${watchlists}">
+        <td th:text="${w.id}"></td>
+        <td><a th:href="@{/stock-watchlist/watchlists/{id}(id=${w.id})}" th:text="${w.name}"></a></td>
+    </tr>
+    </tbody>
+</table>
+<p><a th:href="@{/}">Back to Home</a></p>
+</body>
+</html>

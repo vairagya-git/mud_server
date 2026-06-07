@@ -47,7 +47,8 @@ public class EarningsDateService {
         if (ticker == null || ticker.isBlank()) return null;
         java.util.Optional<Stock> sopt = stockRepository.findByTicker(ticker.trim().toUpperCase());
         if (sopt.isPresent()) return sopt.get();
-        Stock s = new Stock(ticker.trim().toUpperCase());
-        return stockRepository.save(s);
+        // Do not create missing stocks automatically because DB schema (CUSIP/CIK/CL etc.)
+        // is managed externally and may require additional non-null fields.
+        return null;
     }
 }
