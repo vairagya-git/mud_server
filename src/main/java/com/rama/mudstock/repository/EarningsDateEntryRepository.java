@@ -50,6 +50,11 @@ public class EarningsDateEntryRepository {
         return jdbc.update(sql, earningsDateId, stockId, datePeriod);
     }
 
+    public int deleteEntryForEarningsDate(Long earningsDateId, Long stockId, String datePeriod) {
+        String sql = "DELETE FROM earnings_date_entry WHERE earnings_date_id = ? AND stock_id = ? AND datePeriod = ?";
+        return jdbc.update(sql, earningsDateId, stockId, datePeriod);
+    }
+
     public boolean allEntriesDoneForEarningsDate(Long earningsDateId) {
         String sql = "SELECT COUNT(*) FROM earnings_date_entry WHERE earnings_date_id = ? AND (status IS NULL OR status <> 'done')";
         Integer count = jdbc.queryForObject(sql, Integer.class, earningsDateId);

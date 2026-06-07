@@ -55,13 +55,14 @@ public class EarningsDateController {
         model.addAttribute("stateOptions", EarningsDate.Status.values());
         return "earnings/form";
     }
-
     @PostMapping
     public String save(@RequestParam(required = false) Long id,
-                       @RequestParam Long stockId,
+                       @RequestParam(required = false) Long stockId,
                        @RequestParam(required = false) String quarter,
-                       @RequestParam EarningsDate.ReleaseTime releaseTime,
+                       @RequestParam(required = false) EarningsDate.ReleaseTime releaseTime,
                        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate earningsDate) {
+
+        // Single entry flow
         EarningsDate ed = new EarningsDate();
         ed.setId(id);
         ed.setStockId(stockId);
@@ -70,6 +71,43 @@ public class EarningsDateController {
         ed.setStatus(EarningsDate.Status.NEW); // status is always NEW on save; ignore form value
         ed.setEarningsDate(earningsDate);
         service.save(ed);
+        return "redirect:/earnings";
+    }
+
+    @GetMapping("/bulk")
+    public String bulkForm() {
+        return "earnings/bulk";
+    }
+
+    @PostMapping("/bulk")
+    public String bulkUpload(@RequestParam String bulkData) {
+        if (bulkData == null || bulkData.isBlank()) return "redirect:/earnings";
+        String[] lines = bulkData.split("\\r?\\n");
+        for (String raw : lines) {
+            String line = raw.trim();
+            if (line.isEmpty()) continue;
+            String[] parts = line.split(",");
+            if (parts.length < 4) continue; // skip malformed
+            String ticker = parts[0].trim();
+            String q = parts[1].trim();
+            String rtRaw = parts[2].trim();
+            String dateRaw = parts[3].trim().replace('/', '-');
+            java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy");
+            try {
+                java.time.LocalDate dt = java.time.LocalDate.parse(dateRaw, fmt);
+                com.rama.mudstock.model.Stock stock = service.findOrCreateStockByTicker(ticker);
+                if (stock == null) continue;
+                EarningsDate ed = new EarningsDate();
+                ed.setStockId(stock.getId());
+                ed.setQuarter(q);
+                try { ed.setReleaseTime(EarningsDate.ReleaseTime.valueOf(rtRaw)); } catch (Exception e) { ed.setReleaseTime(EarningsDate.ReleaseTime.AFTER_MARKET); }
+                ed.setEarningsDate(dt);
+                ed.setStatus(EarningsDate.Status.NEW);
+                service.save(ed);
+            } catch (Exception ex) {
+                // ignore parse errors for now
+            }
+        }
         return "redirect:/earnings";
     }
 

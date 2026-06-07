@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Bulk Upload Earnings</title>
+    <style>
+        label { display:block; margin-top:8px }
+        textarea { width:100%; }
+    </style>
+</head>
+<body>
+<h1>Bulk Upload Earnings</h1>
+<p>Paste lines in the format: Stock, Quarter, ReleaseTime, Earning Date (dd-mm-yyyy or dd/mm/yyyy)</p>
+<form th:action="@{/earnings/bulk}" method="post">
+    <label>
+        <textarea name="bulkData" rows="12" placeholder="AAPL, Q2-2026, AFTER_MARKET, 01-06-2026"></textarea>
+    </label>
+    <div style="margin-top:10px">
+        <button type="submit">Upload</button>
+        <a th:href="@{/earnings}">Cancel</a>
+    </div>
+</form>
+
+ <p>
+    <a th:href="@{/earnings/form}">Individual Stock Upload</a>
+ </p>
+</body>
+</html>

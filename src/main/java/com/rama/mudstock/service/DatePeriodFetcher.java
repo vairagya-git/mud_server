@@ -74,12 +74,15 @@ public class DatePeriodFetcher {
                     log.info("Fetched {} for {} on {} (len={})", dp, ticker, target, body == null ? 0 : body.length());
                 } catch (org.springframework.web.client.HttpClientErrorException hce) {
                     if (hce.getStatusCode() == org.springframework.http.HttpStatus.NOT_FOUND) {
-                        // Market closed or no data for this date — mark entry as done and skip
-                        log.info("No data (404) for {} on {} — marking entry done", ticker, target);
+                        // Market closed or no data for this date — delete the initially created entry and skip
+                        log.info("No data (404) for {} on {} — deleting initial entry and skipping", ticker, target);
                         try {
-                            entryRepository.setEntryStatusToDone(earningsDateId, stockId, dp.getDbValue());
+                            int deleted = entryRepository.deleteEntryForEarningsDate(earningsDateId, stockId, dp.getDbValue());
+                            if (deleted == 0) {
+                                log.info("No earnings_date_entry row found to delete for {} {} {}", earningsDateId, stockId, dp);
+                            }
                         } catch (Exception ux) {
-                            log.error("Failed to set status done for {} {} {}: {}", earningsDateId, stockId, dp, ux.getMessage());
+                            log.error("Failed to delete entry for {} {} {}: {}", earningsDateId, stockId, dp, ux.getMessage());
                         }
                         continue;
                     }

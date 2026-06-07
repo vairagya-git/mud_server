@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Home</title>
+    <style>
+        body { font-family: Arial, Helvetica, sans-serif; padding: 20px }
+        h2 { margin-top: 20px }
+        .section { border: 1px solid #ddd; padding: 12px; margin-bottom: 12px; border-radius: 6px }
+        .links a { display:block; margin:6px 0 }
+    </style>
+</head>
+<body>
+<h1>Dashboard</h1>
+
+<div class="section">
+    <h2>Stock</h2>
+    <div class="links">
+        <!-- placeholder - keep empty as requested -->
+    </div>
+</div>
+
+<div class="section">
+    <h2>WatchList</h2>
+    <div class="links">
+        <!-- placeholder - keep empty as requested -->
+    </div>
+</div>
+
+<div class="section">
+    <h2>Earning Collection</h2>
+    <div class="links">
+        <a th:href="@{/earnings}">Earnings List</a>
+        <a th:href="@{/earnings/new}">Add Earnings Entry</a>
+        <a th:href="@{/earnings/bulk}">Bulk Upload Earnings</a>
+    </div>
+</div>
+
+</body>
+</html>

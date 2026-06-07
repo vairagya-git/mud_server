@@ -42,4 +42,12 @@ public class EarningsDateService {
     public void delete(Long id) { repo.deleteById(id); }
 
     public List<Stock> allStocks() { return stockRepository.findAll(); }
+
+    public Stock findOrCreateStockByTicker(String ticker) {
+        if (ticker == null || ticker.isBlank()) return null;
+        java.util.Optional<Stock> sopt = stockRepository.findByTicker(ticker.trim().toUpperCase());
+        if (sopt.isPresent()) return sopt.get();
+        Stock s = new Stock(ticker.trim().toUpperCase());
+        return stockRepository.save(s);
+    }
 }

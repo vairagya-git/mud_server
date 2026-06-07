@@ -42,6 +42,11 @@
         <input type="date" name="earningsDate" th:value="${ed.earningsDate}" />
     </label>
 
+
+    <p>
+        <a th:href="@{/earnings/bulk}">Bulk upload multiple earnings entries</a>
+    </p>
+
     <div style="margin-top:10px">
         <button type="submit">Save</button>
         <a th:href="@{/earnings}">Cancel</a>
