@@ -35,3 +35,15 @@ massive:
   open-close: v1/open-close/%s/%s/%s?adjusted=true&apiKey=%s
   ticker-aggregate: /v2/aggs/ticker/%s/range/1/day/%s%s
   apikey: ${MASSIVE_API_KEY:0jSwNlbvfYIgQ8OAVJsZ7T1sEmpWm7JV}
+
+# Scheduler configuration for special watchlist jobs
+# `schedulers.everyDayEvent.cron` controls when the EVERY_DAY_EVENT job runs.
+# The cron expression uses Spring's 6-field format: "second minute hour day month day-of-week".
+# Example to run every night at 23:00 (11:00 PM):
+#   schedulers:
+#     everyDayEvent:
+#       cron: "0 0 23 * * *"
+schedulers:
+  everyDayEvent:
+    # default: every night at 23:00 (11:00 PM). Override via env or profiles as needed.
+    cron: "0 0 23 * * *"
