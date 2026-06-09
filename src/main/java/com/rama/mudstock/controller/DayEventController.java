@@ -12,13 +12,16 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.rama.mudstock.model.DayEventMaster;
 import com.rama.mudstock.model.Stock;
+import com.rama.mudstock.model.Watchlist;
 import com.rama.mudstock.repository.DayEventEntryRepository;
 import com.rama.mudstock.repository.DayEventMappingRepository;
 import com.rama.mudstock.repository.DayEventMasterRepository;
 import com.rama.mudstock.repository.StockRepository;
+import com.rama.mudstock.repository.WatchlistRepository;
 
 @Controller
 @RequestMapping("/day-event")
@@ -27,12 +30,14 @@ public class DayEventController {
     private final DayEventMappingRepository mappingRepo;
     private final StockRepository stockRepo;
     private final DayEventEntryRepository entryRepo;
+    private final WatchlistRepository watchlistRepo;
 
-    public DayEventController(DayEventMasterRepository repo, DayEventMappingRepository mappingRepo, StockRepository stockRepo, DayEventEntryRepository entryRepo) {
+    public DayEventController(DayEventMasterRepository repo, DayEventMappingRepository mappingRepo, StockRepository stockRepo, DayEventEntryRepository entryRepo, WatchlistRepository watchlistRepo) {
         this.repo = repo;
         this.mappingRepo = mappingRepo;
         this.stockRepo = stockRepo;
         this.entryRepo = entryRepo;
+        this.watchlistRepo = watchlistRepo;
     }
 
     // Day event master list and create
@@ -109,5 +114,35 @@ public class DayEventController {
     public String listEntries(Model model) {
         model.addAttribute("entries", entryRepo.listAllEntriesWithMeta());
         return "day_event/dayevententries";
+    }
+
+    @GetMapping("/populate-watchlist")
+    public String populateWatchlistForm(Model model) {
+        List<Watchlist> watchlists = watchlistRepo.findAll();
+        List<DayEventMaster> days = repo.findAll();
+        model.addAttribute("watchlists", watchlists);
+        model.addAttribute("days", days);
+        return "day_event/populate_watchlist";
+    }
+
+    @PostMapping("/populate-watchlist")
+    public String populateWatchlistSubmit(@RequestParam Long watchlistId, @RequestParam Long dayEventMasterId, RedirectAttributes ra) {
+        var maybe = watchlistRepo.findById(watchlistId);
+        if (maybe.isEmpty()) {
+            ra.addFlashAttribute("error", "Watchlist not found");
+            return "redirect:/day-event/populate-watchlist";
+        }
+        Watchlist w = maybe.get();
+        int created = 0;
+        for (com.rama.mudstock.model.Stock s : w.getStocks()) {
+            try {
+                mappingRepo.createMapping(s.getId(), dayEventMasterId);
+                created++;
+            } catch (Exception e) {
+                // ignore duplicates/errors
+            }
+        }
+        ra.addFlashAttribute("message", "Created " + created + " mappings from watchlist " + w.getName());
+        return "redirect:/day-event/mapping";
     }
 }

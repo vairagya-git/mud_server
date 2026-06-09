@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Populate from Watchlist</title>
+    <style>body{font-family:Arial,Helvetica,sans-serif;padding:12px}label{display:block;margin:8px 0}</style>
+</head>
+<body>
+<h1>Populate Day Event Mappings From Watchlist</h1>
+
+<form action="/day-event/populate-watchlist" method="post">
+    <label>
+        Select Watchlist:
+        <select name="watchlistId" required>
+            <option value="">-- choose watchlist --</option>
+            <th:block th:each="w : ${watchlists}">
+                <option th:value="${w.id}" th:text="${w.name}"></option>
+            </th:block>
+        </select>
+    </label>
+
+    <label>
+        Select Day Event:
+        <select name="dayEventMasterId" required>
+            <option value="">-- choose day event --</option>
+            <th:block th:each="d : ${days}">
+                <option th:value="${d.id}" th:text="${d.code}"></option>
+            </th:block>
+        </select>
+    </label>
+
+    <button type="submit">Populate Watch Ticker</button>
+</form>
+
+<p><a th:href="@{/day-event/mapping}">Back to Mappings</a></p>
+</body>
+</html>
