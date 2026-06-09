@@ -6,7 +6,7 @@ public class EarningsDateEntry {
     private Long id;
     private Long stockId;
     private Long earningsDateId;
-    private DatePeriod datePeriod;
+    private EarningsDateEnum datePeriod;
     private BigDecimal Open;
     private BigDecimal close;
     private BigDecimal high;
@@ -24,8 +24,8 @@ public class EarningsDateEntry {
     public void setStockId(Long stockId) { this.stockId = stockId; }
     public Long getEarningsDateId() { return earningsDateId; }
     public void setEarningsDateId(Long earningsDateId) { this.earningsDateId = earningsDateId; }
-    public DatePeriod getDatePeriod() { return datePeriod; }
-    public void setDatePeriod(DatePeriod datePeriod) { this.datePeriod = datePeriod; }
+    public EarningsDateEnum getDatePeriod() { return datePeriod; }
+    public void setDatePeriod(EarningsDateEnum datePeriod) { this.datePeriod = datePeriod; }
     public BigDecimal getOpen() { return Open; }
     public void setOpen(BigDecimal open) { Open = open; }
     public BigDecimal getClose() { return close; }

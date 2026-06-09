@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Day Events</title>
+    <style>
+        body { font-family: Arial, Helvetica, sans-serif; padding: 12px }
+        table { border-collapse: collapse; width: 100%; }
+        table, th, td { border: 1px solid #ddd; }
+        th, td { padding: 8px; text-align: left }
+        form { margin-top: 12px }
+        .btn { padding:6px 10px; border-radius:4px; background:#0b79d0; color:white; text-decoration:none }
+    </style>
+</head>
+<body>
+<h1>Day Event Master</h1>
+
+<h2>Existing Events</h2>
+<table>
+    <thead>
+    <tr><th>ID</th><th>Code</th><th>Description</th><th>Event Date</th></tr>
+    </thead>
+    <tbody>
+    <tr th:each="e : ${events}">
+        <td th:text="${e.id}">1</td>
+        <td th:text="${e.code}">CODE</td>
+        <td th:text="${e.description}">Description</td>
+        <td th:text="${e.eventDate}">2026-06-08</td>
+    </tr>
+    <tr th:if="${events.size()} == 0"><td colspan="4">No events found</td></tr>
+    </tbody>
+</table>
+
+<h2>Create New Event</h2>
+<form th:action="@{/day-event}" method="post">
+    <div>
+        <label>Code: <input type="text" name="code" required /></label>
+    </div>
+    <div>
+        <label>Description: <input type="text" name="description" /></label>
+    </div>
+    <div>
+        <label>Event Date: <input type="date" name="event_date" /></label>
+    </div>
+    <div style="margin-top:8px">
+        <button type="submit" class="btn">Create</button>
+        <a th:href="@{/}" class="btn" style="background:#666; margin-left:8px">Back</a>
+    </div>
+</form>
+
+</body>
+</html>

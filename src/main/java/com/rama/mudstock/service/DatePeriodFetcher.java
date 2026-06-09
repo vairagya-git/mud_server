@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rama.mudstock.model.DatePeriod;
+import com.rama.mudstock.model.EarningsDateEnum;
 import com.rama.mudstock.repository.EarningsDateEntryRepository;
 
 @Service
@@ -32,9 +32,9 @@ public class DatePeriodFetcher {
      * Fetch open/close data for all DatePeriod values relative to the provided earningsDate.
      * Returns a map of DatePeriod -> API response body (as string). Caller may inspect and persist.
      */
-    public Map<DatePeriod, String> fetchAllForTickerAndEarningsDate(String ticker, LocalDate earningsDate, Long earningsDateId, Long stockId) {
-        Map<DatePeriod, String> result = new EnumMap<>(DatePeriod.class);
-        for (DatePeriod dp : DatePeriod.values()) {
+    public Map<EarningsDateEnum, String> fetchAllForTickerAndEarningsDate(String ticker, LocalDate earningsDate, Long earningsDateId, Long stockId) {
+        Map<EarningsDateEnum, String> result = new EnumMap<>(EarningsDateEnum.class);
+        for (EarningsDateEnum dp : EarningsDateEnum.values()) {
             LocalDate target = earningsDate.plusDays(dp.getDaysOffset());
             // original target (before weekend-adjustment) used to determine availability
             LocalDate originalTarget = target;
@@ -115,7 +115,7 @@ public class DatePeriodFetcher {
         return result;
     }
 
-    private LocalDate adjustForWeekend(DatePeriod dp, LocalDate date) {
+    private LocalDate adjustForWeekend(EarningsDateEnum dp, LocalDate date) {
         switch (dp) {
             case OneWeekBefore:
                 switch (date.getDayOfWeek()) {

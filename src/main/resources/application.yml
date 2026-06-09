@@ -25,8 +25,13 @@ alphavantage:
 earnings:
   cron: "0 0/1 * * * *" # every 5 minutes
   api:
-    calls-per-minute: 5
+    calls-per-minute: 1000
+
+dayevent:
+  cron: "0 0/2 * * * *" # every 2 minutes
 
 massive:
-  base-url: https://api.massive.com/v1/open-close
+  base-url: https://api.massive.com/
+  open-close: v1/open-close/%s/%s/%s?adjusted=true&apiKey=%s
+  ticker-aggregate: /v2/aggs/ticker/%s/range/1/day/%s%s
   apikey: ${MASSIVE_API_KEY:0jSwNlbvfYIgQ8OAVJsZ7T1sEmpWm7JV}

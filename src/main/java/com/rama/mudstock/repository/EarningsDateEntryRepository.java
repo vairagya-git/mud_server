@@ -3,7 +3,7 @@ package com.rama.mudstock.repository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import com.rama.mudstock.model.DatePeriod;
+import com.rama.mudstock.model.EarningsDateEnum;
 
 @Repository
 public class EarningsDateEntryRepository {
@@ -13,7 +13,7 @@ public class EarningsDateEntryRepository {
 
     public void createEntriesForEarningsDate(Long earningsDateId, Long stockId) {
         String sql = "INSERT INTO earnings_date_entry (stock_id, earnings_date_id, datePeriod, `from`, `Open`, `close`, `high`, `low`, `volume`, `percentage`, `value`, `status`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
-        for (DatePeriod dp : DatePeriod.values()) {
+        for (EarningsDateEnum dp : EarningsDateEnum.values()) {
             jdbc.update(sql,
                 stockId,
                 earningsDateId,

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Day Event Entries</title>
+    <style>
+        body { font-family: Arial, Helvetica, sans-serif; padding: 12px }
+        table { border-collapse: collapse; width: 100%; }
+        table, th, td { border: 1px solid #ddd; }
+        th, td { padding: 8px; text-align: left }
+    </style>
+</head>
+<body>
+<h1>Day Event Entries</h1>
+
+<table>
+    <thead>
+    <tr>
+        <th>Stock</th>
+        <th>Day Code</th>
+        <th>Event Date</th>
+        <th>Pre Day Close</th>
+        <th>Cur Day Open</th>
+        <th>Cur Day Close</th>
+        <th>Cur Day High</th>
+        <th>Cur Day Low</th>
+        <th>Cur Day VW</th>
+        <th>Cur Day Volume</th>
+        <th>Change %</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="e : ${entries}">
+        <td th:text="${e.ticker}">TICKER</td>
+        <td th:text="${e.day_code}">CODE</td>
+        <td th:text="${e.master_event_date}">${e.master_event_date}</td>
+        <td th:text="${e.pre_day_close}">0.00</td>
+        <td th:text="${e.cur_day_open}">0.00</td>
+        <td th:text="${e.cur_day_close}">0.00</td>
+        <td th:text="${e.cur_day_high}">0.00</td>
+        <td th:text="${e.cur_day_low}">0.00</td>
+        <td th:text="${e.cur_day_vol_weight}">0.00</td>
+        <td th:text="${e.cur_day_volume}">0</td>
+        <td th:text="${e.change_percent}">0.00</td>
+    </tr>
+    <tr th:if="${entries.size()} == 0"><td colspan="11">No entries</td></tr>
+    </tbody>
+</table>
+
+</body>
+</html>
