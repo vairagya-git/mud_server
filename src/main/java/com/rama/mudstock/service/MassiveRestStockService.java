@@ -210,6 +210,13 @@ public class MassiveRestStockService {
                         if (dayEventMapId != null) {
                             dayEventEntryRepository.upsertDayEventEntry(dayEventMapId, preDayClose, curDayOpen, curDayClose, curDayHigh, curDayLow, curDayVolWeight, curDayVolume, changePercent);
                             log.info("Saved day_event_entry for mappingId={} eventDate={}", dayEventMapId, eventDate);
+                            try {
+                                int updated = mappingRepository.updateStatus(dayEventMapId, "processed");
+                                if (updated > 0) log.info("Marked day_event_map id={} as processed", dayEventMapId);
+                                else log.warn("No day_event_map row updated for id={}", dayEventMapId);
+                            } catch (Exception e) {
+                                log.error("Failed to update day_event_map status for id={}", dayEventMapId, e);
+                            }
                         } else {
                             log.warn("Missing day_event_map_id to save day_event_entry for mapping {}", m);
                         }

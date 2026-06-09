@@ -3,12 +3,15 @@ package com.rama.mudstock.repository;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public class DayEventMappingRepository {
     private final JdbcTemplate jdbc;
+    private static final Logger log = LoggerFactory.getLogger(DayEventMappingRepository.class);
 
     public DayEventMappingRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
@@ -32,5 +35,18 @@ public class DayEventMappingRepository {
         String sql = "SELECT m.id as day_event_map_id, m.stock_id as stock_id, s.ticker as ticker, m.day_event_master_id as day_event_master_id, d.code as code, d.event_date as event_date, m.status as status "
             + "FROM day_event_map m JOIN stock s ON m.stock_id = s.id JOIN day_event_master d ON m.day_event_master_id = d.id WHERE m.status = ? ORDER BY s.ticker, d.code";
         return jdbc.queryForList(sql, status);
+    }
+
+    public int updateStatus(Long dayEventMapId, String status) {
+        String sql = "UPDATE day_event_map SET status = ? WHERE id = ?";
+        try {
+            log.debug("Executing SQL: {} with params [{}, {}]", sql, status, dayEventMapId);
+            int updated = jdbc.update(sql, status, dayEventMapId);
+            log.debug("Update result: {} rows affected for id={}", updated, dayEventMapId);
+            return updated;
+        } catch (Exception ex) {
+            log.error("Failed to execute updateStatus for id={}", dayEventMapId, ex);
+            throw ex;
+        }
     }
 }
