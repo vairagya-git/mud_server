@@ -7,21 +7,27 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.rama.mudstock.model.Stock;
 import com.rama.mudstock.model.Watchlist;
 import com.rama.mudstock.repository.StockRepository;
 import com.rama.mudstock.repository.WatchlistRepository;
+import com.rama.mudstock.service.AlphaVantageStockService;
 
 @Controller
 @RequestMapping("/stock-watchlist")
 public class StockWatchlistController {
     private final StockRepository stockRepo;
     private final WatchlistRepository watchlistRepo;
+    private final AlphaVantageStockService stockService;
 
-    public StockWatchlistController(StockRepository stockRepo, WatchlistRepository watchlistRepo) {
+    public StockWatchlistController(StockRepository stockRepo, WatchlistRepository watchlistRepo,
+                                    AlphaVantageStockService stockService) {
         this.stockRepo = stockRepo;
         this.watchlistRepo = watchlistRepo;
+        this.stockService = stockService;
     }
 
     @GetMapping
@@ -39,6 +45,13 @@ public class StockWatchlistController {
     @GetMapping("/stocks/new")
     public String newStockForm(Model model) {
         return "stock-watchlist/addstock";
+    }
+
+    @GetMapping("/stocks/{ticker}/timeseries")
+    @ResponseBody
+    public org.springframework.http.ResponseEntity<String> getTimeSeries(@PathVariable String ticker) {
+        String body = stockService.fetchDailyTimeSeries(ticker);
+        return org.springframework.http.ResponseEntity.ok(body);
     }
 
     @GetMapping("/watchlists/new")
@@ -126,6 +139,101 @@ public class StockWatchlistController {
             watchlistRepo.save(w);
         }
         return "redirect:/stock-watchlist/watchlists/" + id;
+    }
+
+    // ----- Watchlist <-> Stock mapping -----
+
+    @GetMapping("/mapping")
+    public String mappingForm(Model model) {
+        model.addAttribute("watchlists", watchlistRepo.findAll());
+        return "stock-watchlist/mapping";
+    }
+
+    @PostMapping("/mapping")
+    public String addMapping(@RequestParam Long watchlistId,
+                             @RequestParam String ticker,
+                             RedirectAttributes ra) {
+        Watchlist w = watchlistRepo.findById(watchlistId).orElse(null);
+        if (w == null) {
+            ra.addFlashAttribute("error", "Watchlist not found");
+            return "redirect:/stock-watchlist/mapping";
+        }
+        Stock s = (ticker == null || ticker.isBlank())
+                ? null
+                : stockRepo.findByTicker(ticker.trim().toUpperCase()).orElse(null);
+        if (s == null) {
+            ra.addFlashAttribute("error", "Stock ticker not found: " + ticker);
+            return "redirect:/stock-watchlist/mapping";
+        }
+        if (w.getStocks().stream().anyMatch(x -> x.getId().equals(s.getId()))) {
+            ra.addFlashAttribute("message", s.getTicker() + " is already mapped to " + w.getCode());
+        } else {
+            w.addStock(s);
+            watchlistRepo.save(w);
+            ra.addFlashAttribute("message", "Mapped " + s.getTicker() + " to " + w.getCode());
+        }
+        return "redirect:/stock-watchlist/mapping";
+    }
+
+    // CSV format per line: WATCHLIST_CODE;TICKER;COUNTRY  (e.g. MOVING_STOCK;LMT;USA)
+    @PostMapping("/mapping/bulk")
+    public String bulkMapping(@RequestParam String bulkData, RedirectAttributes ra) {
+        if (bulkData == null || bulkData.isBlank()) {
+            ra.addFlashAttribute("error", "No data provided");
+            return "redirect:/stock-watchlist/mapping";
+        }
+        java.util.Map<String, Watchlist> wlCache = new java.util.HashMap<>();
+        int mapped = 0, createdWatchlists = 0, duplicates = 0, malformed = 0;
+        java.util.List<String> unknownTickers = new java.util.ArrayList<>();
+
+        for (String raw : bulkData.split("\\r?\\n")) {
+            String line = raw.trim();
+            if (line.isEmpty()) continue;
+            String[] parts = line.split(";");
+            if (parts.length < 2) { malformed++; continue; }
+            String code = parts[0].trim();
+            String ticker = parts[1].trim().toUpperCase();
+            String country = parts.length >= 3 ? parts[2].trim() : null;
+            if (code.isEmpty() || ticker.isEmpty()) { malformed++; continue; }
+
+            Watchlist w = wlCache.get(code);
+            if (w == null) {
+                w = watchlistRepo.findByCode(code).orElse(null);
+                if (w == null) {
+                    w = watchlistRepo.save(new Watchlist(code, code,
+                            (country != null && !country.isEmpty()) ? country : "USA"));
+                    createdWatchlists++;
+                }
+                wlCache.put(code, w);
+            }
+
+            Stock s = stockRepo.findByTicker(ticker).orElse(null);
+            if (s == null) { unknownTickers.add(ticker); continue; }
+
+            if (w.getStocks().stream().anyMatch(x -> x.getId().equals(s.getId()))) {
+                duplicates++;
+                continue;
+            }
+            try {
+                w.addStock(s);
+                watchlistRepo.save(w);
+                mapped++;
+            } catch (Exception e) {
+                w.getStocks().remove(s);
+                duplicates++;
+            }
+        }
+
+        StringBuilder msg = new StringBuilder();
+        msg.append("Mapped ").append(mapped).append(" stock(s).");
+        if (createdWatchlists > 0) msg.append(" Created ").append(createdWatchlists).append(" new watchlist(s).");
+        if (duplicates > 0) msg.append(" Skipped ").append(duplicates).append(" existing mapping(s).");
+        if (malformed > 0) msg.append(" Skipped ").append(malformed).append(" malformed line(s).");
+        if (!unknownTickers.isEmpty()) {
+            msg.append(" Unknown ticker(s): ").append(String.join(", ", unknownTickers)).append('.');
+        }
+        ra.addFlashAttribute("message", msg.toString());
+        return "redirect:/stock-watchlist/mapping";
     }
 
     @GetMapping("/watchlists/{id}")

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Watchlist &amp; Stock Mapping</title>
+    <style>
+        body { font-family: Arial, Helvetica, sans-serif; padding: 20px }
+        h1 { margin-bottom: 4px }
+        .section { border: 1px solid #ddd; padding: 16px; margin-bottom: 16px; border-radius: 6px }
+        label { display:block; margin-top:8px; font-weight:bold }
+        textarea { width:100%; font-family: monospace }
+        select, input[type=text] { padding:4px; min-width:220px }
+        .msg { padding:10px; border-radius:6px; margin-bottom:12px; background:#e6ffed; border:1px solid #34d058 }
+        .err { padding:10px; border-radius:6px; margin-bottom:12px; background:#ffeef0; border:1px solid #d73a49 }
+        .hint { color:#555; font-size:0.9em }
+    </style>
+</head>
+<body>
+<h1>Watchlist &amp; Stock Mapping</h1>
+<p class="hint">Map stocks (by ticker) into a watchlist (by code).</p>
+
+<div th:if="${message}" class="msg" th:text="${message}"></div>
+<div th:if="${error}" class="err" th:text="${error}"></div>
+
+<div class="section">
+    <h2>Single Mapping</h2>
+    <form th:action="@{/stock-watchlist/mapping}" method="post">
+        <label>Watchlist</label>
+        <select name="watchlistId" required>
+            <option th:each="w : ${watchlists}"
+                    th:value="${w.id}"
+                    th:text="${w.code} + ' — ' + ${w.name}"></option>
+        </select>
+        <label>Stock Ticker</label>
+        <input type="text" name="ticker" placeholder="LMT" required>
+        <div style="margin-top:12px">
+            <button type="submit">Add Mapping</button>
+        </div>
+    </form>
+</div>
+
+<div class="section">
+    <h2>Bulk Mapping (CSV)</h2>
+    <p class="hint">One per line in the format <code>WATCHLIST_CODE;TICKER;COUNTRY</code>.
+       A watchlist whose code does not exist will be created automatically.</p>
+    <form th:action="@{/stock-watchlist/mapping/bulk}" method="post">
+        <label>CSV Data</label>
+        <textarea name="bulkData" rows="14"
+                  placeholder="MOVING_STOCK;LMT;USA&#10;MOVING_STOCK;AXON;USA&#10;MOVING_STOCK;MCHP;USA"></textarea>
+        <div style="margin-top:12px">
+            <button type="submit">Upload</button>
+        </div>
+    </form>
+</div>
+
+<p>
+    <a th:href="@{/stock-watchlist/watchlists}">All Watchlists</a> |
+    <a th:href="@{/}">Home</a>
+</p>
+</body>
+</html>

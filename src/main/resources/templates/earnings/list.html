@@ -25,7 +25,7 @@
         <td th:text="${ed.stockSymbol}"></td>
         <td th:text="${ed.quarter}"></td>
         <td th:text="${ed.releaseTime}"></td>
-        <td th:text="NEW"></td>
+        <td th:text="${ed.state}"></td>
         <td th:text="${ed.earningsDate}"></td>
         <td>
             <a th:href="@{/earnings/{id}/edit(id=${ed.id})}">Edit</a>
