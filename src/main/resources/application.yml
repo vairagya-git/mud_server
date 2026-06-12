@@ -48,3 +48,4 @@ schedulers:
     # default: every night at 23:00 (11:00 PM). Override via env or profiles as needed.
     # cron: "0 0 23 * * *"
     cron: "0 0/2 * * * *" # every 2 minutes for testing
+    watchlist-name: "MOVING_STOCK"

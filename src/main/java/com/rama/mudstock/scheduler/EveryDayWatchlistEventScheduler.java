@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -21,7 +20,7 @@ import com.rama.mudstock.repository.DayEventMasterRepository;
 import com.rama.mudstock.repository.WatchlistRepository;
 
 @Component
-@Profile("every-day")
+//@Profile("every-day")
 public class EveryDayWatchlistEventScheduler {
     private final WatchlistRepository watchlistRepo;
     private final DayEventMasterRepository masterRepo;
@@ -30,6 +29,9 @@ public class EveryDayWatchlistEventScheduler {
 
     @Value("${schedulers.everyDayEvent.cron:}")
     private String everyDayEventCron;
+
+    @Value("${schedulers.everyDayEvent.watchlist-name:}")
+    private String everyDayEventWatchlistName;
 
     public EveryDayWatchlistEventScheduler(WatchlistRepository watchlistRepo, DayEventMasterRepository masterRepo, DayEventMappingRepository mappingRepo) {
         this.watchlistRepo = watchlistRepo;
@@ -41,10 +43,10 @@ public class EveryDayWatchlistEventScheduler {
     @Scheduled(cron = "${schedulers.everyDayEvent.cron}")
     public void runEveryDayEvent() {
         log.info("EveryDayWatchlistEventScheduler: running scheduled job to populate day event for watchlist {}", SpecialWatchlistEnum.EVERY_DAY_EVENT);
-        String watchlistName = SpecialWatchlistEnum.EVERY_DAY_EVENT.name();
+        String watchlistName = everyDayEventWatchlistName;
         var maybe = watchlistRepo.findByName(watchlistName);
         if (maybe.isEmpty()) {
-            log.warn("Watchlist '{}' not found; skipping EVERY_DAY_EVENT job", watchlistName);
+            log.warn("Watchlist '{}' not found; skipping job", watchlistName);
             return;
         }
         Watchlist w = maybe.get();

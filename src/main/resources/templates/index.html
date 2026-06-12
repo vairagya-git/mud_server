@@ -8,39 +8,77 @@
         h2 { margin-top: 20px }
         .section { border: 1px solid #ddd; padding: 12px; margin-bottom: 12px; border-radius: 6px }
         .links a { display:block; margin:6px 0 }
+        .content-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2, h3 {
+            color: #300303;
+        }
+        p.content-text {
+            color: #555;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
 <h1>Dashboard</h1>
 
-<div class="section">
-    <h2>Stock & WatchList</h2>
-    <div class="links">
-        <a th:href="@{/stock-watchlist/stocks}">All Stocks</a>
-        <a th:href="@{/stock-watchlist/watchlists}">All Watchlists</a>
-        <a th:href="@{/stock-watchlist/stocks/new}">Add Stock</a>
-        <a th:href="@{/stock-watchlist/watchlists/new}">Add Watchlist</a>
-        <a th:href="@{/stock-watchlist/mapping}">Watchlist &amp; Stock Mapping</a>
+<div class="content-container">
+     <h2>Stock & WatchList</h2>
+    <div class="section">
+         <a th:href="@{/stock-watchlist/stocks}"><h3>All Stocks</h3></a>
+         <p class="content-text">Displays all available stocks.</p>
+
+        <a th:href="@{/stock-watchlist/watchlists}"><h3>All Watchlists</h3></a>
+        <p class="content-text">Displays all available watchlists.</p>
+
+        <a th:href="@{/stock-watchlist/stocks/new}"><h3>Add Stock</h3></a>
+        <p class="content-text">Add a new stock Form.</p>
+
+        <a th:href="@{/stock-watchlist/watchlists/new}"><h3>Add Watchlist</h3></a>
+        <p class="content-text">Add a new watchlist Form.</p>
+
+         <a th:href="@{/stock-watchlist/mapping}"><h3>Watchlist &amp; Stock Mapping</h3></a>
+        <p class="content-text">Stock and Watchlist Mapping form and CSV bulk upload.</p>
     </div>
 </div>
 
-<div class="section">
+<div class="content-container">
     <h2>Earning Collection</h2>
-    <div class="links">
-        <a th:href="@{/earnings}">Earnings List</a>
-        <a th:href="@{/earnings/new}">Add Earnings Entry</a>
-        <a th:href="@{/earnings/bulk}">Bulk Upload Earnings</a>
+    <div class="section">
+        <a th:href="@{/earnings}"> <h3>Earnings List</h3></a>
+        <p class="content-text">Stock Earning Dates with processing status</p>
+
+        <a th:href="@{/earnings/new}"><h3>Add Earnings Entry</h3></a>
+        <p class="content-text">New Earning Entry for exsisting stock with earning date & quarter</p>
+
+        <a th:href="@{/earnings/bulk}"><h3>CSV Bulk Upload Earnings Entry</h3></a>
+        <p class="content-text">Upload earnings entries in bulkin CSV format</p>
     </div>
 </div>
 
-<div class="section">
-    <h2>Day Events</h2>
-    <div class="links">
-        <a th:href="@{/day-event}">Manage Day Events</a>
-        <a th:href="@{/day-event/mapping}">Day Event Mappings</a>
-        <a th:href="@{/day-event/mapping/bulk}">Bulk Upload Mappings</a>
-        <a th:href="@{/day-event/populate-watchlist}">Populate Watch Ticker</a>
-        <a th:href="@{/day-event/entries}">Day Event Entries</a>
+<div class="content-container">
+    <h2>Single Day Events</h2>
+    <div class="section">
+        <a th:href="@{/day-event}"><h3>Add Day Event Master</h3></a>
+        <p class="content-text">Single Day Event Master Entry. Displays List and New Entry Form</p>
+
+        <a th:href="@{/day-event/mapping}"><h3>Day Event Master and Stock Mappings</h3></a>
+        <p class="content-text">Day Event Master and Stock Mappings list. Form to map day events to stocks.</p>
+
+        <a th:href="@{/day-event/mapping/bulk}"><h3>Bulk Upload Mappings</h3></a>
+        <p class="content-text">Upload day event mappings in bulk using in CSV format.</p>
+    
+        <a th:href="@{/day-event/populate-watchlist}"><h3>Populate Day Event Mappings From Watchlist</h3></a>
+        <p class="content-text">Select Day Event Master Entry and Watchlist, this will create entry for all stock in the watchlist for the dayevent</p>
+
+        <a th:href="@{/day-event/entries}"><h3>Day Event Entries</h3></a>
+        <p class="content-text">Populated Day event entries from massive.com</p>
     </div>
 </div>
 

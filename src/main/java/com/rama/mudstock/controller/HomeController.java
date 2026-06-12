@@ -20,4 +20,11 @@ public class HomeController {
         model.addAttribute("stockCount", earningsService.allStocks().size());
         return "index";
     }
+
+     @GetMapping("/index2")
+    public String index2(Model model) {
+        // provide counts or other small metadata if desired
+        model.addAttribute("stockCount", earningsService.allStocks().size());
+        return "index2";
+    }
 }
