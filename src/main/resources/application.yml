@@ -29,6 +29,9 @@ earnings:
 
 dayevent:
   cron: "0 0/2 * * * *" # every 2 minutes
+  cleanup:
+    # Removes redundant auto every-day masters when a genuine master exists for the same date.
+    cron: "0 0/5 * * * *" # every 5 minutes for testing (consider daily, e.g. "0 30 23 * * *")
 
 massive:
   base-url: https://api.massive.com/
@@ -48,4 +51,6 @@ schedulers:
     # default: every night at 23:00 (11:00 PM). Override via env or profiles as needed.
     # cron: "0 0 23 * * *"
     cron: "0 0/2 * * * *" # every 2 minutes for testing
-    watchlist-name: "MOVING_STOCK"
+
+# Watchlist (by watchlist.code) used by the every-day-event job and the manual date form.
+everyday-watchlist-code: "MOVING_STOCK"

@@ -1,13 +1,39 @@
 <!DOCTYPE html>
-<html>
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <title>Populate from Watchlist</title>
-    <style>body{font-family:Arial,Helvetica,sans-serif;padding:12px}label{display:block;margin:8px 0}</style>
+    <style>
+        body{font-family:Arial,Helvetica,sans-serif;padding:12px}
+        label{display:block;margin:8px 0}
+        .section{border:1px solid #ddd;padding:16px;margin-bottom:16px;border-radius:6px;max-width:640px}
+        .msg{padding:10px;border-radius:6px;margin-bottom:12px;background:#e6ffed;border:1px solid #34d058}
+        .err{padding:10px;border-radius:6px;margin-bottom:12px;background:#ffeef0;border:1px solid #d73a49}
+        .hint{color:#555;font-size:0.9em}
+    </style>
 </head>
 <body>
 <h1>Populate Day Event Mappings From Watchlist</h1>
 
+<div th:if="${message}" class="msg" th:text="${message}"></div>
+<div th:if="${error}" class="err" th:text="${error}"></div>
+
+<div class="section">
+    <h2>Every-Day Event by Date</h2>
+    <p class="hint">Creates a single day event for the chosen date and maps every stock in the
+        <b><span th:text="${everydayWatchlistCode}">MOVING_STOCK</span></b> watchlist
+        (configured via <code>everyday-watchlist-code</code>) into <code>day_event_map</code>.</p>
+    <form th:action="@{/day-event/populate-watchlist/by-date}" method="post">
+        <label>
+            Event Date:
+            <input type="date" name="date" required>
+        </label>
+        <button type="submit">Generate Day Event &amp; Mappings</button>
+    </form>
+</div>
+
+<div class="section">
+<h2>Populate From a Watchlist + Existing Day Event</h2>
 <form action="/day-event/populate-watchlist" method="post">
     <label>
         Select Watchlist:
@@ -31,6 +57,7 @@
 
     <button type="submit">Populate Watch Ticker</button>
 </form>
+</div>
 
 <p><a th:href="@{/day-event/mapping}">Back to Mappings</a></p>
 </body>

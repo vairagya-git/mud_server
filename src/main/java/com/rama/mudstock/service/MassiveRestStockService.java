@@ -197,18 +197,25 @@ public class MassiveRestStockService {
                         double curDayVolWeight = curNode.has("vw") ? curNode.get("vw").asDouble() : 0.0;
                         long curDayVolume = curNode.has("v") ? curNode.get("v").asLong() : 0L;
                         Double changePercent = null;
+                        Double dayOpeningChangePercent = null;
                         if (preDayClose != 0.0) {
                             java.math.BigDecimal raw = java.math.BigDecimal.valueOf(curDayClose).subtract(java.math.BigDecimal.valueOf(preDayClose))
                                     .divide(java.math.BigDecimal.valueOf(preDayClose), 8, java.math.RoundingMode.HALF_UP)
                                     .multiply(java.math.BigDecimal.valueOf(100));
                             changePercent = raw.setScale(2, java.math.RoundingMode.HALF_UP).doubleValue();
+
+                            // ((curDayOpen - preDayClose) / preDayClose) * 100
+                            java.math.BigDecimal rawOpening = java.math.BigDecimal.valueOf(curDayOpen).subtract(java.math.BigDecimal.valueOf(preDayClose))
+                                    .divide(java.math.BigDecimal.valueOf(preDayClose), 8, java.math.RoundingMode.HALF_UP)
+                                    .multiply(java.math.BigDecimal.valueOf(100));
+                            dayOpeningChangePercent = rawOpening.setScale(2, java.math.RoundingMode.HALF_UP).doubleValue();
                         }
                         // save to DB; mapping contains day_event_master_id and stock_id and day_event_map_id
                         Long dayEventMapId = m.get("day_event_map_id") instanceof Number ? ((Number) m.get("day_event_map_id")).longValue() : null;
                         Long stockId = m.get("stock_id") instanceof Number ? ((Number) m.get("stock_id")).longValue() : null;
                         Long dayEventMasterId = m.get("day_event_master_id") instanceof Number ? ((Number) m.get("day_event_master_id")).longValue() : null;
                         if (dayEventMapId != null) {
-                            dayEventEntryRepository.upsertDayEventEntry(dayEventMapId, preDayClose, curDayOpen, curDayClose, curDayHigh, curDayLow, curDayVolWeight, curDayVolume, changePercent);
+                            dayEventEntryRepository.upsertDayEventEntry(dayEventMapId, preDayClose, curDayOpen, curDayClose, curDayHigh, curDayLow, curDayVolWeight, curDayVolume, changePercent, dayOpeningChangePercent);
                             log.info("Saved day_event_entry for mappingId={} eventDate={}", dayEventMapId, eventDate);
                             try {
                                 int updated = mappingRepository.updateStatus(dayEventMapId, "processed");

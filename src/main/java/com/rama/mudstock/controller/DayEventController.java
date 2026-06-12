@@ -31,13 +31,15 @@ public class DayEventController {
     private final StockRepository stockRepo;
     private final DayEventEntryRepository entryRepo;
     private final WatchlistRepository watchlistRepo;
+    private final com.rama.mudstock.service.EveryDayEventService everyDayEventService;
 
-    public DayEventController(DayEventMasterRepository repo, DayEventMappingRepository mappingRepo, StockRepository stockRepo, DayEventEntryRepository entryRepo, WatchlistRepository watchlistRepo) {
+    public DayEventController(DayEventMasterRepository repo, DayEventMappingRepository mappingRepo, StockRepository stockRepo, DayEventEntryRepository entryRepo, WatchlistRepository watchlistRepo, com.rama.mudstock.service.EveryDayEventService everyDayEventService) {
         this.repo = repo;
         this.mappingRepo = mappingRepo;
         this.stockRepo = stockRepo;
         this.entryRepo = entryRepo;
         this.watchlistRepo = watchlistRepo;
+        this.everyDayEventService = everyDayEventService;
     }
 
     // Day event master list and create
@@ -122,7 +124,25 @@ public class DayEventController {
         List<DayEventMaster> days = repo.findAll();
         model.addAttribute("watchlists", watchlists);
         model.addAttribute("days", days);
+        model.addAttribute("everydayWatchlistCode", everyDayEventService.getWatchlistCode());
         return "day_event/populate_watchlist";
+    }
+
+    // Manual trigger: create the day_event_master for the given date and map the configured
+    // everyday watchlist's stocks into day_event_map.
+    @PostMapping("/populate-watchlist/by-date")
+    public String populateByDate(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                                 RedirectAttributes ra) {
+        var result = everyDayEventService.populateForDate(date);
+        if (!result.watchlistFound()) {
+            ra.addFlashAttribute("error", "Watchlist '" + result.watchlistCode()
+                    + "' not found or everyday-watchlist-code not configured");
+        } else {
+            ra.addFlashAttribute("message", "Day event '" + result.masterCode() + "' ready. Mapped "
+                    + result.mappingsCreated() + " of " + result.stocksTotal() + " stock(s) from watchlist "
+                    + result.watchlistCode() + ".");
+        }
+        return "redirect:/day-event/populate-watchlist";
     }
 
     @PostMapping("/populate-watchlist")

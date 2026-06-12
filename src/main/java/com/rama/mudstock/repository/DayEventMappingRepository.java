@@ -31,6 +31,23 @@ public class DayEventMappingRepository {
         return jdbc.update(sql, stockId, dayEventMasterId);
     }
 
+    /** Deletes day_event_entry rows whose mapping belongs to the given master. Call before deleting mappings (FK order). */
+    public int deleteEntriesByMasterId(Long dayEventMasterId) {
+        String sql = "DELETE FROM day_event_entry WHERE day_event_map_id IN "
+            + "(SELECT id FROM day_event_map WHERE day_event_master_id = ?)";
+        return jdbc.update(sql, dayEventMasterId);
+    }
+
+    /** Deletes all day_event_map rows for the given master. */
+    public int deleteMappingsByMasterId(Long dayEventMasterId) {
+        return jdbc.update("DELETE FROM day_event_map WHERE day_event_master_id = ?", dayEventMasterId);
+    }
+
+    /** Deletes the day_event_master row itself. */
+    public int deleteMasterById(Long dayEventMasterId) {
+        return jdbc.update("DELETE FROM day_event_master WHERE id = ?", dayEventMasterId);
+    }
+
     public List<Map<String,Object>> listMappingsByStatus(String status) {
         String sql = "SELECT m.id as day_event_map_id, m.stock_id as stock_id, s.ticker as ticker, m.day_event_master_id as day_event_master_id, d.code as code, d.event_date as event_date, m.status as status "
             + "FROM day_event_map m JOIN stock s ON m.stock_id = s.id JOIN day_event_master d ON m.day_event_master_id = d.id WHERE UPPER(m.status) = UPPER(?) ORDER BY s.ticker, d.code";
