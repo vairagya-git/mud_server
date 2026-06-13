@@ -60,19 +60,7 @@ public class MassiveRestStockService {
         }
         String dateStr = date.format(DATE_FMT);
         RestTemplate rest = new RestTemplate();
-        String url;
-        // Try to honor configurable pattern if present, with some resilience for different placeholder counts.
-        if (openClosePattern != null && !openClosePattern.isBlank()) {
-            try {
-                url = joinBaseAndPath(baseUrl, safeFormatOpenClose(openClosePattern, ticker, date, apiKey));
-            } catch (Exception e) {
-                // fallback to legacy construction
-                url = String.format("%s/%s/%s?adjusted=true&apiKey=%s", baseUrl, ticker, dateStr, apiKey);
-            }
-        } else {
-            // Expected legacy URL: {baseUrl}/{ticker}/{date}?adjusted=true&apiKey={apiKey}
-            url = String.format("%s/%s/%s?adjusted=true&apiKey=%s", baseUrl, ticker, dateStr, apiKey);
-        }
+        String url = joinBaseAndPath(baseUrl, String.format(openClosePattern, ticker, dateStr, apiKey));
         try {
             return rest.getForObject(url, String.class);
         } catch (HttpClientErrorException hce) {
@@ -97,29 +85,7 @@ public class MassiveRestStockService {
         String startStr = start.format(DATE_FMT);
         String endStr = end.format(DATE_FMT);
         RestTemplate rest = new RestTemplate();
-        String url;
-        if (tickerAggregatePattern != null && !tickerAggregatePattern.isBlank()) {
-            try {
-                // attempt simple formatting in the common order
-                String formatted = String.format(tickerAggregatePattern, ticker, startStr, endStr, apiKey);
-                // fix accidental concatenation of dates when pattern used "%s%s" without separator
-                if (formatted.contains(startStr + endStr)) {
-                    formatted = formatted.replace(startStr + endStr, startStr + "/" + endStr);
-                }
-                // ensure query params include adjusted and apiKey if not supplied by pattern
-                if (!formatted.contains("?")) {
-                    formatted = formatted + "?adjusted=true&apiKey=" + apiKey;
-                } else if (!formatted.contains("apiKey=")) {
-                    formatted = formatted + "&apiKey=" + apiKey;
-                }
-                url = joinBaseAndPath(baseUrl, formatted);
-            } catch (Exception e) {
-                // fallback to a reasonable default path
-                url = String.format("%s/v2/aggs/ticker/%s/range/1/day/%s/%s?adjusted=true&apiKey=%s", baseUrl, ticker, startStr, endStr, apiKey);
-            }
-        } else {
-            url = String.format("%s/v2/aggs/ticker/%s/range/1/day/%s/%s?adjusted=true&apiKey=%s", baseUrl, ticker, startStr, endStr, apiKey);
-        }
+        String url = joinBaseAndPath(baseUrl, String.format(tickerAggregatePattern, ticker, startStr, endStr, apiKey));
         try {
             log.info("Constructed ticker-aggregate URL: {}", url);
             String resp = rest.getForObject(url, String.class);
@@ -256,30 +222,5 @@ public class MassiveRestStockService {
         return base + path;
     }
 
-    private String safeFormatOpenClose(String pattern, String ticker, LocalDate date, String apiKey) {
-        String dateStr = date.format(DATE_FMT);
-        int placeholders = countPlaceholders(pattern);
-        // Try common argument sets in order of likelihood
-        java.util.List<Object[]> candidates = new java.util.ArrayList<>();
-        candidates.add(new Object[] { ticker, dateStr, apiKey });
-        candidates.add(new Object[] { ticker, date.getYear(), String.format("%02d", date.getMonthValue()), String.format("%02d", date.getDayOfMonth()), apiKey });
-        candidates.add(new Object[] { ticker, date.getYear(), date.getMonthValue(), apiKey });
-        for (Object[] args : candidates) {
-            try {
-                return String.format(pattern, args);
-            } catch (java.util.MissingFormatArgumentException | java.util.IllegalFormatConversionException ex) {
-                // try next candidate
-            }
-        }
-        // last resort: simple replacements
-        return pattern.replace("%s", "%s").formatted(ticker, dateStr, apiKey);
-    }
-
-    private int countPlaceholders(String s) {
-        int count = 0;
-        for (int idx = 0; idx + 1 < s.length(); idx++) {
-            if (s.charAt(idx) == '%' && s.charAt(idx + 1) == 's') count++;
-        }
-        return count;
-    }
 }
+

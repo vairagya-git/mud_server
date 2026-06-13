@@ -2,7 +2,7 @@ spring:
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/mud?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: root
-    password: password
+    password: 
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -34,9 +34,9 @@ dayevent:
     cron: "0 0/5 * * * *" # every 5 minutes for testing (consider daily, e.g. "0 30 23 * * *")
 
 massive:
-  base-url: https://api.massive.com/
+  base-url: http://localhost:9001/
   open-close: v1/open-close/%s/%s/%s?adjusted=true&apiKey=%s
-  ticker-aggregate: /v2/aggs/ticker/%s/range/1/day/%s%s
+  ticker-aggregate: /v2/aggs/ticker/%s/range/1/day/%s/%s?adjusted=true&apiKey=%s
   apikey: ${MASSIVE_API_KEY:0jSwNlbvfYIgQ8OAVJsZ7T1sEmpWm7JV}
 
 # Scheduler configuration for special watchlist jobs
