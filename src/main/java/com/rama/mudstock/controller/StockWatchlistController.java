@@ -149,6 +149,12 @@ public class StockWatchlistController {
         return "stock-watchlist/mapping";
     }
 
+    @GetMapping("/watchlist-stock-overview")
+    public String watchlistStockOverview(Model model) {
+        model.addAttribute("watchlists", watchlistRepo.findAll());
+        return "stock-watchlist/watchlist_stock_overview";
+    }
+
     @PostMapping("/mapping")
     public String addMapping(@RequestParam Long watchlistId,
                              @RequestParam String ticker,
