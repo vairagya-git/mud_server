@@ -46,9 +46,6 @@ CREATE TABLE `day_event_master` (
   CONSTRAINT unique_day_event_master UNIQUE (`code`)
 ) ENGINE=InnoDB;
 
-select * from day_event_master
-
-select * from watchlist;
 
 CREATE TABLE `day_event_map` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -83,12 +80,6 @@ CREATE TABLE `day_event_entry` (
   CONSTRAINT unique_day_event_entry UNIQUE (`day_event_map_id`)
 ) ENGINE=InnoDB;
 
-select * from watchlist;
-
-select * from day_event_entry;
-
-update day_event_map
-set status = "NEW"
 
 
 /******************/
@@ -397,8 +388,6 @@ CREATE TABLE `stock` (
   CONSTRAINT `fk_stock_sector` FOREIGN KEY (`sector_id`) REFERENCES `sector` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
-alter table stock 
-add column `phlxSemiIndex` tinyint(1) DEFAULT '0';
 
 CREATE TABLE `sector_stock` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -504,7 +493,6 @@ CREATE TABLE `flag_stock` (
   CONSTRAINT `fk_fs_stock` FOREIGN KEY (`stock_id`) REFERENCES `stock` (`id`)
 ) ENGINE=InnoDB;
 
-drop table flag_stock;
 
 /* UPLOAD DATA TABLE */
 CREATE TABLE `upload_stock_sector` (
