@@ -1,6 +1,6 @@
 spring:
   datasource:
-    password: 
+    password: password
 
 massive:
   base-url: https://api.massive.com/
