@@ -1,0 +1,6 @@
+spring:
+  datasource:
+    password: 
+
+massive:
+  base-url: https://api.massive.com/
