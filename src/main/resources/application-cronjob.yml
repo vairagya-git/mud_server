@@ -1,0 +1,44 @@
+spring:
+  config:
+    activate:
+      on-profile: cronjob
+
+# Scheduler configuration for the cronjob profile
+earnings:
+  enabled: false
+  cron: "0 0/1 * * * *" # every minute
+  api:
+    calls-per-minute: 1000
+
+dayeventStockData:
+  enabled: false
+  cron: "0 0/2 * * * *" # every 2 minutes
+
+dayEventCleanupDuplilcate:
+  enabled: false
+  # Removes redundant auto every-day masters when a genuine master exists for the same date.
+  cron: "0 0/5 * * * *" # every 5 minutes (consider daily, e.g. "0 30 23 * * *")
+
+everyDayEvent:
+  enabled: false
+  # default: every night at 22:00 after market close, Portugal time (Europe/Lisbon). Override via env as needed.
+  # cron: "0 0 23 * * *"
+  cron: "0 0 22 * * MON-FRI" # after market close, 22:00 Portugal time (Europe/Lisbon)
+
+weeklyUpcomingEarning:
+  enabled: true
+  cron: "0 0/1 * * * *" # every 1 minutes
+  # cron: "0 0 8 * * SUN" # every Monday at 08:00 Portugal time
+  # Comma-separated watchlist codes whose stocks are queried against the yfinance service
+  watchlists: "MOVING_STOCK"
+
+logging:
+  cronjob:
+    files:
+      earnings: logs/earnings.log
+      dayeventStockData: logs/dayevent-stock-data.log
+      dayEventCleanupDuplilcate: logs/dayevent-cleanup-duplicate.log
+      everyDayEvent: logs/every-day-event.log
+      weeklyUpcomingEarning: logs/weekly-upcoming-earnings.log
+
+

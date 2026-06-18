@@ -4,3 +4,7 @@ spring:
 
 massive:
   base-url: http://localhost:9001/
+
+# Python yfinance REST service
+python:
+  yfinance-url: http://localhost:9001/

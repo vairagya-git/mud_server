@@ -1,11 +1,10 @@
-
 /*  Earnings Data */
 CREATE TABLE `earnings_date` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `stock_id` bigint unsigned NOT NULL,
   `quarter` varchar(64) DEFAULT NULL,
   `releaseTime` ENUM('AFTER_MARKET', 'BEFORE_MARKET') NOT NULL,
-  `status` ENUM('NEW', 'PROCESSING', 'PROCESSED') NOT NULL,
+  `status` ENUM('NEW', 'UPCOMING', 'PROCESSING', 'PROCESSED') NOT NULL DEFAULT 'NEW',
   `earnings_date` date DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_earnings_date` (`stock_id`),
@@ -355,7 +354,6 @@ insert into sector(code, name, tradingview_name) values ("RETAIL_TRADE", "RETAIL
 insert into sector(code, name, tradingview_name) values ("TECHNOLOGY_SERVICES", "TECHNOLOGY SERVICES", "Technology services");
 insert into sector(code, name, tradingview_name) values ("TRANSPORTATION", "TRANSPORTATION", "Transportation");
 insert into sector(code, name, tradingview_name) values ("UTILITIES", "UTILITIES", "Utilities");
-
 
 
 CREATE TABLE `stock` (

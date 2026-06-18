@@ -23,36 +23,17 @@ alphavantage:
   function: TIME_SERIES_DAILY
   apikey: ${ALPHA_VANTAGE_API_KEY:ISIX6TNS4RRINGGI}
 
-# Cron expression for earnings poll (Spring cron with seconds field)
-earnings:
-  cron: "0 0/1 * * * *" # every 5 minutes
-  api:
-    calls-per-minute: 1000
-
-dayevent:
-  cron: "0 0/2 * * * *" # every 2 minutes
-  cleanup:
-    # Removes redundant auto every-day masters when a genuine master exists for the same date.
-    cron: "0 0/5 * * * *" # every 5 minutes for testing (consider daily, e.g. "0 30 23 * * *")
-
 massive:
   base-url: https://api.massive.com/
   open-close: v1/open-close/%s/%s/%s?adjusted=true&apiKey=%s
   ticker-aggregate: /v2/aggs/ticker/%s/range/1/day/%s/%s?adjusted=true&apiKey=%s
   apikey: ${MASSIVE_API_KEY:0jSwNlbvfYIgQ8OAVJsZ7T1sEmpWm7JV}
 
-# Scheduler configuration for special watchlist jobs
-# `schedulers.everyDayEvent.cron` controls when the EVERY_DAY_EVENT job runs.
-# The cron expression uses Spring's 6-field format: "second minute hour day month day-of-week".
-# Example to run every night at 23:00 (11:00 PM):
-#   schedulers:
-#     everyDayEvent:
-#       cron: "0 0 23 * * *"
-schedulers:
-  everyDayEvent:
-    # default: every night at 23:00 (11:00 PM). Override via env or profiles as needed.
-    # cron: "0 0 23 * * *"
-    cron: "0 0/2 * * * *" # every 2 minutes for testing
-
 # Watchlist (by watchlist.code) used by the every-day-event job and the manual date form.
 everyday-watchlist-code: "MOVING_STOCK"
+
+
+python:
+# Python Service Local Instance url
+  yfinance-url: http://localhost:8087/
+  ticker: ticker/%s

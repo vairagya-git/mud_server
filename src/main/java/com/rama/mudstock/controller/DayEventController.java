@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import java.time.format.DateTimeFormatter;
+
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -48,6 +50,37 @@ public class DayEventController {
         model.addAttribute("events", repo.findAll());
         model.addAttribute("newEvent", new DayEventMaster());
         return "day_event/dayeventmaster";
+    }
+
+    @PostMapping("/bulk")
+    public String bulkCsvUpload(@RequestParam String csvData, RedirectAttributes ra) {
+        if (csvData == null || csvData.isBlank()) {
+            ra.addFlashAttribute("csvError", "No data provided.");
+            return "redirect:/day-event";
+        }
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        int created = 0;
+        int skipped = 0;
+        String[] lines = csvData.split("\\r?\\n");
+        for (String raw : lines) {
+            String line = raw.trim();
+            if (line.isEmpty()) continue;
+            String[] parts = line.split(",", 3);
+            if (parts.length < 3) { skipped++; continue; }
+            String code = parts[0].trim();
+            String description = parts[1].trim();
+            String dateStr = parts[2].trim();
+            if (code.isEmpty() || dateStr.isEmpty()) { skipped++; continue; }
+            try {
+                LocalDate eventDate = LocalDate.parse(dateStr, fmt);
+                repo.save(new DayEventMaster(code, description, eventDate));
+                created++;
+            } catch (Exception e) {
+                skipped++;
+            }
+        }
+        ra.addFlashAttribute("csvMessage", "Imported " + created + " record(s)." + (skipped > 0 ? " Skipped " + skipped + " invalid line(s)." : ""));
+        return "redirect:/day-event";
     }
 
     @PostMapping
@@ -142,6 +175,38 @@ public class DayEventController {
                     + result.mappingsCreated() + " of " + result.stocksTotal() + " stock(s) from watchlist "
                     + result.watchlistCode() + ".");
         }
+        return "redirect:/day-event/populate-watchlist";
+    }
+
+    @PostMapping("/populate-watchlist/bulk")
+    public String populateWatchlistBulk(@RequestParam String csvData, RedirectAttributes ra) {
+        if (csvData == null || csvData.isBlank()) {
+            ra.addFlashAttribute("csvError", "No data provided.");
+            return "redirect:/day-event/populate-watchlist";
+        }
+        int created = 0;
+        int skipped = 0;
+        for (String raw : csvData.split("\\r?\\n")) {
+            String line = raw.trim();
+            if (line.isEmpty()) continue;
+            String[] parts = line.split(",", 2);
+            if (parts.length < 2) { skipped++; continue; }
+            String watchlistCode = parts[0].trim();
+            String eventCode = parts[1].trim();
+            if (watchlistCode.isEmpty() || eventCode.isEmpty()) { skipped++; continue; }
+            Optional<Watchlist> wopt = watchlistRepo.findByCode(watchlistCode);
+            Optional<DayEventMaster> dopt = repo.findAll().stream()
+                    .filter(d -> eventCode.equals(d.getCode())).findFirst();
+            if (wopt.isEmpty() || dopt.isEmpty()) { skipped++; continue; }
+            Watchlist w = wopt.get();
+            Long masterId = dopt.get().getId();
+            for (com.rama.mudstock.model.Stock s : w.getStocks()) {
+                try { mappingRepo.createMapping(s.getId(), masterId); created++; }
+                catch (Exception e) { /* ignore duplicates */ }
+            }
+        }
+        ra.addFlashAttribute("csvMessage", "Created " + created + " mapping(s)." +
+                (skipped > 0 ? " Skipped " + skipped + " unresolved line(s)." : ""));
         return "redirect:/day-event/populate-watchlist";
     }
 

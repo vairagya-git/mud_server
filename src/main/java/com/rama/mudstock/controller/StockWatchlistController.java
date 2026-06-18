@@ -71,7 +71,9 @@ public class StockWatchlistController {
                            @RequestParam String cusip,
                            @RequestParam String cik,
                            @RequestParam(name = "cl") String cl,
-                           @RequestParam String country) {
+                           @RequestParam String country,
+                           @RequestParam(required = false, name = "investor_page") String investorPage,
+                           @RequestParam(required = false) String sector) {
         // required fields: cusip, cik, cl, country
         if (cusip == null || cusip.isBlank() || cik == null || cik.isBlank() || cl == null || cl.isBlank() || country == null || country.isBlank()) {
             // missing required, ignore
@@ -79,8 +81,52 @@ public class StockWatchlistController {
         }
         String t = (ticker == null) ? null : ticker.trim().toUpperCase();
         Stock s = new Stock(t, stockName, cusip.trim(), cik.trim(), cl.trim(), country.trim());
+        s.setInvestorPage(investorPage == null || investorPage.isBlank() ? null : investorPage.trim());
+        s.setSector(sector == null || sector.isBlank() ? null : sector.trim());
         stockRepo.save(s);
         return "redirect:/stock-watchlist";
+    }
+
+    @PostMapping("/stocks/{id}/inline-update")
+    @ResponseBody
+    public org.springframework.http.ResponseEntity<java.util.Map<String, Object>> inlineUpdateStock(
+            @PathVariable Long id,
+            @RequestParam String cusip,
+            @RequestParam String cik,
+            @RequestParam(name = "cl") String cl,
+            @RequestParam String country,
+            @RequestParam(required = false, name = "investor_page") String investorPage,
+            @RequestParam(required = false) String sector) {
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+
+        if (cusip == null || cusip.isBlank() || cik == null || cik.isBlank() || cl == null || cl.isBlank() || country == null || country.isBlank()) {
+            response.put("message", "CUSIP, CIK, CL, and Country are required.");
+            return org.springframework.http.ResponseEntity.badRequest().body(response);
+        }
+
+        Stock stock = stockRepo.findById(id).orElse(null);
+        if (stock == null) {
+            response.put("message", "Stock not found.");
+            return org.springframework.http.ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).body(response);
+        }
+
+        stock.setCusip(cusip.trim());
+        stock.setCik(cik.trim());
+        stock.setCl(cl.trim());
+        stock.setCountry(country.trim());
+        stock.setInvestorPage(investorPage == null || investorPage.isBlank() ? null : investorPage.trim());
+        stock.setSector(sector == null || sector.isBlank() ? null : sector.trim());
+        stockRepo.save(stock);
+
+        response.put("id", stock.getId());
+        response.put("cusip", stock.getCusip());
+        response.put("cik", stock.getCik());
+        response.put("cl", stock.getCl());
+        response.put("country", stock.getCountry());
+        response.put("investor_page", stock.getInvestorPage() == null ? "" : stock.getInvestorPage());
+        response.put("sector", stock.getSector() == null ? "" : stock.getSector());
+        response.put("message", "Stock updated.");
+        return org.springframework.http.ResponseEntity.ok(response);
     }
 
     @PostMapping("/watchlist")

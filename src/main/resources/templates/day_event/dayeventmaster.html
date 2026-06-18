@@ -48,5 +48,22 @@
     </div>
 </form>
 
+<h2>Bulk CSV Upload</h2>
+<p style="color:#555; font-size:0.9em">
+    One entry per line: <code>Code, Description, EventDate (dd/MM/yyyy)</code><br/>
+    Example: <code>10_MAY_26_MOVING_STOCK,Everyday Event for 10 May,10/05/2026</code>
+</p>
+<div th:if="${csvError}" style="color:red; margin-bottom:8px" th:text="${csvError}"></div>
+<div th:if="${csvMessage}" style="color:green; margin-bottom:8px" th:text="${csvMessage}"></div>
+<form th:action="@{/day-event/bulk}" method="post">
+    <div>
+        <textarea name="csvData" rows="8" style="width:100%; font-family:monospace; font-size:0.9em"
+                  placeholder="10_MAY_26_MOVING_STOCK,Everyday Event for 10 May,10/05/2026"></textarea>
+    </div>
+    <div style="margin-top:8px">
+        <button type="submit" class="btn">Upload CSV</button>
+    </div>
+</form>
+
 </body>
 </html>

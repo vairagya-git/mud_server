@@ -86,4 +86,10 @@ public class EarningsDateRepository {
     public void deleteById(Long id) {
         jdbc.update("DELETE FROM earnings_date WHERE id = ?", id);
     }
+
+    public boolean existsByStockIdAndEarningsDate(Long stockId, LocalDate earningsDate) {
+        String sql = "SELECT COUNT(*) FROM earnings_date WHERE stock_id = ? AND earnings_date = ?";
+        Integer count = jdbc.queryForObject(sql, Integer.class, stockId, java.sql.Date.valueOf(earningsDate));
+        return count != null && count > 0;
+    }
 }

@@ -27,6 +27,10 @@ public class Stock {
     private String cl;
     @Column(length = 64, nullable = false)
     private String country;
+    @Column(name = "investor_page", length = 512)
+    private String investorPage;
+    @Column(length = 128)
+    private String sector;
 
     @ManyToMany(mappedBy = "stocks")
     private Set<Watchlist> watchlists = new HashSet<>();
@@ -99,6 +103,22 @@ public class Stock {
 
     public void setCountry(String country) {
         this.country = country;
+    }
+
+    public String getInvestorPage() {
+        return investorPage;
+    }
+
+    public void setInvestorPage(String investorPage) {
+        this.investorPage = investorPage;
+    }
+
+    public String getSector() {
+        return sector;
+    }
+
+    public void setSector(String sector) {
+        this.sector = sector;
     }
 
     public Set<Watchlist> getWatchlists() {

@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +18,8 @@ import com.rama.mudstock.service.DatePeriodFetcher;
 import com.rama.mudstock.service.MassiveRestStockService;
 
 @Component
+@Profile("cronjob")
+@ConditionalOnProperty(prefix = "earnings", name = "enabled", havingValue = "true")
 public class EarningsDateScheduler {
     private final EarningsDateRepository earningsRepo;
     private final StockRepository stockRepo;

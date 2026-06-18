@@ -11,7 +11,7 @@ public class EarningsDate {
     private LocalDate earningsDate;
 
     public enum ReleaseTime { AFTER_MARKET, BEFORE_MARKET }
-    public enum Status { NEW, PROCESSING, PROCESSED }
+    public enum Status { UPCOMING, NEW, PROCESSING, PROCESSED }
 
     public EarningsDate() {}
 
