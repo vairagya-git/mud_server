@@ -10,34 +10,34 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.rama.mudstock.model.DayEventMaster;
+import com.rama.mudstock.model.DayStockMovementKey;
 import com.rama.mudstock.model.Stock;
 import com.rama.mudstock.model.Watchlist;
-import com.rama.mudstock.repository.DayEventMappingRepository;
-import com.rama.mudstock.repository.DayEventMasterRepository;
+import com.rama.mudstock.repository.DayStockMovementMapRepository;
+import com.rama.mudstock.repository.DayStockMovementKeyRepository;
 import com.rama.mudstock.repository.WatchlistRepository;
 
 /**
  * Shared logic for the "every day event" feature: for a given date, create a single
- * day_event_master entry for the configured watchlist (everyday-watchlist-code) and
- * map every stock in that watchlist into day_event_map.
+ * day_stock_movement_key entry for the configured watchlist (everyday-watchlist-code) and
+ * map every stock in that watchlist into day_stock_movement_map.
  *
  * Used by both the scheduled job (for today) and the manual date form.
  */
 @Service
-public class EveryDayEventService {
+public class DayStockMovementService {
     private static final DateTimeFormatter DAY_FMT = DateTimeFormatter.ofPattern("dd_MMM_yy", Locale.ENGLISH);
-    private final Logger log = LoggerFactory.getLogger(EveryDayEventService.class);
+    private final Logger log = LoggerFactory.getLogger(DayStockMovementService.class);
 
     private final WatchlistRepository watchlistRepo;
-    private final DayEventMasterRepository masterRepo;
-    private final DayEventMappingRepository mappingRepo;
+    private final DayStockMovementKeyRepository masterRepo;
+    private final DayStockMovementMapRepository mappingRepo;
 
     @Value("${everyday-watchlist-code:}")
     private String everydayWatchlistCode;
 
-    public EveryDayEventService(WatchlistRepository watchlistRepo, DayEventMasterRepository masterRepo,
-                                DayEventMappingRepository mappingRepo) {
+    public DayStockMovementService(WatchlistRepository watchlistRepo, DayStockMovementKeyRepository masterRepo,
+                                DayStockMovementMapRepository mappingRepo) {
         this.watchlistRepo = watchlistRepo;
         this.masterRepo = masterRepo;
         this.mappingRepo = mappingRepo;
@@ -48,7 +48,7 @@ public class EveryDayEventService {
     }
 
     /**
-     * Create (or reuse) the day_event_master for the given date and map all stocks in the
+     * Create (or reuse) the day_stock_movement_key for the given date and map all stocks in the
      * configured watchlist. Runs in a transaction so the lazy watchlist.stocks collection can
      * be read even when called outside a web request (e.g. from the scheduler thread).
      */
@@ -70,9 +70,9 @@ public class EveryDayEventService {
         String dayPart = date.format(DAY_FMT).toUpperCase(); // e.g. 01_JUN_26
         String code = String.format("%s_%s", dayPart, watchlistCode);
 
-        DayEventMaster master = masterRepo.findByCode(code).orElseGet(() -> {
-            DayEventMaster saved = masterRepo.save(new DayEventMaster(code, "Every-day-event > " + watchlistCode, date));
-            log.info("Created DayEventMaster with code={} id={}", saved.getCode(), saved.getId());
+        DayStockMovementKey master = masterRepo.findByCode(code).orElseGet(() -> {
+            DayStockMovementKey saved = masterRepo.save(new DayStockMovementKey(code, "Every-day-event > " + watchlistCode, date));
+            log.info("Created DayStockMovementKey with code={} id={}", saved.getCode(), saved.getId());
             return saved;
         });
 
@@ -109,21 +109,21 @@ public class EveryDayEventService {
         }
         String suffix = "_" + watchlistCode; // auto-generated masters look like 12_JUN_26_MOVING_STOCK
 
-        java.util.Map<LocalDate, java.util.List<DayEventMaster>> byDate = new java.util.HashMap<>();
-        for (DayEventMaster m : masterRepo.findAll()) {
-            if (m.getEventDate() == null) continue;
-            byDate.computeIfAbsent(m.getEventDate(), k -> new java.util.ArrayList<>()).add(m);
+        java.util.Map<LocalDate, java.util.List<DayStockMovementKey>> byDate = new java.util.HashMap<>();
+        for (DayStockMovementKey m : masterRepo.findAll()) {
+            if (m.getDate() == null) continue;
+            byDate.computeIfAbsent(m.getDate(), k -> new java.util.ArrayList<>()).add(m);
         }
 
         int removed = 0;
         for (var entry : byDate.entrySet()) {
-            java.util.List<DayEventMaster> masters = entry.getValue();
+            java.util.List<DayStockMovementKey> masters = entry.getValue();
             if (masters.size() < 2) continue;
 
             boolean hasGenuine = masters.stream().anyMatch(m -> !isAutoMaster(m, suffix));
-            if (!hasGenuine) continue; // only auto master(s) for this date — keep them
+            if (!hasGenuine) continue; // only auto key(s) for this date — keep them
 
-            for (DayEventMaster m : masters) {
+            for (DayStockMovementKey m : masters) {
                 if (isAutoMaster(m, suffix)) {
                     int entries = mappingRepo.deleteEntriesByMasterId(m.getId());
                     int maps = mappingRepo.deleteMappingsByMasterId(m.getId());
@@ -141,7 +141,7 @@ public class EveryDayEventService {
         return removed;
     }
 
-    private boolean isAutoMaster(DayEventMaster m, String suffix) {
+    private boolean isAutoMaster(DayStockMovementKey m, String suffix) {
         return m.getCode() != null && m.getCode().endsWith(suffix);
     }
 

@@ -10,8 +10,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "day_event_master")
-public class DayEventMaster {
+@Table(name = "day_stock_movement_key")
+public class DayStockMovementKey {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -22,15 +22,15 @@ public class DayEventMaster {
     @Column(name = "description")
     private String description;
 
-    @Column(name = "event_date")
-    private LocalDate eventDate;
+    @Column(name = "date")
+    private LocalDate date;
 
-    public DayEventMaster() {}
+    public DayStockMovementKey() {}
 
-    public DayEventMaster(String code, String description, LocalDate eventDate) {
+    public DayStockMovementKey(String code, String description, LocalDate date) {
         this.code = code;
         this.description = description;
-        this.eventDate = eventDate;
+        this.date = date;
     }
 
     public Long getId() { return id; }
@@ -42,6 +42,6 @@ public class DayEventMaster {
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
 
-    public LocalDate getEventDate() { return eventDate; }
-    public void setEventDate(LocalDate eventDate) { this.eventDate = eventDate; }
+    public LocalDate getDate() { return date; }
+    public void setDate(LocalDate date) { this.date = date; }
 }

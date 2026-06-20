@@ -2,6 +2,7 @@ spring:
   datasource:
     password: 
 
+
 massive:
   base-url: http://localhost:9001/
 

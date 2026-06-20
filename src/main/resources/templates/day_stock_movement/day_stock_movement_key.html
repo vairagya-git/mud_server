@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Day Events</title>
+    <title>Day Stock Movement Keys</title>
     <style>
         body { font-family: Arial, Helvetica, sans-serif; padding: 12px }
         table { border-collapse: collapse; width: 100%; }
@@ -13,9 +13,9 @@
     </style>
 </head>
 <body>
-<h1>Day Event Master</h1>
+<h1>Day Stock Movement Keys</h1>
 
-<h2>Existing Events</h2>
+<h2>Existing Keys</h2>
 <table>
     <thead>
     <tr><th>ID</th><th>Code</th><th>Description</th><th>Event Date</th></tr>
@@ -25,14 +25,14 @@
         <td th:text="${e.id}">1</td>
         <td th:text="${e.code}">CODE</td>
         <td th:text="${e.description}">Description</td>
-        <td th:text="${e.eventDate}">2026-06-08</td>
+        <td th:text="${e.date}">2026-06-08</td>
     </tr>
-    <tr th:if="${events.size()} == 0"><td colspan="4">No events found</td></tr>
+    <tr th:if="${events.size()} == 0"><td colspan="4">No keys found</td></tr>
     </tbody>
 </table>
 
-<h2>Create New Event</h2>
-<form th:action="@{/day-event}" method="post">
+<h2>Create New Key</h2>
+<form th:action="@{/day-stock-movement}" method="post">
     <div>
         <label>Code: <input type="text" name="code" required /></label>
     </div>
@@ -50,12 +50,12 @@
 
 <h2>Bulk CSV Upload</h2>
 <p style="color:#555; font-size:0.9em">
-    One entry per line: <code>Code, Description, EventDate (dd/MM/yyyy)</code><br/>
-    Example: <code>10_MAY_26_MOVING_STOCK,Everyday Event for 10 May,10/05/2026</code>
+    One entry per line: <code>Code, Description, Date</code> — date as <code>yyyy-MM-dd</code> or <code>dd/MM/yyyy</code><br/>
+    Example: <code>10_MAY_26_MOVING_STOCK,"Everyday Event for 10 May",2026-05-10</code>
 </p>
 <div th:if="${csvError}" style="color:red; margin-bottom:8px" th:text="${csvError}"></div>
 <div th:if="${csvMessage}" style="color:green; margin-bottom:8px" th:text="${csvMessage}"></div>
-<form th:action="@{/day-event/bulk}" method="post">
+<form th:action="@{/day-stock-movement/bulk}" method="post">
     <div>
         <textarea name="csvData" rows="8" style="width:100%; font-family:monospace; font-size:0.9em"
                   placeholder="10_MAY_26_MOVING_STOCK,Everyday Event for 10 May,10/05/2026"></textarea>

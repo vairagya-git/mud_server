@@ -34,36 +34,33 @@ CREATE TABLE `earnings_date_entry` (
   CONSTRAINT unique_earnings_upcoming UNIQUE (`stock_id`, `earnings_date_id`,`datePeriod`)
 ) ENGINE=InnoDB;
 
-/*  Day Event */
+/*  Day Stock Movement */
 
-CREATE TABLE `day_event_master` (
+CREATE TABLE `day_stock_movement_key` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `code` varchar(64) NOT NULL,
   `description` varchar(512) NOT NULL,
-  `event_date` date DEFAULT NULL,
+  `date` date DEFAULT NULL,
   PRIMARY KEY (`id`),
-  CONSTRAINT unique_day_event_master UNIQUE (`code`)
+  CONSTRAINT `unique_day_stock_movement_key` UNIQUE (`code`)
 ) ENGINE=InnoDB;
 
-
-CREATE TABLE `day_event_map` (
+CREATE TABLE `day_stock_movement_map` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `stock_id` bigint unsigned NOT NULL,
-  `day_event_master_id` bigint unsigned NOT NULL,
-  `status` ENUM('NEW', 'PROCESSED') NOT NULL default 'NEW',
+  `day_stock_movement_key_id` bigint unsigned NOT NULL,
+  `status` ENUM('NEW', 'PROCESSED', 'MARKET_CLOSED') NOT NULL default 'NEW',
   PRIMARY KEY (`id`),
-  KEY `fk_dem_stock` (`stock_id`),
-  KEY `fk_dem_day_event_master` (`day_event_master_id`),
-  CONSTRAINT `fk_dem_stock` FOREIGN KEY (`stock_id`) REFERENCES `stock` (`id`),
-  CONSTRAINT `fk_dem_day_event_master` FOREIGN KEY (`day_event_master_id`) REFERENCES `day_event_master` (`id`),
-  CONSTRAINT unique_dem_day_event_master UNIQUE (`stock_id`, `day_event_master_id`)
+  KEY `fk_dsm_stock` (`stock_id`),
+  KEY `fk_dsm_day_stock_movement_key` (`day_stock_movement_key_id`),
+  CONSTRAINT `fk_dsm_stock` FOREIGN KEY (`stock_id`) REFERENCES `stock` (`id`),
+  CONSTRAINT `fk_dsm_day_stock_movement_key` FOREIGN KEY (`day_stock_movement_key_id`) REFERENCES `day_stock_movement_key` (`id`),
+  CONSTRAINT `unique_dsm_stock_key` UNIQUE (`stock_id`, `day_stock_movement_key_id`)
 ) ENGINE=InnoDB;
 
-
-
-CREATE TABLE `day_event_entry` (
+CREATE TABLE `day_stock_movement_entry` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `day_event_map_id` bigint unsigned NOT NULL,
+  `day_stock_movement_map_id` bigint unsigned NOT NULL,
   `pre_day_close` decimal(20,2) NOT NULL,
   `cur_day_open` decimal(20,2) NOT NULL,
   `cur_day_close` decimal(20,2) NOT NULL,
@@ -74,11 +71,43 @@ CREATE TABLE `day_event_entry` (
   `change_percent` decimal(20,2) DEFAULT NULL,
   `day_opening_change_percent` decimal(20,2) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `fk_dee_day_event_entry` (`day_event_map_id`),
-  CONSTRAINT `fk_dee_day_event_entry` FOREIGN KEY (`day_event_map_id`) REFERENCES `day_event_map` (`id`),
-  CONSTRAINT unique_day_event_entry UNIQUE (`day_event_map_id`)
+  KEY `fk_dsme_day_stock_movement_map` (`day_stock_movement_map_id`),
+  CONSTRAINT `fk_dsme_day_stock_movement_map` FOREIGN KEY (`day_stock_movement_map_id`) REFERENCES `day_stock_movement_map` (`id`),
+  CONSTRAINT `unique_day_stock_movement_entry` UNIQUE (`day_stock_movement_map_id`)
 ) ENGINE=InnoDB;
 
+/****** MASTER TABLE ********/
+CREATE TABLE `master_market_holidays` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `year` varchar(64) NOT NULL,
+  `country` varchar(64) NOT NULL,
+  `holiday_date` date DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  CONSTRAINT unique_day_event_master UNIQUE (`year`, `country`, `holiday_date`)
+) ENGINE=InnoDB;
+
+INSERT INTO master_market_holidays (`year`, `country`, `holiday_date`) VALUES
+('2026', 'USA', '2026-01-01'),
+('2026', 'USA', '2026-01-19'),
+('2026', 'USA', '2026-02-16'),
+('2026', 'USA', '2026-04-03'),
+('2026', 'USA', '2026-05-25'),
+('2026', 'USA', '2026-06-19'),
+('2026', 'USA', '2026-07-03'),
+('2026', 'USA', '2026-09-07'),
+('2026', 'USA', '2026-11-26'),
+('2026', 'USA', '2026-12-25'),
+
+('2027', 'USA', '2027-01-01'),
+('2027', 'USA', '2027-01-18'),
+('2027', 'USA', '2027-02-15'),
+('2027', 'USA', '2027-03-26'),
+('2027', 'USA', '2027-05-31'),
+('2027', 'USA', '2027-06-18'),
+('2027', 'USA', '2027-07-05'),
+('2027', 'USA', '2027-09-06'),
+('2027', 'USA', '2027-11-25'),
+('2027', 'USA', '2027-12-24');
 
 
 /******************/

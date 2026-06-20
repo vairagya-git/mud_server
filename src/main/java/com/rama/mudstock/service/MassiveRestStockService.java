@@ -1,6 +1,5 @@
 package com.rama.mudstock.service;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -37,18 +36,21 @@ public class MassiveRestStockService {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ISO_LOCAL_DATE;
 
     private final MassiveRestApiCallLimiter apiCallLimiter;
-    private final com.rama.mudstock.repository.DayEventMappingRepository mappingRepository;
-    private final com.rama.mudstock.repository.DayEventEntryRepository dayEventEntryRepository;
+    private final com.rama.mudstock.repository.DayStockMovementMapRepository mappingRepository;
+    private final com.rama.mudstock.repository.DayStockMovementEntryRepository dayStockMovementEntryRepository;
+    private final MarketCalendarService marketCalendarService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(MassiveRestStockService.class);
 
     @Autowired
     public MassiveRestStockService(MassiveRestApiCallLimiter apiCallLimiter,
-                                   com.rama.mudstock.repository.DayEventMappingRepository mappingRepository,
-                                   com.rama.mudstock.repository.DayEventEntryRepository dayEventEntryRepository) {
+                                   com.rama.mudstock.repository.DayStockMovementMapRepository mappingRepository,
+                                   com.rama.mudstock.repository.DayStockMovementEntryRepository dayStockMovementEntryRepository,
+                                   MarketCalendarService marketCalendarService) {
         this.apiCallLimiter = apiCallLimiter;
         this.mappingRepository = mappingRepository;
-        this.dayEventEntryRepository = dayEventEntryRepository;
+        this.dayStockMovementEntryRepository = dayStockMovementEntryRepository;
+        this.marketCalendarService = marketCalendarService;
     }
 
     public String fetchOpenClose(String ticker, LocalDate date) {
@@ -110,13 +112,21 @@ public class MassiveRestStockService {
         for (Map<String,Object> m : mappings) {
             try {
                 String ticker = (String) m.get("ticker");
-                Object eo = m.get("event_date");
+                Object eo = m.get("date");
                 LocalDate eventDate = null;
                 if (eo instanceof java.sql.Date) eventDate = ((java.sql.Date) eo).toLocalDate();
                 else if (eo instanceof java.time.LocalDate) eventDate = (java.time.LocalDate) eo;
                 else if (eo != null) eventDate = LocalDate.parse(eo.toString(), DATE_FMT);
                 if (ticker == null || eventDate == null) {
                     log.warn("Skipping mapping with missing ticker or eventDate: {}", m);
+                    continue;
+                }
+                if (marketCalendarService.isMarketClosed(eventDate)) {
+                    Long mappingId = m.get("map_id") instanceof Number ? ((Number) m.get("map_id")).longValue() : null;
+                    if (mappingId != null) {
+                        mappingRepository.updateStatus(mappingId, "MARKET_CLOSED");
+                        log.info("Marked mapping id={} as MARKET_CLOSED for date={} (weekend or holiday)", mappingId, eventDate);
+                    }
                     continue;
                 }
                 LocalDate start = previousMarketDay(eventDate.minusDays(0));
@@ -176,22 +186,22 @@ public class MassiveRestStockService {
                                     .multiply(java.math.BigDecimal.valueOf(100));
                             dayOpeningChangePercent = rawOpening.setScale(2, java.math.RoundingMode.HALF_UP).doubleValue();
                         }
-                        // save to DB; mapping contains day_event_master_id and stock_id and day_event_map_id
-                        Long dayEventMapId = m.get("day_event_map_id") instanceof Number ? ((Number) m.get("day_event_map_id")).longValue() : null;
+                        // save to DB; mapping contains day_stock_movement_key_id, stock_id and map_id
+                        Long mappingId = m.get("map_id") instanceof Number ? ((Number) m.get("map_id")).longValue() : null;
                         Long stockId = m.get("stock_id") instanceof Number ? ((Number) m.get("stock_id")).longValue() : null;
-                        Long dayEventMasterId = m.get("day_event_master_id") instanceof Number ? ((Number) m.get("day_event_master_id")).longValue() : null;
-                        if (dayEventMapId != null) {
-                            dayEventEntryRepository.upsertDayEventEntry(dayEventMapId, preDayClose, curDayOpen, curDayClose, curDayHigh, curDayLow, curDayVolWeight, curDayVolume, changePercent, dayOpeningChangePercent);
-                            log.info("Saved day_event_entry for mappingId={} eventDate={}", dayEventMapId, eventDate);
+                        Long movementKeyId = m.get("day_stock_movement_key_id") instanceof Number ? ((Number) m.get("day_stock_movement_key_id")).longValue() : null;
+                        if (mappingId != null) {
+                            dayStockMovementEntryRepository.upsertDayStockMovementEntry(mappingId, preDayClose, curDayOpen, curDayClose, curDayHigh, curDayLow, curDayVolWeight, curDayVolume, changePercent, dayOpeningChangePercent);
+                            log.info("Saved day_stock_movement_entry for mappingId={} eventDate={}", mappingId, eventDate);
                             try {
-                                int updated = mappingRepository.updateStatus(dayEventMapId, "processed");
-                                if (updated > 0) log.info("Marked day_event_map id={} as processed", dayEventMapId);
-                                else log.warn("No day_event_map row updated for id={}", dayEventMapId);
+                                int updated = mappingRepository.updateStatus(mappingId, "processed");
+                                if (updated > 0) log.info("Marked day_stock_movement_map id={} as processed", mappingId);
+                                else log.warn("No day_stock_movement_map row updated for id={}", mappingId);
                             } catch (Exception e) {
-                                log.error("Failed to update day_event_map status for id={}", dayEventMapId, e);
+                                log.error("Failed to update day_stock_movement_map status for id={}", mappingId, e);
                             }
                         } else {
-                            log.warn("Missing day_event_map_id to save day_event_entry for mapping {}", m);
+                            log.warn("Missing map_id to save day_stock_movement_entry for mapping {}", m);
                         }
                     } else {
                         log.warn("Could not find both previous and current day bars in aggregate results for mapping {}", m);
@@ -205,7 +215,7 @@ public class MassiveRestStockService {
 
     private LocalDate previousMarketDay(LocalDate d) {
         LocalDate cur = d.minusDays(1);
-        while (cur.getDayOfWeek() == DayOfWeek.SATURDAY || cur.getDayOfWeek() == DayOfWeek.SUNDAY) {
+        while (marketCalendarService.isMarketClosed(cur)) {
             cur = cur.minusDays(1);
         }
         return cur;

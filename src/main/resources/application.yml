@@ -37,3 +37,6 @@ python:
 # Python Service Local Instance url
   yfinance-url: http://localhost:8087/
   ticker: ticker/%s
+master:
+  tables:
+    - master_market_holidays

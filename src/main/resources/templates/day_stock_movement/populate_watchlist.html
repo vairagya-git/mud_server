@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Populate from Watchlist</title>
+    <style>
+        body{font-family:Arial,Helvetica,sans-serif;padding:12px}
+        label{display:block;margin:8px 0}
+        .section{border:1px solid #ddd;padding:16px;margin-bottom:16px;border-radius:6px;max-width:640px}
+        .msg{padding:10px;border-radius:6px;margin-bottom:12px;background:#e6ffed;border:1px solid #34d058}
+        .err{padding:10px;border-radius:6px;margin-bottom:12px;background:#ffeef0;border:1px solid #d73a49}
+        .hint{color:#555;font-size:0.9em}
+    </style>
+</head>
+<body>
+<h1>Populate Day Stock Movement Mappings From Watchlist</h1>
+
+<div th:if="${message}" class="msg" th:text="${message}"></div>
+<div th:if="${error}" class="err" th:text="${error}"></div>
+
+<div class="section">
+    <h2>Every-Day Movement by Date</h2>
+    <p class="hint">Creates a single day stock movement key for the chosen date and maps every stock in the
+        <b><span th:text="${everydayWatchlistCode}">MOVING_STOCK</span></b> watchlist
+        (configured via <code>everyday-watchlist-code</code>) into <code>day_stock_movement_map</code>.</p>
+    <form th:action="@{/day-stock-movement/populate-watchlist/by-date}" method="post">
+        <label>
+            Event Date:
+            <input type="date" name="date" required>
+        </label>
+        <button type="submit">Generate Day Stock Movement Key &amp; Mappings</button>
+    </form>
+</div>
+
+<div class="section">
+    <h2>Populate From a Watchlist + Existing Movement Key</h2>
+    <form action="/day-stock-movement/populate-watchlist" method="post">
+        <label>
+            Select Watchlist:
+            <select name="watchlistId" required>
+                <option value="">-- choose watchlist --</option>
+                <th:block th:each="w : ${watchlists}">
+                    <option th:value="${w.id}" th:text="${w.name}"></option>
+                </th:block>
+            </select>
+        </label>
+
+        <label>
+            Select Movement Key:
+            <select name="dayEventMasterId" required>
+                <option value="">-- choose movement key --</option>
+                <th:block th:each="d : ${days}">
+                    <option th:value="${d.id}" th:text="${d.code}"></option>
+                </th:block>
+            </select>
+        </label>
+
+        <button type="submit">Populate Watch Ticker</button>
+    </form>
+</div>
+
+<div class="section">
+    <h2>Bulk CSV: Watchlist → Movement Key</h2>
+    <p class="hint">
+        One entry per line: <code>WatchlistCode, MovementKeyCode</code><br/>
+        Example: <code>MOVING_CODE,10_MAY_26_MOVING_STOCK</code>
+    </p>
+    <div th:if="${csvError}" class="err" th:text="${csvError}"></div>
+    <div th:if="${csvMessage}" class="msg" th:text="${csvMessage}"></div>
+    <form th:action="@{/day-stock-movement/populate-watchlist/bulk}" method="post">
+        <label>
+            <textarea name="csvData" rows="8"
+                      style="width:100%;font-family:monospace;font-size:0.9em"
+                      placeholder="MOVING_CODE,10_MAY_26_MOVING_STOCK"></textarea>
+        </label>
+        <button type="submit" style="margin-top:6px">Upload CSV</button>
+    </form>
+</div>
+
+<p><a th:href="@{/day-stock-movement/mapping}">Back to Mappings</a></p>
+</body>
+</html>

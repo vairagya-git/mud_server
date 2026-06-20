@@ -47,7 +47,7 @@
             <input class="field-edit" data-field="country" type="text" th:value="${s.country}" />
         </td>
         <td>
-            <span class="field-view">
+            <span class="field-view" data-field="investor_page">
                 <a th:if="${s.investorPage != null and !#strings.isEmpty(s.investorPage)}" th:href="${s.investorPage}" th:text="${s.investorPage}" target="_blank" rel="noopener noreferrer"></a>
                 <span th:if="${s.investorPage == null or #strings.isEmpty(s.investorPage)}">-</span>
             </span>
@@ -85,6 +85,16 @@
     function resetInputs(row) {
         row.querySelectorAll('.field-edit').forEach((input) => {
             const view = row.querySelector(`.field-view[data-field="${input.dataset.field}"]`);
+            if (!view) {
+                return;
+            }
+
+            if (input.dataset.field === 'investor_page') {
+                const link = view.querySelector('a');
+                input.value = link ? (link.getAttribute('href') || '') : '';
+                return;
+            }
+
             const viewText = view.textContent === '-' ? '' : view.textContent;
             input.value = viewText;
         });
@@ -107,7 +117,14 @@
             const stockId = row.dataset.stockId;
             const form = new URLSearchParams();
             row.querySelectorAll('.field-edit').forEach((input) => {
-                form.append(input.dataset.field, input.value);
+                let value = input.value;
+                if (input.dataset.field === 'investor_page') {
+                    value = (value || '').trim();
+                    if (value === '-') {
+                        value = '';
+                    }
+                }
+                form.append(input.dataset.field, value);
             });
 
             try {

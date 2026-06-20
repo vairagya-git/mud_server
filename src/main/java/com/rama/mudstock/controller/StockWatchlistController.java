@@ -81,7 +81,7 @@ public class StockWatchlistController {
         }
         String t = (ticker == null) ? null : ticker.trim().toUpperCase();
         Stock s = new Stock(t, stockName, cusip.trim(), cik.trim(), cl.trim(), country.trim());
-        s.setInvestorPage(investorPage == null || investorPage.isBlank() ? null : investorPage.trim());
+        s.setInvestorPage(normalizeInvestorPage(investorPage));
         s.setSector(sector == null || sector.isBlank() ? null : sector.trim());
         stockRepo.save(s);
         return "redirect:/stock-watchlist";
@@ -114,7 +114,7 @@ public class StockWatchlistController {
         stock.setCik(cik.trim());
         stock.setCl(cl.trim());
         stock.setCountry(country.trim());
-        stock.setInvestorPage(investorPage == null || investorPage.isBlank() ? null : investorPage.trim());
+        stock.setInvestorPage(normalizeInvestorPage(investorPage));
         stock.setSector(sector == null || sector.isBlank() ? null : sector.trim());
         stockRepo.save(stock);
 
@@ -127,6 +127,55 @@ public class StockWatchlistController {
         response.put("sector", stock.getSector() == null ? "" : stock.getSector());
         response.put("message", "Stock updated.");
         return org.springframework.http.ResponseEntity.ok(response);
+    }
+
+    private String normalizeInvestorPage(String investorPage) {
+        if (investorPage == null) {
+            return null;
+        }
+
+        String trimmed = investorPage.trim();
+        if (trimmed.isBlank() || "-".equals(trimmed)) {
+            return null;
+        }
+
+        // Handle raw (non-encoded) malformed suffix like "https://host/       -".
+        int rawSlash = trimmed.lastIndexOf('/');
+        if (rawSlash >= 0) {
+            String rawLast = trimmed.substring(rawSlash + 1);
+            if ("-".equals(rawLast.trim())) {
+                String base = trimmed.substring(0, rawSlash).trim();
+                if (!base.isBlank()) {
+                    return base;
+                }
+            }
+        }
+
+        // Recover from malformed values like https://host/%20%20%20- produced by placeholder text.
+        try {
+            java.net.URI uri = java.net.URI.create(trimmed);
+            String rawPath = uri.getRawPath();
+            if (rawPath != null && !rawPath.isEmpty()) {
+                int slash = rawPath.lastIndexOf('/');
+                String lastSegment = rawPath.substring(slash + 1);
+                String decodedLast = java.net.URLDecoder.decode(lastSegment, java.nio.charset.StandardCharsets.UTF_8).trim();
+                if ("-".equals(decodedLast)) {
+                    String cleanedPath = rawPath.substring(0, slash);
+                    java.net.URI cleaned = new java.net.URI(
+                            uri.getScheme(),
+                            uri.getAuthority(),
+                            cleanedPath.isEmpty() ? null : cleanedPath,
+                            uri.getQuery(),
+                            uri.getFragment());
+                    String cleanedUrl = cleaned.toString();
+                    return cleanedUrl.endsWith("/") ? cleanedUrl.substring(0, cleanedUrl.length() - 1) : cleanedUrl;
+                }
+            }
+        } catch (Exception ignored) {
+            // If URI parsing fails, keep the user's trimmed value.
+        }
+
+        return trimmed;
     }
 
     @PostMapping("/watchlist")
