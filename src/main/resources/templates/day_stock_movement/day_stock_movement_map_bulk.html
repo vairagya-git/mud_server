@@ -7,6 +7,12 @@
 </head>
 <body>
 <h1>Bulk Day Stock Movement Mappings</h1>
+<div th:if="${marketClosedWarning}" style="color:orange;border:1px solid orange;padding:8px;margin-bottom:12px">
+    <strong>Market Closed:</strong> <span th:text="${marketClosedWarning}"></span>
+</div>
+<div th:if="${bulkMessage}" style="color:green;border:1px solid green;padding:8px;margin-bottom:12px">
+    <span th:text="${bulkMessage}"></span>
+</div>
 <p>Enter lines with <strong>ticker,code</strong> per line.</p>
 <form th:action="@{/day-stock-movement/mapping/bulk}" method="post">
     <textarea name="bulkData" placeholder="PANW,PAYROLL_EVENT"></textarea>

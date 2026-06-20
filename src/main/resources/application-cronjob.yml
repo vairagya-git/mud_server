@@ -14,8 +14,9 @@ earnings:
     calls-per-minute: 1000
 
 dayStockMovementData:
-  enabled: false
-  cron: "0 0 22 * * MON-FRI" # after market close, 22:00 Portugal time (Europe/Lisbon)
+  enabled: true
+  cron: "0 0/1 * * * *" # every 1 minutes
+  # cron: "0 0 22 * * MON-FRI" # after market close, 22:00 Portugal time (Europe/Lisbon)
 
 dayStockMovementCleanup:
   enabled: false
@@ -25,11 +26,10 @@ dayStockMovementCleanup:
 dayStockMovementKeyMapEntry:
   enabled: true
   # default: every night at 21:00 after market close, Portugal time (Europe/Lisbon). Override via env as needed.
-  cron: "0 0/1 * * * *" # every 1 minutes
-  # cron: "0 0 21 * * MON-FRI" # after market close, 22:00 Portugal time (Europe/Lisbon)
+  cron: "0 0 21 * * MON-FRI" # after market close, 22:00 Portugal time (Europe/Lisbon)
 
 weeklyUpcomingEarning:
-  enabled: false
+  enabled: true
   # cron: "0 0/1 * * * *" # every 1 minutes
   cron: "0 0 8 * * SUN" # every Monday at 08:00 Portugal time
   # Comma-separated watchlist codes whose stocks are queried against the yfinance service

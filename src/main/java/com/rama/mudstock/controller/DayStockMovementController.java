@@ -24,6 +24,7 @@ import com.rama.mudstock.repository.DayStockMovementMapRepository;
 import com.rama.mudstock.repository.DayStockMovementKeyRepository;
 import com.rama.mudstock.repository.StockRepository;
 import com.rama.mudstock.repository.WatchlistRepository;
+import com.rama.mudstock.service.MarketCalendarService;
 
 @Controller
 @RequestMapping("/day-stock-movement")
@@ -34,19 +35,22 @@ public class DayStockMovementController {
     private final DayStockMovementEntryRepository entryRepo;
     private final WatchlistRepository watchlistRepo;
     private final com.rama.mudstock.service.DayStockMovementService dayStockMovementService;
+    private final MarketCalendarService marketCalendarService;
 
     public DayStockMovementController(DayStockMovementKeyRepository repo,
                                       DayStockMovementMapRepository mappingRepo,
                                       StockRepository stockRepo,
                                       DayStockMovementEntryRepository entryRepo,
                                       WatchlistRepository watchlistRepo,
-                                      com.rama.mudstock.service.DayStockMovementService dayStockMovementService) {
+                                      com.rama.mudstock.service.DayStockMovementService dayStockMovementService,
+                                      MarketCalendarService marketCalendarService) {
         this.repo = repo;
         this.mappingRepo = mappingRepo;
         this.stockRepo = stockRepo;
         this.entryRepo = entryRepo;
         this.watchlistRepo = watchlistRepo;
         this.dayStockMovementService = dayStockMovementService;
+        this.marketCalendarService = marketCalendarService;
     }
 
     // Day stock movement key list and create
@@ -120,12 +124,24 @@ public class DayStockMovementController {
 
     @PostMapping("/mapping")
     public String addMapping(@RequestParam(required = false) String ticker,
-                      @RequestParam(required = false) String code) {
+                             @RequestParam(required = false) String code,
+                             RedirectAttributes ra) {
         if (ticker == null || ticker.isBlank() || code == null || code.isBlank()) return "redirect:/day-stock-movement/mapping";
         Optional<Stock> sopt = stockRepo.findByTicker(ticker.trim().toUpperCase());
-        Optional<DayStockMovementKey> dopt = repo.findAll().stream().filter(d->code.trim().equals(d.getCode())).findFirst();
-        if (sopt.isPresent() && dopt.isPresent()) {
-            mappingRepo.createMapping(sopt.get().getId(), dopt.get().getId());
+        Optional<DayStockMovementKey> dopt = repo.findAll().stream().filter(d -> code.trim().equals(d.getCode())).findFirst();
+        if (dopt.isPresent()) {
+            DayStockMovementKey key = dopt.get();
+            if (key.getDate() != null && marketCalendarService.isMarketClosed(key.getDate())) {
+                mappingRepo.deleteEntriesByMasterId(key.getId());
+                mappingRepo.deleteMappingsByMasterId(key.getId());
+                mappingRepo.deleteMasterById(key.getId());
+                ra.addFlashAttribute("marketClosedWarning",
+                    "Market was closed on " + key.getDate() + " for key '" + key.getCode() + "'. Key and its mappings have been deleted.");
+                return "redirect:/day-stock-movement/mapping";
+            }
+            if (sopt.isPresent()) {
+                mappingRepo.createMapping(sopt.get().getId(), key.getId());
+            }
         }
         return "redirect:/day-stock-movement/mapping";
     }
@@ -134,24 +150,40 @@ public class DayStockMovementController {
     public String bulkForm() { return "day_stock_movement/day_stock_movement_map_bulk"; }
 
     @PostMapping("/mapping/bulk")
-    public String bulkUpload(@RequestParam String bulkData) {
+    public String bulkUpload(@RequestParam String bulkData, RedirectAttributes ra) {
         if (bulkData == null || bulkData.isBlank()) return "redirect:/day-stock-movement/mapping";
         String[] lines = bulkData.split("\\r?\\n");
         List<Stock> stocks = stockRepo.findAll();
         List<DayStockMovementKey> days = repo.findAll();
+        int created = 0, skipped = 0, deleted = 0;
         for (String raw : lines) {
             String line = raw.trim();
             if (line.isEmpty()) continue;
             String[] parts = line.split(",");
-            if (parts.length < 2) continue;
+            if (parts.length < 2) { skipped++; continue; }
             String ticker = parts[0].trim().toUpperCase();
             String code = parts[1].trim();
-            Optional<Stock> sopt = stocks.stream().filter(s->ticker.equals(s.getTicker())).findFirst();
-            Optional<DayStockMovementKey> dopt = days.stream().filter(d->code.equals(d.getCode())).findFirst();
-            if (sopt.isPresent() && dopt.isPresent()) {
-                try { mappingRepo.createMapping(sopt.get().getId(), dopt.get().getId()); } catch (Exception e) { /* ignore duplicates/errors */ }
-            }
+            Optional<Stock> sopt = stocks.stream().filter(s -> ticker.equals(s.getTicker())).findFirst();
+            Optional<DayStockMovementKey> dopt = days.stream().filter(d -> code.equals(d.getCode())).findFirst();
+            if (dopt.isPresent()) {
+                DayStockMovementKey key = dopt.get();
+                if (key.getDate() != null && marketCalendarService.isMarketClosed(key.getDate())) {
+                    mappingRepo.deleteEntriesByMasterId(key.getId());
+                    mappingRepo.deleteMappingsByMasterId(key.getId());
+                    mappingRepo.deleteMasterById(key.getId());
+                    days = repo.findAll(); // refresh after delete
+                    deleted++;
+                    continue;
+                }
+                if (sopt.isPresent()) {
+                    try { mappingRepo.createMapping(sopt.get().getId(), key.getId()); created++; } catch (Exception e) { skipped++; }
+                } else { skipped++; }
+            } else { skipped++; }
         }
+        String msg = "Mapped " + created + " stock(s).";
+        if (deleted > 0) msg += " Deleted " + deleted + " market-closed key(s).";
+        if (skipped > 0) msg += " Skipped " + skipped + " line(s).";
+        ra.addFlashAttribute("bulkMessage", msg);
         return "redirect:/day-stock-movement/mapping";
     }
 
