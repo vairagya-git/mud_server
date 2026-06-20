@@ -7,6 +7,8 @@ server:
   port: 8099
 
 # Scheduler configuration for the cronjob profile
+  # cron: "0 0/1 * * * *" # every 1 minutes
+
 earnings:
   enabled: false
   cron: "0 0/1 * * * *" # every minute
@@ -15,14 +17,12 @@ earnings:
 
 dayStockMovementData:
   enabled: true
-  cron: "0 0/1 * * * *" # every 1 minutes
-  # cron: "0 0 22 * * MON-FRI" # after market close, 22:00 Portugal time (Europe/Lisbon)
+  cron: "0 0 22 * * MON-FRI" # after market close, 22:00 Portugal time (Europe/Lisbon)
 
 dayStockMovementCleanup:
   enabled: true
    # default: every night at 8:00 after market close, Portugal time (Europe/Lisbon). Override via env as needed.
   cron: "0 0 8 * * MON-FRI" # after market close, 22:00 Portugal time (Europe/Lisbon)
-
 
 dayStockMovementKeyMapEntry:
   enabled: true

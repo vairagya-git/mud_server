@@ -1,3 +1,6 @@
+logging:
+  log-path: /Users/rama/Downloads/logs
+
 spring:
   datasource:
     password: password

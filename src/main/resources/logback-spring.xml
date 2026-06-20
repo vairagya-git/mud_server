@@ -1,113 +1,30 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <include resource="org/springframework/boot/logging/logback/defaults.xml" />
-    <include resource="org/springframework/boot/logging/logback/console-appender.xml" />
 
-    <springProperty scope="context" name="EARNINGS_LOG_FILE" source="logging.cronjob.files.earnings" defaultValue="logs/earnings.log" />
-    <springProperty scope="context" name="DAY_STOCK_MOVEMENT_DATA_LOG_FILE" source="logging.cronjob.files.dayStockMovementData" defaultValue="logs/day-stock-movement-data.log" />
-    <springProperty scope="context" name="DAY_STOCK_MOVEMENT_CLEANUP_LOG_FILE" source="logging.cronjob.files.dayStockMovementCleanup" defaultValue="logs/day-stock-movement-cleanup.log" />
-    <springProperty scope="context" name="DAY_STOCK_MOVEMENT_KEY_MAP_ENTRY_LOG_FILE" source="logging.cronjob.files.dayStockMovementKeyMapEntry" defaultValue="logs/day-stock-movement-key-map-entry.log" />
-    <springProperty scope="context" name="WEEKLY_UPCOMING_EARNINGS_LOG_FILE" source="logging.cronjob.files.weeklyUpcomingEarning" defaultValue="logs/weekly-upcoming-earnings.log" />
+    <!-- Read log path from Spring application properties (set per profile in yml files) -->
+    <springProperty scope="context" name="LOG_PATH" source="logging.log-path" defaultValue="./logs"/>
 
-    <appender name="EARNINGS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${EARNINGS_LOG_FILE}</file>
+    <!-- Console Appender -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${EARNINGS_LOG_FILE}.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>14</maxHistory>
-            <totalSizeCap>200MB</totalSizeCap>
-        </rollingPolicy>
     </appender>
 
-    <appender name="DAY_STOCK_MOVEMENT_DATA_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${DAY_STOCK_MOVEMENT_DATA_LOG_FILE}</file>
-        <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
-        </encoder>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${DAY_STOCK_MOVEMENT_DATA_LOG_FILE}.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>14</maxHistory>
-            <totalSizeCap>200MB</totalSizeCap>
+    <!-- Rolling File Appender -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/mud-server.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/mud-server.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
         </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
     </appender>
 
-    <appender name="DAY_STOCK_MOVEMENT_CLEANUP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${DAY_STOCK_MOVEMENT_CLEANUP_LOG_FILE}</file>
-        <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
-        </encoder>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${DAY_STOCK_MOVEMENT_CLEANUP_LOG_FILE}.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>14</maxHistory>
-            <totalSizeCap>200MB</totalSizeCap>
-        </rollingPolicy>
-    </appender>
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
 
-    <appender name="DAY_STOCK_MOVEMENT_KEY_MAP_ENTRY_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${DAY_STOCK_MOVEMENT_KEY_MAP_ENTRY_LOG_FILE}</file>
-        <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
-        </encoder>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${DAY_STOCK_MOVEMENT_KEY_MAP_ENTRY_LOG_FILE}.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>14</maxHistory>
-            <totalSizeCap>200MB</totalSizeCap>
-        </rollingPolicy>
-    </appender>
-
-    <appender name="WEEKLY_UPCOMING_EARNINGS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${WEEKLY_UPCOMING_EARNINGS_LOG_FILE}</file>
-        <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
-        </encoder>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${WEEKLY_UPCOMING_EARNINGS_LOG_FILE}.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>14</maxHistory>
-            <totalSizeCap>200MB</totalSizeCap>
-        </rollingPolicy>
-    </appender>
-
-    <springProfile name="cronjob">
-        <logger name="com.rama.mudstock.scheduler.EarningsDateScheduler" level="INFO" additivity="false">
-            <appender-ref ref="EARNINGS_FILE" />
-            <appender-ref ref="CONSOLE" />
-        </logger>
-
-        <logger name="com.rama.mudstock.scheduler.DayStockMovementScheduler" level="INFO" additivity="false">
-            <appender-ref ref="DAY_STOCK_MOVEMENT_DATA_FILE" />
-            <appender-ref ref="CONSOLE" />
-        </logger>
-
-        <logger name="com.rama.mudstock.scheduler.DayStockMovementCleanupScheduler" level="INFO" additivity="false">
-            <appender-ref ref="DAY_STOCK_MOVEMENT_CLEANUP_FILE" />
-            <appender-ref ref="CONSOLE" />
-        </logger>
-
-        <logger name="com.rama.mudstock.scheduler.DayStockMovementKeyMapEntryScheduler" level="INFO" additivity="false">
-            <appender-ref ref="DAY_STOCK_MOVEMENT_KEY_MAP_ENTRY_FILE" />
-            <appender-ref ref="CONSOLE" />
-        </logger>
-
-        <logger name="com.rama.mudstock.scheduler.WeeklyUpcomingEarningCronjob" level="INFO" additivity="false">
-            <appender-ref ref="WEEKLY_UPCOMING_EARNINGS_FILE" />
-            <appender-ref ref="CONSOLE" />
-        </logger>
-
-        <root level="INFO">
-            <appender-ref ref="CONSOLE" />
-        </root>
-    </springProfile>
-
-    <springProfile name="!cronjob">
-        <root level="INFO">
-            <appender-ref ref="CONSOLE" />
-        </root>
-    </springProfile>
 </configuration>

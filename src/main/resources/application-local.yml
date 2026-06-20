@@ -1,7 +1,9 @@
+logging:
+  log-path: /Users/I753307/Downloads/logs
+
 spring:
   datasource:
     password: 
-
 
 massive:
   base-url: http://localhost:9001/
