@@ -19,9 +19,10 @@ dayStockMovementData:
   # cron: "0 0 22 * * MON-FRI" # after market close, 22:00 Portugal time (Europe/Lisbon)
 
 dayStockMovementCleanup:
-  enabled: false
-  # Removes redundant auto every-day keys when a genuine key exists for the same date.
-  cron: "0 0/5 * * * *" # every 5 minutes (consider daily, e.g. "0 30 23 * * *")
+  enabled: true
+   # default: every night at 8:00 after market close, Portugal time (Europe/Lisbon). Override via env as needed.
+  cron: "0 0 8 * * MON-FRI" # after market close, 22:00 Portugal time (Europe/Lisbon)
+
 
 dayStockMovementKeyMapEntry:
   enabled: true
@@ -31,7 +32,7 @@ dayStockMovementKeyMapEntry:
 weeklyUpcomingEarning:
   enabled: true
   # cron: "0 0/1 * * * *" # every 1 minutes
-  cron: "0 0 8 * * SUN" # every Monday at 08:00 Portugal time
+  cron: "0 0 21 * * FRI" # every Monday at 08:00 Portugal time
   # Comma-separated watchlist codes whose stocks are queried against the yfinance service
   watchlists: "MOVING_STOCK"
 

@@ -197,11 +197,28 @@ public class DayStockMovementController {
     @GetMapping("/populate-watchlist")
     public String populateWatchlistForm(Model model) {
         List<Watchlist> watchlists = watchlistRepo.findAll();
-        List<DayStockMovementKey> days = repo.findAll();
+        List<DayStockMovementKey> allDays = repo.findAll();
+
+        // Filter out entries where the market was closed (weekend or holiday)
+        List<DayStockMovementKey> activeDays = new java.util.ArrayList<>();
+        List<String> removedEntries = new java.util.ArrayList<>();
+        for (DayStockMovementKey key : allDays) {
+            if (key.getDate() != null && marketCalendarService.isMarketClosed(key.getDate())) {
+                String reason = marketCalendarService.isWeekend(key.getDate()) ? "weekend" : "holiday/vacation";
+                removedEntries.add(key.getCode() + " [" + key.getDate() + "] — removed as it is a " + reason);
+            } else {
+                activeDays.add(key);
+            }
+        }
+
         model.addAttribute("watchlists", watchlists);
-        model.addAttribute("days", days);
+        model.addAttribute("days", activeDays);
         model.addAttribute("everydayWatchlistCode", dayStockMovementService.getWatchlistCode());
-        return "day_stock_movement/populate_watchlist";
+        if (!removedEntries.isEmpty()) {
+            model.addAttribute("marketClosedRemovedCount", removedEntries.size());
+            model.addAttribute("marketClosedRemovedEntries", removedEntries);
+        }
+        return "day_stock_movement/day_stock_movement_watchlist";
     }
 
     @PostMapping("/populate-watchlist/by-date")

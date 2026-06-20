@@ -9,7 +9,9 @@
         .section{border:1px solid #ddd;padding:16px;margin-bottom:16px;border-radius:6px;max-width:640px}
         .msg{padding:10px;border-radius:6px;margin-bottom:12px;background:#e6ffed;border:1px solid #34d058}
         .err{padding:10px;border-radius:6px;margin-bottom:12px;background:#ffeef0;border:1px solid #d73a49}
+        .warn{padding:10px;border-radius:6px;margin-bottom:12px;background:#fff3cd;border:1px solid #ffc107;color:#856404}
         .hint{color:#555;font-size:0.9em}
+        .removed-list{margin:6px 0 0 0;padding-left:18px;font-size:0.9em}
     </style>
 </head>
 <body>
@@ -17,6 +19,16 @@
 
 <div th:if="${message}" class="msg" th:text="${message}"></div>
 <div th:if="${error}" class="err" th:text="${error}"></div>
+
+<!-- Market Closed Entries Removed Warning -->
+<div th:if="${marketClosedRemovedCount != null and marketClosedRemovedCount > 0}" class="warn">
+    <strong>&#9888; Notice:</strong>
+    <span th:text="${marketClosedRemovedCount}">0</span> movement key(s) were removed from the selection list as the market was closed on those dates (weekend or public holiday):
+    <ul class="removed-list">
+        <li th:each="removedEntry : ${marketClosedRemovedEntries}"
+            th:text="${removedEntry}">Key - Date (reason)</li>
+    </ul>
+</div>
 
 <div class="section">
     <h2>Every-Day Movement by Date</h2>
