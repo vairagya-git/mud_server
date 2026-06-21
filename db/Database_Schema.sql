@@ -1,3 +1,41 @@
+
+
+drop table firm;
+
+/* Analyst Rating */
+CREATE TABLE `firm` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `benzinga_firm_id` varchar(64) NOT NULL,
+  `name` varchar(128) NOT NULL,
+  `currency` varchar(32) DEFAULT NULL,
+  `last_updated` date DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  CONSTRAINT unique_earnings_upcoming UNIQUE (`benzinga_firm_id`, `name`)
+) ENGINE=InnoDB;
+
+CREATE TABLE `firm_analyst` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `firm_id` bigint unsigned NOT NULL,
+  `benzinga_analyst_id` varchar(64) NOT NULL,
+  `benzinga_firm_id` varchar(64) NOT NULL,
+  `full_name` varchar(128) NOT NULL,
+  `last_updated` date DEFAULT NULL,
+  `overall_avg_return` decimal(20,2) DEFAULT NULL,
+  `overall_avg_return_percentile` decimal(20,2) DEFAULT NULL,
+  `overall_success_rate` decimal(20,2) DEFAULT NULL,
+  `smart_score` decimal(20,2) DEFAULT NULL,
+  `total_ratings` decimal(20,2) DEFAULT NULL,
+  `total_ratings_percentile` decimal(20,2) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_firm` (`firm_id`),
+  CONSTRAINT `fk_firm` FOREIGN KEY (`firm_id`) REFERENCES `firm` (`id`),
+  CONSTRAINT unique_earnings_upcoming UNIQUE (`benzinga_analyst_id`, `benzinga_firm_id`)
+) ENGINE=InnoDB;
+
 /*  Earnings Data */
 CREATE TABLE `earnings_date` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -36,11 +74,19 @@ CREATE TABLE `earnings_date_entry` (
 
 /*  Day Stock Movement */
 
+drop table day_stock_movement_map;
+
+drop table day_stock_movement_entry;
+
+select code from day_stock_movement_key;
+
 CREATE TABLE `day_stock_movement_key` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `code` varchar(64) NOT NULL,
   `description` varchar(512) NOT NULL,
   `date` date DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   CONSTRAINT `unique_day_stock_movement_key` UNIQUE (`code`)
 ) ENGINE=InnoDB;
@@ -50,6 +96,8 @@ CREATE TABLE `day_stock_movement_map` (
   `stock_id` bigint unsigned NOT NULL,
   `day_stock_movement_key_id` bigint unsigned NOT NULL,
   `status` ENUM('NEW', 'PROCESSED', 'MARKET_CLOSED') NOT NULL default 'NEW',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `fk_dsm_stock` (`stock_id`),
   KEY `fk_dsm_day_stock_movement_key` (`day_stock_movement_key_id`),
@@ -70,6 +118,8 @@ CREATE TABLE `day_stock_movement_entry` (
   `cur_day_volume` bigint unsigned NOT NULL,
   `change_percent` decimal(20,2) DEFAULT NULL,
   `day_opening_change_percent` decimal(20,2) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `fk_dsme_day_stock_movement_map` (`day_stock_movement_map_id`),
   CONSTRAINT `fk_dsme_day_stock_movement_map` FOREIGN KEY (`day_stock_movement_map_id`) REFERENCES `day_stock_movement_map` (`id`),
@@ -82,6 +132,8 @@ CREATE TABLE `master_market_holidays` (
   `year` varchar(64) NOT NULL,
   `country` varchar(64) NOT NULL,
   `holiday_date` date DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   CONSTRAINT unique_day_event_master UNIQUE (`year`, `country`, `holiday_date`)
 ) ENGINE=InnoDB;
