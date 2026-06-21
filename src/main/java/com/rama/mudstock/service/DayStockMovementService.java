@@ -1,8 +1,6 @@
 package com.rama.mudstock.service;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +14,7 @@ import com.rama.mudstock.model.Watchlist;
 import com.rama.mudstock.repository.DayStockMovementMapRepository;
 import com.rama.mudstock.repository.DayStockMovementKeyRepository;
 import com.rama.mudstock.repository.WatchlistRepository;
+import com.rama.mudstock.util.MudDateUtil;
 
 /**
  * Shared logic for the "every day event" feature: for a given date, create a single
@@ -26,7 +25,6 @@ import com.rama.mudstock.repository.WatchlistRepository;
  */
 @Service
 public class DayStockMovementService {
-    private static final DateTimeFormatter DAY_FMT = DateTimeFormatter.ofPattern("dd_MMM_yy", Locale.ENGLISH);
     private final Logger log = LoggerFactory.getLogger(DayStockMovementService.class);
 
     private final WatchlistRepository watchlistRepo;
@@ -67,7 +65,7 @@ public class DayStockMovementService {
         }
         Watchlist w = maybe.get();
 
-        String dayPart = date.format(DAY_FMT).toUpperCase(); // e.g. 01_JUN_26
+        String dayPart = date.format(MudDateUtil.FMT_DAY_CODE).toUpperCase(); // e.g. 01_JUN_26
         String code = String.format("%s_%s", dayPart, watchlistCode);
 
         DayStockMovementKey master = masterRepo.findByCode(code).orElseGet(() -> {

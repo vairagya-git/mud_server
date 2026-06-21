@@ -5,8 +5,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import java.time.format.DateTimeFormatter;
-
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -25,6 +23,7 @@ import com.rama.mudstock.repository.DayStockMovementKeyRepository;
 import com.rama.mudstock.repository.StockRepository;
 import com.rama.mudstock.repository.WatchlistRepository;
 import com.rama.mudstock.service.MarketCalendarService;
+import com.rama.mudstock.util.MudDateUtil;
 
 @Controller
 @RequestMapping("/day-stock-movement")
@@ -67,8 +66,6 @@ public class DayStockMovementController {
             ra.addFlashAttribute("csvError", "No data provided.");
             return "redirect:/day-stock-movement";
         }
-        DateTimeFormatter fmtSlash = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        DateTimeFormatter fmtIso   = DateTimeFormatter.ISO_LOCAL_DATE; // yyyy-MM-dd
         int created = 0;
         int skipped = 0;
         String[] lines = csvData.split("\\r?\\n");
@@ -78,16 +75,12 @@ public class DayStockMovementController {
             String[] parts = line.split(",", 3);
             if (parts.length < 3) { skipped++; continue; }
             String code    = parts[0].trim();
-            String description = parts[1].trim().replaceAll("^\"|\"$", ""); // strip surrounding quotes
-            String dateStr = parts[2].trim().replaceAll("^\"|\"$", "");
+            String description = MudDateUtil.unquote(parts[1]);
+            String dateStr     = MudDateUtil.unquote(parts[2]);
             if (code.isEmpty() || dateStr.isEmpty()) { skipped++; continue; }
+            LocalDate date = MudDateUtil.parseFlexible(dateStr);
+            if (date == null) { skipped++; continue; }
             try {
-                LocalDate date;
-                if (dateStr.matches("\\d{4}-\\d{2}-\\d{2}")) {
-                    date = LocalDate.parse(dateStr, fmtIso);
-                } else {
-                    date = LocalDate.parse(dateStr, fmtSlash);
-                }
                 repo.save(new DayStockMovementKey(code, description, date));
                 created++;
             } catch (Exception e) {

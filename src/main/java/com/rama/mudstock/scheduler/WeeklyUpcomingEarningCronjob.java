@@ -6,6 +6,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.rama.mudstock.util.MudDateUtil;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -142,16 +144,14 @@ public class WeeklyUpcomingEarningCronjob {
     /**
      * Parses a date string that may be ISO-8601 ("2026-07-15"), a datetime
      * ("2026-07-15T00:00:00"), or a datetime with timezone offset
-     * ("2026-07-15 00:00:00+00:00"). Takes the first 10 characters.
+     * ("2026-07-15 00:00:00+00:00"). Takes the first 10 characters (ISO prefix)
+     * and delegates to {@link MudDateUtil#parseFlexible(String)}.
      */
     private LocalDate parseDateSafely(String s) {
         if (s == null || s.length() < 10) return null;
-        try {
-            return LocalDate.parse(s.substring(0, 10));
-        } catch (Exception ex) {
-            log.warn("WeeklyUpcomingEarningCronjob: could not parse date string '{}'", s);
-            return null;
-        }
+        LocalDate date = MudDateUtil.parseFlexible(s.substring(0, 10));
+        if (date == null) log.warn("WeeklyUpcomingEarningCronjob: could not parse date string '{}'", s);
+        return date;
     }
 
     /**

@@ -1,7 +1,6 @@
 package com.rama.mudstock.service;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -17,6 +16,7 @@ import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rama.mudstock.util.MudDateUtil;
 
 @Service
 public class MassiveRestStockService {
@@ -32,8 +32,6 @@ public class MassiveRestStockService {
 
     @Value("${massive.ticker-aggregate:}")
     private String tickerAggregatePattern;
-
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ISO_LOCAL_DATE;
 
     private final MassiveRestApiCallLimiter apiCallLimiter;
     private final com.rama.mudstock.repository.DayStockMovementMapRepository mappingRepository;
@@ -60,7 +58,7 @@ public class MassiveRestStockService {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Interrupted while waiting for API rate limit", ie);
         }
-        String dateStr = date.format(DATE_FMT);
+        String dateStr = MudDateUtil.toIsoString(date);
         RestTemplate rest = new RestTemplate();
         String url = joinBaseAndPath(baseUrl, String.format(openClosePattern, ticker, dateStr, apiKey));
         try {
@@ -84,8 +82,8 @@ public class MassiveRestStockService {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Interrupted while waiting for API rate limit", ie);
         }
-        String startStr = start.format(DATE_FMT);
-        String endStr = end.format(DATE_FMT);
+        String startStr = MudDateUtil.toIsoString(start);
+        String endStr = MudDateUtil.toIsoString(end);
         RestTemplate rest = new RestTemplate();
         String url = joinBaseAndPath(baseUrl, String.format(tickerAggregatePattern, ticker, startStr, endStr, apiKey));
         try {
@@ -116,7 +114,7 @@ public class MassiveRestStockService {
                 LocalDate eventDate = null;
                 if (eo instanceof java.sql.Date) eventDate = ((java.sql.Date) eo).toLocalDate();
                 else if (eo instanceof java.time.LocalDate) eventDate = (java.time.LocalDate) eo;
-                else if (eo != null) eventDate = LocalDate.parse(eo.toString(), DATE_FMT);
+                else if (eo != null) eventDate = MudDateUtil.parseIso(eo.toString());
                 if (ticker == null || eventDate == null) {
                     log.warn("Skipping mapping with missing ticker or eventDate: {}", m);
                     continue;
@@ -223,7 +221,7 @@ public class MassiveRestStockService {
 
     // convenience overload
     public String fetchOpenClose(String ticker, String dateIso) {
-        return fetchOpenClose(ticker, LocalDate.parse(dateIso, DATE_FMT));
+        return fetchOpenClose(ticker, MudDateUtil.parseIso(dateIso));
     }
 
     private String joinBaseAndPath(String base, String path) {

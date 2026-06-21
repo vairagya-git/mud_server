@@ -3,6 +3,8 @@ package com.rama.mudstock.controller;
 import java.time.LocalDate;
 
 import org.springframework.format.annotation.DateTimeFormat;
+
+import com.rama.mudstock.util.MudDateUtil;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -91,10 +93,11 @@ public class EarningsDateController {
             String ticker = parts[0].trim();
             String q = parts[1].trim();
             String rtRaw = parts[2].trim();
-            String dateRaw = parts[3].trim().replace('/', '-');
-            java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("d-M-yyyy");
+            String dateRaw = parts[3].trim();
             try {
-                java.time.LocalDate dt = java.time.LocalDate.parse(dateRaw, fmt);
+                // supports d/M/yyyy or d-M-yyyy — normalise slash to dash then use FMT_D_M_YYYY
+                java.time.LocalDate dt = java.time.LocalDate.parse(
+                        dateRaw.replace('/', '-'), MudDateUtil.FMT_D_M_YYYY);
                 com.rama.mudstock.model.Stock stock = service.findOrCreateStockByTicker(ticker);
                 if (stock == null) continue;
                 EarningsDate ed = new EarningsDate();

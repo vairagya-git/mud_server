@@ -3,7 +3,7 @@ logging:
 
 spring:
   datasource:
-    password: 
+    password:
 
 massive:
   base-url: http://localhost:9001/
