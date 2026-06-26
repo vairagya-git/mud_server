@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.rama.mudstock.model.analyst.BenzingaAnalystListResponse;
+import com.rama.mudstock.model.analyst.BenzingaAnalystRatingListResponse;
+import com.rama.mudstock.model.analyst.BenzingaAnalystRatingResponse;
 import com.rama.mudstock.model.analyst.BenzingaAnalystResponse;
 import com.rama.mudstock.model.analyst.BenzingaFirmListResponse;
 import com.rama.mudstock.model.analyst.BenzingaFirmResponse;
@@ -56,6 +58,12 @@ public class BenzingaFirmService {
 
     @Value("${massive.benzinga-analyst:}")
     private String analystPath;
+
+    @Value("${massive.benzinga-analyst-rating:}")
+    private String analystRatingPath;
+
+    @Value("${massive.benzinga-analyst-rating-date:}")
+    private String analystRatingDate;
 
     @Value("${massive.base-url}")
     private String massiveBaseUrl;
@@ -187,6 +195,47 @@ public class BenzingaFirmService {
         BenzingaAnalystResponse analyst = wrapper.getResults().get(0);
         log.info("BenzingaFirmService.fetchAnalystById: found analyst name='{}' for benzinga_id={}", analyst.getFullName(), benzingaId);
         return analyst;
+    }
+
+    /**
+     * Fetches analyst ratings for a given ticker from the configured
+     * {@code massive.benzinga-analyst-rating} endpoint.
+     *
+     * @param ticker the stock ticker to query ratings for
+     * @return list of rating results, or empty list on error
+     */
+    public java.util.List<BenzingaAnalystRatingResponse> fetchAnalystRatings(String ticker) {
+        if (ticker == null || ticker.isBlank()) {
+            log.warn("BenzingaFirmService.fetchAnalystRatings: ticker is blank, skipping");
+            return java.util.Collections.emptyList();
+        }
+        String base = massiveBaseUrl.endsWith("/") ? massiveBaseUrl : massiveBaseUrl + "/";
+        String path = String.format(analystRatingPath, ticker.trim(), analystRatingDate, massiveApiKey);
+        if (path.startsWith("/")) path = path.substring(1);
+        String url = base + path;
+        log.info("BenzingaFirmService.fetchAnalystRatings: fetching ratings for ticker={} from {}", ticker, url);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(Collections.singletonList(MediaType.ALL));
+        HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
+
+        BenzingaAnalystRatingListResponse wrapper;
+        try {
+            ResponseEntity<BenzingaAnalystRatingListResponse> resp = restTemplate.exchange(
+                    url, HttpMethod.GET, requestEntity, BenzingaAnalystRatingListResponse.class);
+            wrapper = resp.getBody();
+        } catch (Exception ex) {
+            log.error("BenzingaFirmService.fetchAnalystRatings: failed to fetch ratings for ticker={}", ticker, ex);
+            return java.util.Collections.emptyList();
+        }
+
+        if (wrapper == null || wrapper.getResults() == null) {
+            log.warn("BenzingaFirmService.fetchAnalystRatings: no results returned for ticker={}", ticker);
+            return java.util.Collections.emptyList();
+        }
+
+        log.info("BenzingaFirmService.fetchAnalystRatings: received {} rating(s) for ticker={}", wrapper.getResults().size(), ticker);
+        return wrapper.getResults();
     }
 
     /**

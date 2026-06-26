@@ -1,6 +1,6 @@
 
 
-drop table firm;
+SELECT * from firm;
 
 /* Analyst Rating */
 CREATE TABLE `firm` (
@@ -14,6 +14,8 @@ CREATE TABLE `firm` (
   PRIMARY KEY (`id`),
   CONSTRAINT unique_earnings_upcoming UNIQUE (`benzinga_firm_id`, `name`)
 ) ENGINE=InnoDB;
+
+select * from firm_analyst;
 
 CREATE TABLE `firm_analyst` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -34,6 +36,40 @@ CREATE TABLE `firm_analyst` (
   KEY `fk_firm` (`firm_id`),
   CONSTRAINT `fk_firm` FOREIGN KEY (`firm_id`) REFERENCES `firm` (`id`),
   CONSTRAINT unique_earnings_upcoming UNIQUE (`benzinga_analyst_id`, `benzinga_firm_id`)
+) ENGINE=InnoDB;
+
+select * from stock;
+
+CREATE TABLE `firm_analyst_stock_rating` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `firm_analyst_id` bigint unsigned NOT NULL,
+  `firm_id` bigint unsigned NOT NULL,
+  `stock_id` bigint unsigned NOT NULL,
+   `rating_action` ENUM('maintains', 'downgrades', 'upgrades', 'initiates_coverage_on', 'reiterates', 'resumes_coverage', 'suspends_coverage') NOT NULL,
+   `price_target_action` ENUM('maintains', 'lowers', 'raises', 'announces', 'removes', 'resumes') NOT NULL,
+   `rating` ENUM('buy', 'outperform', 'overweight', 'positive', 'equal-weight', 'sector perform', 'sector outperform', 'market outperform', 'neutral', 'hold', "sell", "perform") NOT NULL,
+   `previous_rating` ENUM('buy', 'outperform', 'overweight', 'positive', 'equal-weight', 'sector perform', 'sector outperform', 'market outperform', 'neutral', 'hold', "sell", "perform") NOT NULL,
+   `price_target` decimal(20,0) NOT NULL,
+   `previous_price_target`  decimal(20,0) NOT NULL,
+   `price_percent_change`  decimal(20,2) NOT NULL,
+   `adjusted_price_target` decimal(20,0) NOT NULL,
+   `previous_adjusted_price_target` decimal(20,0) NOT NULL,
+   `importance` int NOT NULL, 
+   `last_updated` date DEFAULT NULL,
+   `date` date DEFAULT NULL,
+   `benzinga_calendar_url` varchar(512) NOT NULL,
+   `benzinga_news_url` varchar(512) NOT NULL,
+   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (`id`),
+  KEY `fk_fasr_stock` (`stock_id`),
+  CONSTRAINT `fk_fasr_stock` FOREIGN KEY (`stock_id`) REFERENCES `stock` (`id`),
+  KEY `fk_fasr_analyst` (`firm_analyst_id`),
+  CONSTRAINT `fk_fasr_analyst` FOREIGN KEY (`firm_analyst_id`) REFERENCES `firm_analyst` (`id`),
+  KEY `fk_fasr_firm` (`firm_id`),
+  CONSTRAINT `fk_fasr_firm` FOREIGN KEY (`firm_id`) REFERENCES `firm` (`id`),
+  CONSTRAINT unique_earnings_upcoming UNIQUE (`firm_analyst_id`, `firm_id`, `stock_id`, `date`)
 ) ENGINE=InnoDB;
 
 /*  Earnings Data */
@@ -99,6 +135,8 @@ CREATE TABLE `day_stock_movement_map` (
   CONSTRAINT `fk_dsm_day_stock_movement_key` FOREIGN KEY (`day_stock_movement_key_id`) REFERENCES `day_stock_movement_key` (`id`),
   CONSTRAINT `unique_dsm_stock_key` UNIQUE (`stock_id`, `day_stock_movement_key_id`)
 ) ENGINE=InnoDB;
+
+select * from day_stock_movement_entry;
 
 CREATE TABLE `day_stock_movement_entry` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,

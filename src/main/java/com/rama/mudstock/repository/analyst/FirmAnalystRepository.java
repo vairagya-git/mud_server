@@ -12,6 +12,8 @@ import com.rama.mudstock.model.analyst.FirmAnalyst;
 @Repository
 public interface FirmAnalystRepository extends JpaRepository<FirmAnalyst, Long> {
 
+    java.util.Optional<FirmAnalyst> findByBenzingaAnalystId(String benzingaAnalystId);
+
     @Modifying
     @Transactional
     @Query(value = """

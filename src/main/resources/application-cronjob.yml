@@ -15,26 +15,30 @@ earnings:
   api:
     calls-per-minute: 1000
 
+# Populated the day stock movment data for the current day, after market close, Portugal time (Europe/Lisbon)
 dayStockMovementData:
-  enabled: true
-  cron: "0 0 22 * * MON-FRI" # after market close, 22:00 Portugal time (Europe/Lisbon)
-  # cron: "0 0/1 * * * *" # every 1 minutes
+  enabled: false
+  # cron: "0 0 22 * * MON-FRI" # after market close, 22:00 Portugal time (Europe/Lisbon)
+  cron: "0 0/1 * * * *" # every 1 minutes
 
+# Cleanup the day stock movement data for the current day, after market close, Portugal time (Europe/Lisbon)
 dayStockMovementCleanup:
-  enabled: true
+  enabled: false
    # default: every night at 8:00 after market close, Portugal time (Europe/Lisbon). Override via env as needed.
   cron: "0 0 8 * * MON-FRI" # after market close, 22:00 Portugal time (Europe/Lisbon)
 
+# Populate the day stock movement key map entry for the current day, after market close, Portugal time (Europe/Lisbon)
 dayStockMovementKeyMapEntry:
-  enabled: true
+  enabled: false
   # default: every night at 21:00 after market close, Portugal time (Europe/Lisbon). Override via env as needed.
   cron: "0 0 21 * * MON-FRI" # after market close, 22:00 Portugal time (Europe/Lisbon)
+  everyday-watchlist-code: "MOVING_STOCK"
 
 weeklyAnalystFirmUpdate:
   enabled: true
-  cron: "0 0/1 * * * *" # every 1 minutes
-  # cron: "0 0 21 * * SUN" # every Sunday at 21:00 Portugal time
+  cron: "0 0 21 * * SUN" # every Sunday at 21:00 Portugal time
 
+#Populate the weekly upcoming earnings for the next week, after market close, Portugal time (Europe/Lisbon)
 weeklyUpcomingEarning:
   enabled: true 
   cron: "0 0 21 * * FRI" # every Monday at 08:00 Portugal time
@@ -51,3 +55,7 @@ logging:
       weeklyUpcomingEarning: logs/weekly-upcoming-earnings.log
 
 
+dailyAnalystRatingUpdate:
+  enabled: true
+  cron: "0 0/60 * * * MON-SUN"
+  watchlist-code: "MOVING_STOCK"
