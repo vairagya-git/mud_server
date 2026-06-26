@@ -1,21 +1,3 @@
-# mud-stock
-
-Minimal Spring Boot application that connects to a local MySQL database.
-
-Configuration is in `src/main/resources/application.yml`.
-
-Run:
-
-```bash
-export SPRING_PROFILES_ACTIVE=server
-mvn spring-boot:run 
-mvn spring-boot:run -Dspring-boot.run.profiles=server
-mvn spring-boot:run -Dspring-boot.run.profiles=local,cronjob
-```
-
-The app exposes a small REST API at `GET /api/stocks` and `POST /api/stocks`.
-
-
 
 Bezinga
 
@@ -62,5 +44,3 @@ https://api.massive.com/benzinga/v1/firms?limit=8000&sort=name.asc&apiKey=0jSwNl
 
 http://localhost:9003/benzinga/v1/firms?limit=1000&sort=name.asc&apiKey=0jSwNlbvfYIgQ8OAVJsZ7T1sEmpWm7JV
 
-Firm Details By ID
-https://api.massive.com/benzinga/v1/firms?benzinga_id=643e5ba89eebb2000134dc4e&apiKey=0jSwNlbvfYIgQ8OAVJsZ7T1sEmpWm7JV

@@ -10,10 +10,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import com.rama.mudstock.model.Stock;
-import com.rama.mudstock.model.Watchlist;
-import com.rama.mudstock.repository.StockRepository;
-import com.rama.mudstock.repository.WatchlistRepository;
+import com.rama.mudstock.model.stockwatchlist.Stock;
+import com.rama.mudstock.model.stockwatchlist.Watchlist;
+import com.rama.mudstock.repository.stockwatchlist.StockRepository;
+import com.rama.mudstock.repository.stockwatchlist.WatchlistRepository;
 import com.rama.mudstock.service.AlphaVantageStockService;
 
 @Controller

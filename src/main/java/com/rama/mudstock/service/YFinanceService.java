@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
-import com.rama.mudstock.model.YFinanceTickerResponse;
+import com.rama.mudstock.model.yfinance.YFinanceTickerResponse;
 
 /**
  * Calls the local Python yfinance REST service to retrieve ticker data

@@ -13,8 +13,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import com.rama.mudstock.model.EarningsDate;
-import com.rama.mudstock.model.Stock;
+import com.rama.mudstock.model.earnings.EarningsDate;
+import com.rama.mudstock.model.earnings.EarningsDateView;
+import com.rama.mudstock.model.stockwatchlist.Stock;
 import com.rama.mudstock.service.EarningsDateService;
 
 @Controller
@@ -32,9 +33,9 @@ public class EarningsDateController {
         var stocks = service.allStocks();
         java.util.Map<Long,String> sym = new java.util.HashMap<>();
         for (Stock s : stocks) sym.put(s.getId(), s.getTicker());
-        java.util.List<com.rama.mudstock.model.EarningsDateView> view = new java.util.ArrayList<>();
+        java.util.List<EarningsDateView> view = new java.util.ArrayList<>();
         for (var ed : list) {
-            com.rama.mudstock.model.EarningsDateView v = new com.rama.mudstock.model.EarningsDateView();
+            EarningsDateView v = new EarningsDateView();
             v.setId(ed.getId());
             v.setStockId(ed.getStockId());
             v.setStockSymbol(sym.get(ed.getStockId()));
@@ -98,7 +99,7 @@ public class EarningsDateController {
                 // supports d/M/yyyy or d-M-yyyy — normalise slash to dash then use FMT_D_M_YYYY
                 java.time.LocalDate dt = java.time.LocalDate.parse(
                         dateRaw.replace('/', '-'), MudDateUtil.FMT_D_M_YYYY);
-                com.rama.mudstock.model.Stock stock = service.findOrCreateStockByTicker(ticker);
+                Stock stock = service.findOrCreateStockByTicker(ticker);
                 if (stock == null) continue;
                 EarningsDate ed = new EarningsDate();
                 ed.setStockId(stock.getId());

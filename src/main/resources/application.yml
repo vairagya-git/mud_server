@@ -27,11 +27,10 @@ massive:
   base-url: https://api.massive.com/
   open-close: v1/open-close/%s/%s/%s?adjusted=true&apiKey=%s
   ticker-aggregate: /v2/aggs/ticker/%s/range/1/day/%s/%s?adjusted=true&apiKey=%s
+  benzinga-firm: /benzinga/v1/firms?apiKey=%s
+  benzinga-analyst: /benzinga/v1/analysts?benzinga_id=%s&apiKey=%s
+  benzinga-firm-id: /benzinga/v1/firms?benzinga_id=%s&apiKey=%s
   apikey: ${MASSIVE_API_KEY:0jSwNlbvfYIgQ8OAVJsZ7T1sEmpWm7JV}
-
-# Watchlist (by watchlist.code) used by the every-day-event job and the manual date form.
-everyday-watchlist-code: "MOVING_STOCK"
-
 
 python:
 # Python Service Local Instance url

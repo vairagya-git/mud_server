@@ -12,8 +12,8 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rama.mudstock.model.EarningsDateEnum;
-import com.rama.mudstock.repository.EarningsDateEntryRepository;
+import com.rama.mudstock.model.earnings.EarningsDateEnum;
+import com.rama.mudstock.repository.earnings.EarningsDateEntryRepository;
 
 @Service
 public class DatePeriodFetcher {

@@ -16,6 +16,8 @@ import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rama.mudstock.repository.daystock.DayStockMovementEntryRepository;
+import com.rama.mudstock.repository.daystock.DayStockMovementMapRepository;
 import com.rama.mudstock.util.MudDateUtil;
 
 @Service
@@ -34,16 +36,16 @@ public class MassiveRestStockService {
     private String tickerAggregatePattern;
 
     private final MassiveRestApiCallLimiter apiCallLimiter;
-    private final com.rama.mudstock.repository.DayStockMovementMapRepository mappingRepository;
-    private final com.rama.mudstock.repository.DayStockMovementEntryRepository dayStockMovementEntryRepository;
+    private final DayStockMovementMapRepository mappingRepository;
+    private final DayStockMovementEntryRepository dayStockMovementEntryRepository;
     private final MarketCalendarService marketCalendarService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(MassiveRestStockService.class);
 
     @Autowired
     public MassiveRestStockService(MassiveRestApiCallLimiter apiCallLimiter,
-                                   com.rama.mudstock.repository.DayStockMovementMapRepository mappingRepository,
-                                   com.rama.mudstock.repository.DayStockMovementEntryRepository dayStockMovementEntryRepository,
+                                   DayStockMovementMapRepository mappingRepository,
+                                   DayStockMovementEntryRepository dayStockMovementEntryRepository,
                                    MarketCalendarService marketCalendarService) {
         this.apiCallLimiter = apiCallLimiter;
         this.mappingRepository = mappingRepository;

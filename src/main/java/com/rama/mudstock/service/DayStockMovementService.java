@@ -8,12 +8,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.rama.mudstock.model.DayStockMovementKey;
-import com.rama.mudstock.model.Stock;
-import com.rama.mudstock.model.Watchlist;
-import com.rama.mudstock.repository.DayStockMovementMapRepository;
-import com.rama.mudstock.repository.DayStockMovementKeyRepository;
-import com.rama.mudstock.repository.WatchlistRepository;
+import com.rama.mudstock.model.daystock.DayStockMovementKey;
+import com.rama.mudstock.model.stockwatchlist.Stock;
+import com.rama.mudstock.model.stockwatchlist.Watchlist;
+import com.rama.mudstock.repository.daystock.DayStockMovementMapRepository;
+import com.rama.mudstock.repository.daystock.DayStockMovementKeyRepository;
+import com.rama.mudstock.repository.stockwatchlist.WatchlistRepository;
 import com.rama.mudstock.util.MudDateUtil;
 
 /**

@@ -5,11 +5,11 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
-import com.rama.mudstock.model.EarningsDate;
-import com.rama.mudstock.model.Stock;
-import com.rama.mudstock.repository.EarningsDateEntryRepository;
-import com.rama.mudstock.repository.EarningsDateRepository;
-import com.rama.mudstock.repository.StockRepository;
+import com.rama.mudstock.model.earnings.EarningsDate;
+import com.rama.mudstock.model.stockwatchlist.Stock;
+import com.rama.mudstock.repository.earnings.EarningsDateEntryRepository;
+import com.rama.mudstock.repository.earnings.EarningsDateRepository;
+import com.rama.mudstock.repository.stockwatchlist.StockRepository;
 
 @Service
 public class EarningsDateService {

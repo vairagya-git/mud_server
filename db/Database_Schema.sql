@@ -74,12 +74,6 @@ CREATE TABLE `earnings_date_entry` (
 
 /*  Day Stock Movement */
 
-drop table day_stock_movement_map;
-
-drop table day_stock_movement_entry;
-
-select code from day_stock_movement_key;
-
 CREATE TABLE `day_stock_movement_key` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `code` varchar(64) NOT NULL,
@@ -127,6 +121,7 @@ CREATE TABLE `day_stock_movement_entry` (
 ) ENGINE=InnoDB;
 
 /****** MASTER TABLE ********/
+
 CREATE TABLE `master_market_holidays` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `year` varchar(64) NOT NULL,

@@ -14,14 +14,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import com.rama.mudstock.model.DayStockMovementKey;
-import com.rama.mudstock.model.Stock;
-import com.rama.mudstock.model.Watchlist;
-import com.rama.mudstock.repository.DayStockMovementEntryRepository;
-import com.rama.mudstock.repository.DayStockMovementMapRepository;
-import com.rama.mudstock.repository.DayStockMovementKeyRepository;
-import com.rama.mudstock.repository.StockRepository;
-import com.rama.mudstock.repository.WatchlistRepository;
+import com.rama.mudstock.model.daystock.DayStockMovementKey;
+import com.rama.mudstock.model.stockwatchlist.Stock;
+import com.rama.mudstock.model.stockwatchlist.Watchlist;
+import com.rama.mudstock.repository.daystock.DayStockMovementEntryRepository;
+import com.rama.mudstock.repository.daystock.DayStockMovementMapRepository;
+import com.rama.mudstock.repository.daystock.DayStockMovementKeyRepository;
+import com.rama.mudstock.repository.stockwatchlist.StockRepository;
+import com.rama.mudstock.repository.stockwatchlist.WatchlistRepository;
 import com.rama.mudstock.service.MarketCalendarService;
 import com.rama.mudstock.util.MudDateUtil;
 
