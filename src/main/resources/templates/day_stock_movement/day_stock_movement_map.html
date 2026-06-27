@@ -1,72 +1,48 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Day Stock Movement Mappings</title>
-    <style>
-        body { font-family: Arial, Helvetica, sans-serif; padding: 12px }
-        table { border-collapse: collapse; width: 100%; }
-        table, th, td { border: 1px solid #ddd; }
-        th, td { padding: 8px; text-align: left }
-        form { margin-top: 12px }
-    </style>
-    <script>
-        function filterOptions(inputId, listId) {
-            var input = document.getElementById(inputId);
-            var list = document.getElementById(listId);
-            var filter = input.value.toLowerCase();
-            for (var i=0;i<list.options.length;i++){
-                var opt = list.options[i];
-                opt.style.display = opt.value.toLowerCase().indexOf(filter) === -1 ? 'none' : '';
-            }
-        }
-    </script>
-</head>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>DSM Mapping — MudStock</title></head>
 <body>
-<h1>Day Stock Movement Mappings</h1>
-
-<div th:if="${marketClosedWarning}" style="color:orange;border:1px solid orange;padding:8px;margin-bottom:12px">
-    <strong>Market Closed:</strong> <span th:text="${marketClosedWarning}"></span>
+<div id="page-content" th:fragment="content">
+    <div class="page-header">
+        <h1>Day Stock Movement Mapping</h1>
+        <div class="subtitle">Assign stocks to a movement key.</div>
+    </div>
+    <div th:if="${marketClosedWarning}" class="alert alert-error" th:text="${marketClosedWarning}"></div>
+    <div class="card" style="max-width:540px">
+        <form th:action="@{/day-stock-movement/mapping}" method="post">
+            <div class="form-group">
+                <label>Key (Code)</label>
+                <select name="code" required>
+                    <option value="">-- select --</option>
+                    <option th:each="k : ${days}" th:value="${k.code}" th:text="${k.code} + ' (' + ${k.date != null ? k.date : 'no date'} + ')'"></option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Stock Ticker</label>
+                <input type="text" name="ticker" placeholder="AAPL" required />
+            </div>
+            <div class="actions-bar" style="margin-top:20px">
+                <button type="submit" class="btn btn-primary">Save Mapping</button>
+                <a href="/day-stock-movement" hx-get="/day-stock-movement" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+    <div class="card table-wrap" style="margin-top:24px">
+        <h3 style="margin-bottom:12px">Current Mappings</h3>
+        <div th:if="${mappings.isEmpty()}" class="table-empty">No mappings yet.</div>
+        <table th:unless="${mappings.isEmpty()}">
+            <thead><tr><th>Day Code</th><th>Date</th><th>Ticker</th><th>Status</th></tr></thead>
+            <tbody>
+                <tr th:each="m : ${mappings}">
+                    <td><code th:text="${m.code}"></code></td>
+                    <td th:text="${m.date != null ? m.date : '&#8212;'}"></td>
+                    <td><span class="badge badge-grey" th:text="${m.ticker}"></span></td>
+                    <td><span class="badge badge-blue" th:text="${m.status}"></span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </div>
-<div th:if="${bulkMessage}" style="color:green;border:1px solid green;padding:8px;margin-bottom:12px">
-    <span th:text="${bulkMessage}"></span>
-</div>
-
-<h2>Existing Mappings</h2>
-<table>
-    <thead>
-    <tr><th>Stock</th><th>Movement Key Code</th><th>Event Date</th><th>Status</th></tr>
-    </thead>
-    <tbody>
-    <tr th:each="m : ${mappings}">
-        <td th:text="${m.ticker}">TICKER</td>
-        <td th:text="${m.code}">CODE</td>
-        <td th:text="${m.date}">2026-06-08</td>
-        <td th:text="${m.status}">STATUS</td>
-    </tr>
-    <tr th:if="${mappings.size()} == 0"><td colspan="4">No mappings</td></tr>
-    </tbody>
-</table>
-
-<h2>Add Mapping</h2>
-<form th:action="@{/day-stock-movement/mapping}" method="post">
-    <div>
-        <label>Ticker: <input type="text" id="tickerInput" name="ticker" list="tickers" oninput="filterOptions('tickerInput','tickers')" required /></label>
-        <datalist id="tickers">
-            <option th:each="s : ${stocks}" th:value="${s.ticker}" th:text="${s.ticker}"></option>
-        </datalist>
-    </div>
-    <div>
-        <label>Movement Key Code: <input type="text" id="codeInput" name="code" list="daycodes" oninput="filterOptions('codeInput','daycodes')" required /></label>
-        <datalist id="daycodes">
-            <option th:each="d : ${days}" th:value="${d.code}" th:text="${d.code}"></option>
-        </datalist>
-    </div>
-    <div style="margin-top:8px">
-        <button type="submit">Add Mapping</button>
-        <a th:href="@{/day-stock-movement/mapping/bulk}">Bulk Upload</a>
-    </div>
-</form>
-
 </body>
 </html>

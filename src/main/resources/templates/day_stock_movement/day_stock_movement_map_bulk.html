@@ -1,25 +1,24 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Bulk Day Stock Movement Mappings</title>
-    <style>body{font-family:Arial,Helvetica,sans-serif;padding:12px} textarea{width:100%;height:200px}</style>
-</head>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>DSM Bulk Mapping — MudStock</title></head>
 <body>
-<h1>Bulk Day Stock Movement Mappings</h1>
-<div th:if="${marketClosedWarning}" style="color:orange;border:1px solid orange;padding:8px;margin-bottom:12px">
-    <strong>Market Closed:</strong> <span th:text="${marketClosedWarning}"></span>
-</div>
-<div th:if="${bulkMessage}" style="color:green;border:1px solid green;padding:8px;margin-bottom:12px">
-    <span th:text="${bulkMessage}"></span>
-</div>
-<p>Enter lines with <strong>ticker,code</strong> per line.</p>
-<form th:action="@{/day-stock-movement/mapping/bulk}" method="post">
-    <textarea name="bulkData" placeholder="PANW,PAYROLL_EVENT"></textarea>
-    <div style="margin-top:8px">
-        <button type="submit">Upload</button>
-        <a th:href="@{/day-stock-movement/mapping}">Back</a>
+<div id="page-content" th:fragment="content">
+    <div class="page-header">
+        <h1>Bulk DSM Mapping</h1>
+        <div class="subtitle">Format per line: <code>KeyDate (yyyy-MM-dd), Ticker</code></div>
     </div>
-</form>
+    <div class="card" style="max-width:640px">
+        <form th:action="@{/day-stock-movement/mapping/bulk}" method="post">
+            <div class="form-group">
+                <textarea name="bulkData" rows="12" style="max-width:100%;font-family:monospace" placeholder="2026-06-01, AAPL&#10;2026-06-01, MSFT"></textarea>
+            </div>
+            <div class="actions-bar">
+                <button type="submit" class="btn btn-primary">Upload</button>
+                <a href="/day-stock-movement" hx-get="/day-stock-movement" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
 </body>
 </html>

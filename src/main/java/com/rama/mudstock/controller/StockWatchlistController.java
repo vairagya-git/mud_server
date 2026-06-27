@@ -5,6 +5,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -37,14 +38,16 @@ public class StockWatchlistController {
     }
 
     @GetMapping("/stocks")
-    public String listStocks(Model model) {
+    public String listStocks(Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         model.addAttribute("stocks", stockRepo.findAll());
-        return "stock-watchlist/stock";
+        return hxRequest != null ? "stock-watchlist/stock :: content" : "stock-watchlist/stock";
     }
 
     @GetMapping("/stocks/new")
-    public String newStockForm(Model model) {
-        return "stock-watchlist/addstock";
+    public String newStockForm(Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
+        return hxRequest != null ? "stock-watchlist/addstock :: content" : "stock-watchlist/addstock";
     }
 
     @GetMapping("/stocks/{ticker}/timeseries")
@@ -55,14 +58,16 @@ public class StockWatchlistController {
     }
 
     @GetMapping("/watchlists/new")
-    public String newWatchlistForm(Model model) {
-        return "stock-watchlist/addwatchlist";
+    public String newWatchlistForm(Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
+        return hxRequest != null ? "stock-watchlist/addwatchlist :: content" : "stock-watchlist/addwatchlist";
     }
 
     @GetMapping("/watchlists")
-    public String listWatchlists(Model model) {
+    public String listWatchlists(Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         model.addAttribute("watchlists", watchlistRepo.findAll());
-        return "stock-watchlist/watchlist";
+        return hxRequest != null ? "stock-watchlist/watchlist :: content" : "stock-watchlist/watchlist";
     }
 
     @PostMapping("/stock")
@@ -239,15 +244,17 @@ public class StockWatchlistController {
     // ----- Watchlist <-> Stock mapping -----
 
     @GetMapping("/mapping")
-    public String mappingForm(Model model) {
+    public String mappingForm(Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         model.addAttribute("watchlists", watchlistRepo.findAll());
-        return "stock-watchlist/mapping";
+        return hxRequest != null ? "stock-watchlist/mapping :: content" : "stock-watchlist/mapping";
     }
 
     @GetMapping("/watchlist-stock-overview")
-    public String watchlistStockOverview(Model model) {
+    public String watchlistStockOverview(Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         model.addAttribute("watchlists", watchlistRepo.findAll());
-        return "stock-watchlist/watchlist_stock_overview";
+        return hxRequest != null ? "stock-watchlist/watchlist_stock_overview :: content" : "stock-watchlist/watchlist_stock_overview";
     }
 
     @PostMapping("/mapping")
@@ -338,12 +345,13 @@ public class StockWatchlistController {
     }
 
     @GetMapping("/watchlists/{id}")
-    public String viewWatchlist(@PathVariable Long id, Model model) {
+    public String viewWatchlist(@PathVariable Long id, Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         var maybeW = watchlistRepo.findById(id);
         if (maybeW.isPresent()) {
             model.addAttribute("watchlist", maybeW.get());
             model.addAttribute("allStocks", stockRepo.findAll());
-            return "stock-watchlist/watchlist_detail";
+            return hxRequest != null ? "stock-watchlist/watchlist_detail :: content" : "stock-watchlist/watchlist_detail";
         }
         return "redirect:/stock-watchlist";
     }

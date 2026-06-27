@@ -1,5 +1,7 @@
 package com.rama.mudstock.scheduler.analyst;
 
+import java.time.LocalDate;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -15,6 +17,8 @@ import com.rama.mudstock.facade.AnalystRatingFacade;
 import com.rama.mudstock.model.stockwatchlist.Stock;
 import com.rama.mudstock.model.stockwatchlist.Watchlist;
 import com.rama.mudstock.repository.stockwatchlist.WatchlistRepository;
+import com.rama.mudstock.service.SystemConfigService;
+import com.rama.mudstock.util.WatchlistUtil;
 
 @Component
 @Profile("cronjob")
@@ -23,50 +27,65 @@ public class DailyAnalystRatingUpdateCronjob {
 
     private static final Logger log = LoggerFactory.getLogger(DailyAnalystRatingUpdateCronjob.class);
 
+    /** Key used to look up and update the rating date in {@code system_config}. */
+    private static final String RATING_DATE_CODE = "benzinga-analyst-rating-date";
+
     private final AnalystRatingFacade analystRatingFacade;
     private final WatchlistRepository watchlistRepository;
+    private final SystemConfigService systemConfigService;
 
-    @Value("${dailyAnalystRatingUpdate.watchlist-code}")
-    private String watchlistCode;
+    @Value("${dailyAnalystRatingUpdate.watchlist-codes}")
+    private String watchlistCodes;
 
     public DailyAnalystRatingUpdateCronjob(AnalystRatingFacade analystRatingFacade,
-                                           WatchlistRepository watchlistRepository) {
+                                           WatchlistRepository watchlistRepository,
+                                           SystemConfigService systemConfigService) {
         this.analystRatingFacade = analystRatingFacade;
         this.watchlistRepository = watchlistRepository;
+        this.systemConfigService = systemConfigService;
     }
 
     @Scheduled(cron = "${dailyAnalystRatingUpdate.cron}")
     public void run() {
-        log.info("DailyAnalystRatingUpdateCronjob: starting for watchlist-code={}", watchlistCode);
+        log.info("DailyAnalystRatingUpdateCronjob: starting for watchlist-codes=[{}]", watchlistCodes);
 
-        Optional<Watchlist> watchlistOpt = watchlistRepository.findByCodeWithStocks(watchlistCode);
-        if (watchlistOpt.isEmpty()) {
-            log.warn("DailyAnalystRatingUpdateCronjob: watchlist not found for code={}", watchlistCode);
+        Optional<Object> ratingDateOpt = systemConfigService.findByCode(RATING_DATE_CODE);
+        if (ratingDateOpt.isEmpty()) {
+            log.warn("DailyAnalystRatingUpdateCronjob: system_config code='{}' not found, skipping", RATING_DATE_CODE);
+            return;
+        }
+        LocalDate ratingDate = (LocalDate) ratingDateOpt.get();
+        String ratingDateStr = ratingDate.toString();
+        log.info("DailyAnalystRatingUpdateCronjob: using rating date={}", ratingDateStr);
+
+        Map<String, Stock> uniqueStocks = WatchlistUtil.collectUniqueStocksByTicker(
+                watchlistCodes, watchlistRepository, log, "DailyAnalystRatingUpdateCronjob");
+
+        if (uniqueStocks.isEmpty()) {
+            log.warn("DailyAnalystRatingUpdateCronjob: no stocks found across watchlist-codes=[{}]", watchlistCodes);
             return;
         }
 
-        Set<Stock> stocks = watchlistOpt.get().getStocks();
-        if (stocks == null || stocks.isEmpty()) {
-            log.warn("DailyAnalystRatingUpdateCronjob: no stocks in watchlist code={}", watchlistCode);
-            return;
-        }
-
-        log.info("DailyAnalystRatingUpdateCronjob: processing {} stock(s)", stocks.size());
+        log.info("DailyAnalystRatingUpdateCronjob: processing {} unique stock(s)", uniqueStocks.size());
         int totalSaved = 0;
-        for (Stock stock : stocks) {
+        for (Stock stock : uniqueStocks.values()) {
             String ticker = stock.getTicker();
-            if (ticker == null || ticker.isBlank()) {
-                log.warn("DailyAnalystRatingUpdateCronjob: skipping stock id={} with blank ticker", stock.getId());
-                continue;
-            }
             try {
-                int saved = analystRatingFacade.fetchAndSaveForTicker(ticker);
+                int saved = analystRatingFacade.fetchAndSaveForTicker(ticker, ratingDateStr);
                 log.info("DailyAnalystRatingUpdateCronjob: ticker={} saved={} rating(s)", ticker, saved);
                 totalSaved += saved;
             } catch (Exception ex) {
                 log.error("DailyAnalystRatingUpdateCronjob: error processing ticker={}: {}", ticker, ex.getMessage());
             }
         }
+
         log.info("DailyAnalystRatingUpdateCronjob: done — total ratings saved={}", totalSaved);
+
+        String yesterday = LocalDate.now().minusDays(1).toString();
+        boolean updated = systemConfigService.updateValue(RATING_DATE_CODE, yesterday);
+        if (updated) {
+            log.info("DailyAnalystRatingUpdateCronjob: updated system_config '{}' to {}", RATING_DATE_CODE, yesterday);
+        }
     }
 }
+

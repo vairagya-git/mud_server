@@ -3,6 +3,7 @@ package com.rama.mudstock.controller;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 import com.rama.mudstock.service.EarningsDateService;
 
@@ -15,10 +16,10 @@ public class HomeController {
     }
 
     @GetMapping("/")
-    public String index(Model model) {
-        // provide counts or other small metadata if desired
+    public String index(Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         model.addAttribute("stockCount", earningsService.allStocks().size());
-        return "index";
+        return hxRequest != null ? "index :: content" : "index";
     }
 
      @GetMapping("/index2")

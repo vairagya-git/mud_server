@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Analyst Ratings — MudStock</title></head>
+<body>
+<div id="page-content" th:fragment="content">
+
+    <div class="page-header">
+        <h1>Analyst Ratings</h1>
+        <div class="subtitle">Stock ratings by analyst. Total: <strong th:text="${ratings.size()}">0</strong></div>
+    </div>
+
+    <form method="get" th:action="@{/analyst-rating/ratings}"
+          style="display:flex;gap:12px;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap">
+        <div class="form-group" style="margin:0">
+            <label>Ticker</label>
+            <select name="ticker">
+                <option value="">All Tickers</option>
+                <option th:each="t : ${tickers}"
+                        th:value="${t}"
+                        th:text="${t}"
+                        th:selected="${t == selectedTicker}"></option>
+            </select>
+        </div>
+        <div class="form-group" style="margin:0">
+            <label>Analyst</label>
+            <select name="analyst">
+                <option value="">All Analysts</option>
+                <option th:each="a : ${analysts}"
+                        th:value="${a}"
+                        th:text="${a}"
+                        th:selected="${a == selectedAnalyst}"></option>
+            </select>
+        </div>
+        <div class="form-group" style="margin:0">
+            <label>Firm</label>
+            <select name="firm">
+                <option value="">All Firms</option>
+                <option th:each="f : ${firms}"
+                        th:value="${f}"
+                        th:text="${f}"
+                        th:selected="${f == selectedFirm}"></option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-secondary">Filter</button>
+        <a th:if="${selectedTicker != null or selectedAnalyst != null or selectedFirm != null}"
+           href="/analyst-rating/ratings"
+           hx-get="/analyst-rating/ratings"
+           hx-target="#page-content"
+           hx-swap="outerHTML"
+           hx-push-url="true"
+           class="btn btn-secondary">Clear</a>
+    </form>
+
+    <div class="card table-wrap">
+        <div th:if="${ratings.isEmpty()}" class="table-empty">No ratings found.</div>
+        <table th:unless="${ratings.isEmpty()}">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Date</th>
+                    <th>Ticker</th>
+                    <th>Firm</th>
+                    <th>Analyst</th>
+                    <th>Action</th>
+                    <th>Rating</th>
+                    <th>Prev Rating</th>
+                    <th>PT Action</th>
+                    <th>Price Target</th>
+                    <th>Prev PT</th>
+                    <th>Change %</th>
+                    <th>Adj PT</th>
+                    <th>Importance</th>
+                    <th>Links</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="r, stat : ${ratings}">
+                    <td th:text="${stat.count}"></td>
+                    <td th:text="${r.date != null ? r.date : '&#8212;'}"></td>
+                    <td><span class="badge badge-grey" th:text="${r.ticker}"></span></td>
+                    <td th:text="${r.firm_name}"></td>
+                    <td th:text="${r.analyst_name}"></td>
+                    <td><span class="badge badge-blue" th:text="${r.rating_action}"></span></td>
+                    <td><span class="badge badge-green" th:text="${r.rating}"></span></td>
+                    <td><span th:if="${r.previous_rating != null}" class="badge badge-orange" th:text="${r.previous_rating}"></span>
+                        <span th:unless="${r.previous_rating != null}" style="color:#aaa">&#8212;</span></td>
+                    <td th:text="${r.price_target_action}"></td>
+                    <td th:text="${r.price_target}"></td>
+                    <td th:text="${r.previous_price_target}"></td>
+                    <td th:text="${r.price_percent_change}"></td>
+                    <td th:text="${r.adjusted_price_target}"></td>
+                    <td th:text="${r.importance}"></td>
+                    <td style="white-space:nowrap">
+                        <a th:if="${r.benzinga_calendar_url != null and !#strings.isEmpty(r.benzinga_calendar_url)}"
+                           th:href="${r.benzinga_calendar_url}"
+                           target="_blank" rel="noopener noreferrer"
+                           class="btn btn-sm btn-secondary">Cal</a>
+                        <a th:if="${r.benzinga_news_url != null and !#strings.isEmpty(r.benzinga_news_url)}"
+                           th:href="${r.benzinga_news_url}"
+                           target="_blank" rel="noopener noreferrer"
+                           class="btn btn-sm btn-secondary">News</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+</body>
+</html>

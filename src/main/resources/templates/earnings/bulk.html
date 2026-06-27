@@ -1,28 +1,24 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Bulk Upload Earnings</title>
-    <style>
-        label { display:block; margin-top:8px }
-        textarea { width:100%; }
-    </style>
-</head>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Bulk Earnings — MudStock</title></head>
 <body>
-<h1>Bulk Upload Earnings</h1>
-<p>Paste lines in the format: Stock, Quarter, ReleaseTime, Earning Date (dd-mm-yyyy or dd/mm/yyyy)</p>
-<form th:action="@{/earnings/bulk}" method="post">
-    <label>
-        <textarea name="bulkData" rows="12" placeholder="AAPL, Q2-2026, AFTER_MARKET, 01-06-2026"></textarea>
-    </label>
-    <div style="margin-top:10px">
-        <button type="submit">Upload</button>
-        <a th:href="@{/earnings}">Cancel</a>
+<div id="page-content" th:fragment="content">
+    <div class="page-header">
+        <h1>Bulk Upload Earnings</h1>
+        <div class="subtitle">Format per line: <code>Stock, Quarter, ReleaseTime, Earnings Date (dd-mm-yyyy)</code></div>
     </div>
-</form>
-
- <p>
-    <a th:href="@{/earnings/form}">Individual Stock Upload</a>
- </p>
+    <div class="card" style="max-width:640px">
+        <form th:action="@{/earnings/bulk}" method="post">
+            <div class="form-group">
+                <textarea name="bulkData" rows="12" style="max-width:100%;font-family:monospace" placeholder="AAPL, Q2-2026, AFTER_MARKET, 01-06-2026"></textarea>
+            </div>
+            <div class="actions-bar">
+                <button type="submit" class="btn btn-primary">Upload</button>
+                <a href="/earnings" hx-get="/earnings" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
 </body>
 </html>

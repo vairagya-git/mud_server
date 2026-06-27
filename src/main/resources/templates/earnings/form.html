@@ -1,71 +1,56 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title th:text="${ed.id} == null ? 'Create' : 'Edit'">Earnings Form</title>
-    <style>
-        label { display:block; margin-top:8px }
-    </style>
-</head>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Earnings Form — MudStock</title></head>
 <body>
-<h1 th:text="${ed.id} == null ? 'Create Earnings Entry' : 'Edit Earnings Entry'"></h1>
-
-<form th:action="@{/earnings}" method="post">
-    <input type="hidden" name="id" th:value="${ed.id}" />
-
-    <label>Stock (searchable):
-        <input type="text" id="stockSearch" placeholder="Search ticker..." />
-        <select id="stockSelect" name="stockId" size="6" required>
-                <option th:each="s : ${stocks}"
-                    th:value="${s.id}"
-                    th:text="${s.ticker}"
-                    th:selected="${ed.stockId} == s.id"></option>
-        </select>
-    </label>
-
-    <!-- Ticker is derived from selected Stock; no separate input -->
-
-    <label>Quarter:
-        <input type="text" name="quarter" th:value="${ed.quarter}" />
-    </label>
-
-    <label>Release Time:
-        <select name="releaseTime" required>
-                <option th:each="rt : ${releaseOptions}"
-                    th:value="${rt}"
-                    th:text="${rt}"
-                    th:selected="${ed.releaseTime} == rt"></option>
-        </select>
-    </label>
-
-    <label>Earnings Date:
-        <input type="date" name="earningsDate" th:value="${ed.earningsDate}" />
-    </label>
-
-
-    <p>
-        <a th:href="@{/earnings/bulk}">Bulk upload multiple earnings entries</a>
-    </p>
-
-    <div style="margin-top:10px">
-        <button type="submit">Save</button>
-        <a th:href="@{/earnings}">Cancel</a>
+<div id="page-content" th:fragment="content">
+    <div class="page-header">
+        <h1 th:text="${ed.id} == null ? 'Create Earnings Entry' : 'Edit Earnings Entry'"></h1>
     </div>
-</form>
-
+    <div class="card" style="max-width:540px">
+        <form th:action="@{/earnings}" method="post">
+            <input type="hidden" name="id" th:value="${ed.id}" />
+            <div class="form-group">
+                <label>Stock</label>
+                <input type="text" id="stockSearch" placeholder="Search ticker..." />
+                <select id="stockSelect" name="stockId" size="6" required>
+                    <option th:each="s : ${stocks}" th:value="${s.id}" th:text="${s.ticker} + ' - ' + ${s.name}" th:selected="${ed.stockId == s.id}"></option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Quarter</label>
+                <input type="text" name="quarter" th:value="${ed.quarter}" placeholder="e.g. Q2-2026" required />
+            </div>
+            <div class="form-group">
+                <label>Release Time</label>
+                <select name="releaseTime">
+                    <option th:each="r : ${releaseOptions}" th:value="${r}" th:text="${r}" th:selected="${ed.releaseTime == r}"></option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select name="status">
+                    <option th:each="s : ${stateOptions}" th:value="${s}" th:text="${s}" th:selected="${ed.status == s}"></option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Earnings Date</label>
+                <input type="text" name="earningsDate" th:value="${ed.earningsDate}" placeholder="dd/MM/yyyy or yyyy-MM-dd" required />
+            </div>
+            <div class="actions-bar" style="margin-top:20px">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <a href="/earnings" hx-get="/earnings" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
     <script>
-    // simple client-side filter for select options
-    const search = document.getElementById('stockSearch');
-    const select = document.getElementById('stockSelect');
-    search.addEventListener('input', function() {
-        const q = this.value.trim().toLowerCase();
-        for (let i=0;i<select.options.length;i++){
-            const opt = select.options[i];
-            const txt = opt.text.toLowerCase();
-            opt.hidden = q && txt.indexOf(q) === -1;
-        }
-    });
-</script>
-
+        document.getElementById('stockSearch').addEventListener('input', function() {
+            var q = this.value.toLowerCase();
+            Array.from(document.getElementById('stockSelect').options).forEach(function(o) {
+                o.style.display = o.text.toLowerCase().includes(q) ? '' : 'none';
+            });
+        });
+    </script>
+</div>
 </body>
 </html>

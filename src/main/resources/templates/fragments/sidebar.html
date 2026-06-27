@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<nav th:fragment="sidebar">
+
+    <div class="sidebar-brand">
+        <a href="/"
+           hx-get="/"
+           hx-target="#page-content"
+           hx-swap="outerHTML"
+           hx-push-url="true"
+           data-path="/">
+            <span class="brand-dot"></span> MudStock
+        </a>
+    </div>
+
+    <div class="sidebar-nav">
+
+        <div class="nav-group">
+            <div class="nav-group-label">Stocks &amp; Watchlists</div>
+            <div class="nav-group-items">
+                <a href="/stock-watchlist/stocks"
+                   hx-get="/stock-watchlist/stocks"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/stock-watchlist/stocks">
+                    <i class="nav-icon">📈</i> All Stocks
+                </a>
+                <a href="/stock-watchlist/watchlists"
+                   hx-get="/stock-watchlist/watchlists"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/stock-watchlist/watchlists">
+                    <i class="nav-icon">📋</i> Watchlists
+                </a>
+                <a href="/stock-watchlist/watchlist-stock-overview"
+                   hx-get="/stock-watchlist/watchlist-stock-overview"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/stock-watchlist/watchlist-stock-overview">
+                    <i class="nav-icon">🔍</i> Overview
+                </a>
+                <a href="/stock-watchlist/mapping"
+                   hx-get="/stock-watchlist/mapping"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/stock-watchlist/mapping">
+                    <i class="nav-icon">🔗</i> Mapping
+                </a>
+            </div>
+        </div>
+
+        <div class="nav-group">
+            <div class="nav-group-label">Earnings</div>
+            <div class="nav-group-items">
+                <a href="/earnings"
+                   hx-get="/earnings"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/earnings">
+                    <i class="nav-icon">📅</i> Earnings List
+                </a>
+                <a href="/earnings/new"
+                   hx-get="/earnings/new"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/earnings/new">
+                    <i class="nav-icon">➕</i> Add Entry
+                </a>
+                <a href="/earnings/bulk"
+                   hx-get="/earnings/bulk"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/earnings/bulk">
+                    <i class="nav-icon">⬆</i> Bulk Upload
+                </a>
+            </div>
+        </div>
+
+        <div class="nav-group">
+            <div class="nav-group-label">Day Stock Movement</div>
+            <div class="nav-group-items">
+                <a href="/day-stock-movement"
+                   hx-get="/day-stock-movement"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/day-stock-movement">
+                    <i class="nav-icon">📊</i> Keys
+                </a>
+                <a href="/day-stock-movement/mapping"
+                   hx-get="/day-stock-movement/mapping"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/day-stock-movement/mapping">
+                    <i class="nav-icon">🔗</i> Mappings
+                </a>
+                <a href="/day-stock-movement/mapping/bulk"
+                   hx-get="/day-stock-movement/mapping/bulk"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/day-stock-movement/mapping/bulk">
+                    <i class="nav-icon">⬆</i> Bulk Mappings
+                </a>
+                <a href="/day-stock-movement/populate-watchlist"
+                   hx-get="/day-stock-movement/populate-watchlist"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/day-stock-movement/populate-watchlist">
+                    <i class="nav-icon">⚡</i> From Watchlist
+                </a>
+                <a href="/day-stock-movement/entries"
+                   hx-get="/day-stock-movement/entries"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/day-stock-movement/entries">
+                    <i class="nav-icon">📄</i> Entries
+                </a>
+            </div>
+        </div>
+
+        <div class="nav-group">
+            <div class="nav-group-label">Analyst Rating</div>
+            <div class="nav-group-items">
+                <a href="/analyst-rating/firms"
+                   hx-get="/analyst-rating/firms"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/analyst-rating/firms">
+                    <i class="nav-icon">🏢</i> Firms
+                </a>
+                <a href="/analyst-rating/analysts"
+                   hx-get="/analyst-rating/analysts"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/analyst-rating/analysts">
+                    <i class="nav-icon">👤</i> Analysts
+                </a>
+                <a href="/analyst-rating/ratings"
+                   hx-get="/analyst-rating/ratings"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/analyst-rating/ratings">
+                    <i class="nav-icon">⭐</i> Ratings
+                </a>
+            </div>
+        </div>
+
+        <div class="nav-group">
+            <div class="nav-group-label">Administration</div>
+            <div class="nav-group-items">
+                <a href="/system-config"
+                   hx-get="/system-config"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/system-config">
+                    <i class="nav-icon">⚙️</i> System Config
+                </a>
+            </div>
+        </div>
+
+    </div>
+</nav>
+</body>
+</html>

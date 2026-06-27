@@ -1,97 +1,56 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Home</title>
-    <style>
-        body { font-family: Arial, Helvetica, sans-serif; padding: 20px }
-        h2 { margin-top: 20px }
-        .section { border: 1px solid #ddd; padding: 12px; margin-bottom: 12px; border-radius: 6px }
-        .links a { display:block; margin:6px 0 }
-        .content-container {
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        h1, h2, h3 {
-            color: #300303;
-        }
-        p.content-text {
-            color: #555;
-            margin-bottom: 20px;
-        }
-    </style>
-</head>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Dashboard — MudStock</title></head>
 <body>
-<h1>Dashboard</h1>
-
-<div class="content-container">
-     <h2>Stock & WatchList</h2>
-    <div class="section">
-         <a th:href="@{/stock-watchlist/stocks}"><h3>All Stocks</h3></a>
-         <p class="content-text">Displays all available stocks.</p>
-
-        <a th:href="@{/stock-watchlist/watchlists}"><h3>All Watchlists</h3></a>
-        <p class="content-text">Displays all available watchlists.</p>
-
-        <a th:href="@{/stock-watchlist/stocks/new}"><h3>Add Stock</h3></a>
-        <p class="content-text">Add a new stock Form.</p>
-
-        <a th:href="@{/stock-watchlist/watchlists/new}"><h3>Add Watchlist</h3></a>
-        <p class="content-text">Add a new watchlist Form.</p>
-
-         <a th:href="@{/stock-watchlist/mapping}"><h3>Watchlist &amp; Stock Mapping</h3></a>
-        <p class="content-text">Stock and Watchlist Mapping form and CSV bulk upload.</p>
-
-        <a th:href="@{/stock-watchlist/watchlist-stock-overview}"><h3>Watchlist &amp; Stock Overview</h3></a>
-        <p class="content-text">View all watchlists with their full list of mapped stocks.</p>
+<div id="page-content" th:fragment="content">
+    <div class="page-header">
+        <h1>Dashboard</h1>
+        <div class="subtitle">Welcome to MudStock</div>
+    </div>
+    <div class="dashboard-grid">
+        <div class="dash-card">
+            <h2>Stocks &amp; Watchlists</h2>
+            <div class="link-list">
+                <a href="/stock-watchlist/stocks" hx-get="/stock-watchlist/stocks" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true">All Stocks <span class="link-desc">View &amp; edit</span></a>
+                <a href="/stock-watchlist/watchlists" hx-get="/stock-watchlist/watchlists" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true">All Watchlists <span class="link-desc">View &amp; manage</span></a>
+                <a href="/stock-watchlist/stocks/new" hx-get="/stock-watchlist/stocks/new" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true">Add Stock <span class="link-desc">New entry form</span></a>
+                <a href="/stock-watchlist/watchlists/new" hx-get="/stock-watchlist/watchlists/new" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true">Add Watchlist <span class="link-desc">New entry form</span></a>
+                <a href="/stock-watchlist/mapping" hx-get="/stock-watchlist/mapping" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true">Mapping <span class="link-desc">CSV bulk upload</span></a>
+                <a href="/stock-watchlist/watchlist-stock-overview" hx-get="/stock-watchlist/watchlist-stock-overview" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true">Overview <span class="link-desc">All watchlists with stocks</span></a>
+            </div>
+        </div>
+        <div class="dash-card">
+            <h2>Earnings</h2>
+            <div class="link-list">
+                <a href="/earnings" hx-get="/earnings" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true">Earnings List <span class="link-desc">Dates &amp; status</span></a>
+                <a href="/earnings/new" hx-get="/earnings/new" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true">Add Entry <span class="link-desc">Date &amp; quarter form</span></a>
+                <a href="/earnings/bulk" hx-get="/earnings/bulk" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true">Bulk Upload <span class="link-desc">CSV format</span></a>
+            </div>
+        </div>
+        <div class="dash-card">
+            <h2>Day Stock Movement</h2>
+            <div class="link-list">
+                <a href="/day-stock-movement" hx-get="/day-stock-movement" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true">Keys <span class="link-desc">Day movement key list</span></a>
+                <a href="/day-stock-movement/mapping" hx-get="/day-stock-movement/mapping" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true">Mappings <span class="link-desc">Key &amp; stock mappings</span></a>
+                <a href="/day-stock-movement/mapping/bulk" hx-get="/day-stock-movement/mapping/bulk" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true">Bulk Mappings <span class="link-desc">CSV bulk upload</span></a>
+                <a href="/day-stock-movement/populate-watchlist" hx-get="/day-stock-movement/populate-watchlist" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true">From Watchlist <span class="link-desc">Populate mappings</span></a>
+                <a href="/day-stock-movement/entries" hx-get="/day-stock-movement/entries" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true">Entries <span class="link-desc">Populated entries</span></a>
+            </div>
+        </div>
+        <div class="dash-card">
+            <h2>Analyst Rating</h2>
+            <div class="link-list">
+                <a href="/analyst-rating/firms" hx-get="/analyst-rating/firms" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true">Firms <span class="link-desc">Benzinga firms</span></a>
+            </div>
+        </div>
+        <div class="dash-card">
+            <h2>Administration</h2>
+            <div class="link-list">
+                <a href="/system-config" hx-get="/system-config" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true">System Config <span class="link-desc">View &amp; edit config</span></a>
+            </div>
+        </div>
     </div>
 </div>
-
-<div class="content-container">
-    <h2>Earning Collection</h2>
-    <div class="section">
-        <a th:href="@{/earnings}"> <h3>Earnings List</h3></a>
-        <p class="content-text">Stock Earning Dates with processing status</p>
-
-        <a th:href="@{/earnings/new}"><h3>Add Earnings Entry</h3></a>
-        <p class="content-text">New Earning Entry for exsisting stock with earning date & quarter</p>
-
-        <a th:href="@{/earnings/bulk}"><h3>CSV Bulk Upload Earnings Entry</h3></a>
-        <p class="content-text">Upload earnings entries in bulkin CSV format</p>
-    </div>
-</div>
-
-<div class="content-container">
-    <h2>Single Day Events</h2>
-    <div class="section">
-        <a th:href="@{/day-stock-movement}"><h3>Add Day Stock Movement Key</h3></a>
-        <p class="content-text">Single Day Stock Movement Key Entry. Displays List and New Entry Form</p>
-
-        <a th:href="@{/day-stock-movement/mapping}"><h3>Day Stock Movement Key and Stock Mappings</h3></a>
-        <p class="content-text">Day Stock Movement Key and Stock Mappings list. Form to map movement keys to stocks.</p>
-
-        <a th:href="@{/day-stock-movement/mapping/bulk}"><h3>Bulk Upload Mappings</h3></a>
-        <p class="content-text">Upload day stock movement mappings in bulk using CSV format.</p>
-    
-        <a th:href="@{/day-stock-movement/populate-watchlist}"><h3>Populate Day Stock Movement Mappings From Watchlist</h3></a>
-        <p class="content-text">Select Day Stock Movement Key and Watchlist, this will create entry for all stocks in the watchlist for the movement key</p>
-
-        <a th:href="@{/day-stock-movement/entries}"><h3>Day Stock Movement Entries</h3></a>
-        <p class="content-text">Populated Day stock movement entries from massive.com</p>
-    </div>
-</div>
-
-<div class="content-container">
-    <h2>Analyst Rating</h2>
-    <div class="section">
-        <a th:href="@{/analyst-rating/firms}"><h3>Analyst Rating Firms</h3></a>
-        <p class="content-text">View all analyst rating firms sourced from Benzinga. Sync the latest firm data on demand or via weekly scheduled job.</p>
-    </div>
-</div>
-
 </body>
 </html>

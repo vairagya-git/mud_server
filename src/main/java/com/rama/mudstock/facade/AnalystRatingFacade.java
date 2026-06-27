@@ -65,8 +65,8 @@ public class AnalystRatingFacade {
      * @param ticker the stock ticker to fetch ratings for
      * @return number of ratings successfully upserted
      */
-    public int fetchAndSaveForTicker(String ticker) {
-        List<BenzingaAnalystRatingResponse> ratings = benzingaFirmService.fetchAnalystRatings(ticker);
+    public int fetchAndSaveForTicker(String ticker, String ratingDate) {
+        List<BenzingaAnalystRatingResponse> ratings = benzingaFirmService.fetchAnalystRatings(ticker, ratingDate);
         int saved = 0;
         for (BenzingaAnalystRatingResponse rating : ratings) {
             try {

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:fragment="layout(title, content)">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title th:replace="${title}">MudStock</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}" />
+    <!-- htmx: handles server-driven partial swaps -->
+    <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+    <!-- Alpine.js: handles client-side reactivity (filters, JSON display) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body class="app-layout">
+
+<!-- ── Sidebar ────────────────────────────────────────────── -->
+<nav class="sidebar" th:insert="~{fragments/sidebar :: sidebar}"></nav>
+
+<!-- ── Main content area ─────────────────────────────────── -->
+<main class="main-content">
+    <!--
+      #page-content is the htmx swap target.
+      Sidebar links use:
+        hx-get="/path"  hx-target="#page-content"  hx-swap="outerHTML"  hx-push-url="true"
+      Controllers return "template :: content" for HX-Request,
+      or the full template for direct access.
+    -->
+    <div id="page-content" th:replace="${content}"></div>
+</main>
+
+<script>
+    // Mark the active sidebar link based on current URL
+    document.addEventListener('DOMContentLoaded', setActiveNav);
+    document.addEventListener('htmx:afterSettle', setActiveNav);
+    function setActiveNav() {
+        const path = window.location.pathname.replace(/\/$/, '') || '/';
+        document.querySelectorAll('.nav-group-items a').forEach(a => {
+            const href = (a.getAttribute('data-path') || a.getAttribute('href') || '').replace(/\/$/, '') || '/';
+            a.classList.toggle('active', path === href);
+        });
+    }
+</script>
+</body>
+</html>

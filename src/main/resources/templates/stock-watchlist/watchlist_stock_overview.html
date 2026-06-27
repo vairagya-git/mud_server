@@ -1,86 +1,28 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Watchlist &amp; Stock Overview</title>
-    <style>
-        body { font-family: Arial, Helvetica, sans-serif; padding: 20px }
-        h1, h2 { color: #300303 }
-        .watchlist-block {
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            padding: 16px;
-        }
-        .watchlist-header {
-            display: flex;
-            align-items: baseline;
-            gap: 12px;
-            margin-bottom: 10px;
-        }
-        .watchlist-header h2 { margin: 0 }
-        .badge {
-            background: #e8f0fe;
-            color: #1a56db;
-            border-radius: 12px;
-            padding: 2px 10px;
-            font-size: 0.85em;
-        }
-        .meta { color: #666; font-size: 0.9em; margin-bottom: 10px }
-        table { border-collapse: collapse; width: 100% }
-        th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left }
-        th { background: #f4f4f4; font-weight: bold }
-        tr:nth-child(even) { background: #fafafa }
-        .empty { color: #999; font-style: italic }
-        .nav { margin-top: 24px }
-        .nav a { margin-right: 16px }
-    </style>
-</head>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Watchlist Overview — MudStock</title></head>
 <body>
-<h1>Watchlist &amp; Stock Overview</h1>
-<p style="color:#555">All watchlists with their mapped stocks.</p>
-
-<div th:if="${#lists.isEmpty(watchlists)}" class="empty">No watchlists found.</div>
-
-<div th:each="wl : ${watchlists}" class="watchlist-block">
-    <div class="watchlist-header">
-        <h2 th:text="${wl.code}">CODE</h2>
-        <span class="badge" th:text="${wl.name}">Name</span>
-        <span class="meta" th:text="'Country: ' + ${wl.country}"></span>
+<div id="page-content" th:fragment="content">
+    <div class="page-header">
+        <h1>Watchlist Stock Overview</h1>
+        <div class="subtitle">All watchlists with their associated stocks.</div>
     </div>
-
-    <div th:if="${#sets.isEmpty(wl.stocks)}" class="empty">No stocks mapped to this watchlist.</div>
-
-    <table th:if="${not #sets.isEmpty(wl.stocks)}">
-        <thead>
-        <tr>
-            <th>#</th>
-            <th>Ticker</th>
-            <th>Name</th>
-            <th>CUSIP</th>
-            <th>CIK</th>
-            <th>CL</th>
-            <th>Country</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="s,iter : ${wl.stocks}">
-            <td th:text="${iter.count}"></td>
-            <td th:text="${s.ticker}"></td>
-            <td th:text="${s.name}"></td>
-            <td th:text="${s.cusip}"></td>
-            <td th:text="${s.cik}"></td>
-            <td th:text="${s.cl}"></td>
-            <td th:text="${s.country}"></td>
-        </tr>
-        </tbody>
-    </table>
-</div>
-
-<div class="nav">
-    <a th:href="@{/stock-watchlist/mapping}">Manage Mappings</a>
-    <a th:href="@{/stock-watchlist/watchlists}">All Watchlists</a>
-    <a th:href="@{/}">Home</a>
+    <div th:each="w : ${watchlists}">
+        <div class="card" style="margin-bottom:20px">
+            <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:12px">
+                <h2 style="margin:0" th:text="${w.name}">Watchlist</h2>
+                <span class="badge badge-grey" th:text="${w.code}"></span>
+            </div>
+            <div th:if="${w.stocks.isEmpty()}" class="table-empty">No stocks mapped.</div>
+            <div th:unless="${w.stocks.isEmpty()}" class="tag-cloud">
+                <span th:each="s : ${w.stocks}" class="badge badge-blue" th:text="${s.ticker}"></span>
+            </div>
+        </div>
+    </div>
+    <div th:if="${watchlists.isEmpty()}" class="card">
+        <p class="table-empty">No watchlists found.</p>
+    </div>
 </div>
 </body>
 </html>

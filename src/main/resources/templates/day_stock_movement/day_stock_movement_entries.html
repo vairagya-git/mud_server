@@ -1,51 +1,76 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Day Stock Movement Entries</title>
-    <style>
-        body { font-family: Arial, Helvetica, sans-serif; padding: 12px }
-        table { border-collapse: collapse; width: 100%; }
-        table, th, td { border: 1px solid #ddd; }
-        th, td { padding: 8px; text-align: left }
-    </style>
-</head>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>DSM Entries — MudStock</title></head>
 <body>
-<h1>Day Stock Movement Entries</h1>
+<div id="page-content" th:fragment="content">
+    <div class="page-header">
+        <h1>Day Stock Movement Entries</h1>
+        <div class="subtitle">Total: <strong th:text="${entries.size()}">0</strong></div>
+    </div>
 
-<table>
-    <thead>
-    <tr>
-        <th>Stock</th>
-        <th>Movement Key Code</th>
-        <th>Event Date</th>
-        <th>Pre Day Close</th>
-        <th>Cur Day Open</th>
-        <th>Cur Day Close</th>
-        <th>Cur Day High</th>
-        <th>Cur Day Low</th>
-        <th>Cur Day VW</th>
-        <th>Cur Day Volume</th>
-        <th>Change %</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr th:each="e : ${entries}">
-        <td th:text="${e.ticker}">TICKER</td>
-        <td th:text="${e.day_code}">CODE</td>
-        <td th:text="${e.master_event_date}">${e.master_event_date}</td>
-        <td th:text="${e.pre_day_close}">0.00</td>
-        <td th:text="${e.cur_day_open}">0.00</td>
-        <td th:text="${e.cur_day_close}">0.00</td>
-        <td th:text="${e.cur_day_high}">0.00</td>
-        <td th:text="${e.cur_day_low}">0.00</td>
-        <td th:text="${e.cur_day_vol_weight}">0.00</td>
-        <td th:text="${e.cur_day_volume}">0</td>
-        <td th:text="${e.change_percent}">0.00</td>
-    </tr>
-    <tr th:if="${entries.size()} == 0"><td colspan="11">No entries</td></tr>
-    </tbody>
-</table>
-
+    <form method="get" th:action="@{/day-stock-movement/entries}"
+          style="display:flex;gap:12px;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap">
+        <div class="form-group" style="margin:0">
+            <label>Ticker</label>
+            <select name="ticker">
+                <option value="">All Tickers</option>
+                <option th:each="t : ${tickers}"
+                        th:value="${t}"
+                        th:text="${t}"
+                        th:selected="${t == selectedTicker}"></option>
+            </select>
+        </div>
+        <div class="form-group" style="margin:0">
+            <label>Day Code</label>
+            <select name="dayCode">
+                <option value="">All Codes</option>
+                <option th:each="c : ${dayCodes}"
+                        th:value="${c}"
+                        th:text="${c}"
+                        th:selected="${c == selectedDayCode}"></option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-secondary">Filter</button>
+        <a th:if="${selectedTicker != null or selectedDayCode != null}"
+           href="/day-stock-movement/entries"
+           hx-get="/day-stock-movement/entries"
+           hx-target="#page-content"
+           hx-swap="outerHTML"
+           hx-push-url="true"
+           class="btn btn-secondary">Clear</a>
+    </form>
+    <div class="card table-wrap">
+        <div th:if="${entries.isEmpty()}" class="table-empty">No entries found. Run the scheduler to populate.</div>
+        <table th:unless="${entries.isEmpty()}">
+            <thead>
+                <tr>
+                    <th>Ticker</th>
+                    <th>Day Code</th>
+                    <th>Date</th>
+                    <th>Open</th>
+                    <th>Close</th>
+                    <th>High</th>
+                    <th>Low</th>
+                    <th>Volume</th>
+                    <th>Change %</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="e : ${entries}">
+                    <td><span class="badge badge-grey" th:text="${e.ticker}"></span></td>
+                    <td><code th:text="${e.day_code}"></code></td>
+                    <td th:text="${e.master_event_date}"></td>
+                    <td th:text="${e.cur_day_open}"></td>
+                    <td th:text="${e.cur_day_close}"></td>
+                    <td th:text="${e.cur_day_high}"></td>
+                    <td th:text="${e.cur_day_low}"></td>
+                    <td th:text="${e.cur_day_volume}"></td>
+                    <td th:text="${e.change_percent}"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 </body>
 </html>

@@ -1,167 +1,72 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>All Stocks</title>
-    <style>
-        body { font-family: Arial, Helvetica, sans-serif; padding: 20px }
-        table { border-collapse: collapse; width: 100% }
-        th, td { border: 1px solid #ddd; padding: 8px; vertical-align: top }
-        th { background:#f4f4f4 }
-        .field-view { display: inline }
-        .field-edit { display: none; width: 100%; box-sizing: border-box; padding: 6px }
-        tr.editing .field-view { display: none }
-        tr.editing .field-edit { display: inline-block }
-        .actions { white-space: nowrap }
-        .actions button { margin-right: 6px }
-        .status { min-height: 24px; margin: 10px 0; color: #0b5 }
-        .status.error { color: #b00 }
-    </style>
-</head>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>All Stocks — MudStock</title></head>
 <body>
-<h1>All Stocks</h1>
-<div id="status" class="status"></div>
-<table>
-    <thead>
-    <tr><th>ID</th><th>Ticker</th><th>Name</th><th>CUSIP</th><th>CIK</th><th>CL</th><th>Country</th><th>Investor Page</th><th>Sector</th><th>Actions</th></tr>
-    </thead>
-    <tbody>
-    <tr th:each="s : ${stocks}" th:attr="data-stock-id=${s.id}">
-        <td th:text="${s.id}"></td>
-        <td th:text="${s.ticker}"></td>
-        <td th:text="${s.name}"></td>
-        <td>
-            <span class="field-view" data-field="cusip" th:text="${s.cusip}"></span>
-            <input class="field-edit" data-field="cusip" type="text" th:value="${s.cusip}" />
-        </td>
-        <td>
-            <span class="field-view" data-field="cik" th:text="${s.cik}"></span>
-            <input class="field-edit" data-field="cik" type="text" th:value="${s.cik}" />
-        </td>
-        <td>
-            <span class="field-view" data-field="cl" th:text="${s.cl}"></span>
-            <input class="field-edit" data-field="cl" type="text" th:value="${s.cl}" />
-        </td>
-        <td>
-            <span class="field-view" data-field="country" th:text="${s.country}"></span>
-            <input class="field-edit" data-field="country" type="text" th:value="${s.country}" />
-        </td>
-        <td>
-            <span class="field-view" data-field="investor_page">
-                <a th:if="${s.investorPage != null and !#strings.isEmpty(s.investorPage)}" th:href="${s.investorPage}" th:text="${s.investorPage}" target="_blank" rel="noopener noreferrer"></a>
-                <span th:if="${s.investorPage == null or #strings.isEmpty(s.investorPage)}">-</span>
-            </span>
-            <input class="field-edit" data-field="investor_page" type="text" th:value="${s.investorPage}" />
-        </td>
-        <td>
-            <span class="field-view" data-field="sector" th:text="${s.sector != null and !#strings.isEmpty(s.sector) ? s.sector : '-'}"></span>
-            <input class="field-edit" data-field="sector" type="text" th:value="${s.sector}" />
-        </td>
-        <td class="actions">
-            <button type="button" class="edit-btn">Edit</button>
-            <button type="button" class="save-btn" style="display:none;">Save</button>
-            <button type="button" class="cancel-btn" style="display:none;">Cancel</button>
-        </td>
-    </tr>
-    </tbody>
-</table>
-<p><a th:href="@{/}">Back to Home</a></p>
-<p><a th:href="@{/stock-watchlist/stocks/new}">Add New Stock</a> • <a th:href="@{/stock-watchlist/watchlists/new}">Add Watchlist</a></p>
-<script>
-    const statusEl = document.getElementById('status');
-
-    function setStatus(message, isError) {
-        statusEl.textContent = message || '';
-        statusEl.className = isError ? 'status error' : 'status';
-    }
-
-    function setEditing(row, editing) {
-        row.classList.toggle('editing', editing);
-        row.querySelector('.edit-btn').style.display = editing ? 'none' : 'inline-block';
-        row.querySelector('.save-btn').style.display = editing ? 'inline-block' : 'none';
-        row.querySelector('.cancel-btn').style.display = editing ? 'inline-block' : 'none';
-    }
-
-    function resetInputs(row) {
-        row.querySelectorAll('.field-edit').forEach((input) => {
-            const view = row.querySelector(`.field-view[data-field="${input.dataset.field}"]`);
-            if (!view) {
-                return;
-            }
-
-            if (input.dataset.field === 'investor_page') {
-                const link = view.querySelector('a');
-                input.value = link ? (link.getAttribute('href') || '') : '';
-                return;
-            }
-
-            const viewText = view.textContent === '-' ? '' : view.textContent;
-            input.value = viewText;
-        });
-    }
-
-    document.querySelectorAll('tbody tr').forEach((row) => {
-        row.querySelector('.edit-btn').addEventListener('click', () => {
-            resetInputs(row);
-            setStatus('');
-            setEditing(row, true);
-        });
-
-        row.querySelector('.cancel-btn').addEventListener('click', () => {
-            resetInputs(row);
-            setStatus('');
-            setEditing(row, false);
-        });
-
-        row.querySelector('.save-btn').addEventListener('click', async () => {
-            const stockId = row.dataset.stockId;
-            const form = new URLSearchParams();
-            row.querySelectorAll('.field-edit').forEach((input) => {
-                let value = input.value;
-                if (input.dataset.field === 'investor_page') {
-                    value = (value || '').trim();
-                    if (value === '-') {
-                        value = '';
-                    }
-                }
-                form.append(input.dataset.field, value);
-            });
-
+<div id="page-content" th:fragment="content">
+    <div class="page-header"><h1>All Stocks</h1></div>
+    <div id="status" style="min-height:20px;margin-bottom:8px;font-size:.88rem;color:#1a7f37"></div>
+    <div class="actions-bar">
+        <a href="/stock-watchlist/stocks/new" hx-get="/stock-watchlist/stocks/new" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true" class="btn btn-primary">+ Add Stock</a>
+        <a href="/stock-watchlist/watchlists/new" hx-get="/stock-watchlist/watchlists/new" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true" class="btn btn-secondary">+ Add Watchlist</a>
+    </div>
+    <div class="card table-wrap">
+        <style>
+            .field-view { display: inline }
+            .field-edit { display: none; width: 100%; box-sizing: border-box; padding: 5px; border: 1px solid #d0d7de; border-radius: 4px; }
+            tr.editing .field-view { display: none }
+            tr.editing .field-edit { display: inline-block }
+        </style>
+        <table>
+            <thead><tr><th>ID</th><th>Ticker</th><th>Name</th><th>CUSIP</th><th>CIK</th><th>CL</th><th>Country</th><th>Investor Page</th><th>Sector</th><th></th></tr></thead>
+            <tbody>
+                <tr th:each="s : ${stocks}" th:attr="data-stock-id=${s.id}">
+                    <td th:text="${s.id}"></td>
+                    <td th:text="${s.ticker}"></td>
+                    <td th:text="${s.name}"></td>
+                    <td><span class="field-view" data-field="cusip" th:text="${s.cusip}"></span><input class="field-edit" data-field="cusip" type="text" th:value="${s.cusip}" /></td>
+                    <td><span class="field-view" data-field="cik" th:text="${s.cik}"></span><input class="field-edit" data-field="cik" type="text" th:value="${s.cik}" /></td>
+                    <td><span class="field-view" data-field="cl" th:text="${s.cl}"></span><input class="field-edit" data-field="cl" type="text" th:value="${s.cl}" /></td>
+                    <td><span class="field-view" data-field="country" th:text="${s.country}"></span><input class="field-edit" data-field="country" type="text" th:value="${s.country}" /></td>
+                    <td>
+                        <span class="field-view" data-field="investor_page"><a th:if="${s.investorPage != null and !#strings.isEmpty(s.investorPage)}" th:href="${s.investorPage}" th:text="${s.investorPage}" target="_blank" rel="noopener noreferrer"></a><span th:if="${s.investorPage == null or #strings.isEmpty(s.investorPage)}">-</span></span>
+                        <input class="field-edit" data-field="investor_page" type="text" th:value="${s.investorPage}" />
+                    </td>
+                    <td><span class="field-view" data-field="sector" th:text="${s.sector != null and !#strings.isEmpty(s.sector) ? s.sector : '-'}"></span><input class="field-edit" data-field="sector" type="text" th:value="${s.sector}" /></td>
+                    <td style="white-space:nowrap">
+                        <button type="button" class="btn btn-sm btn-secondary edit-btn">Edit</button>
+                        <button type="button" class="btn btn-sm btn-primary save-btn" style="display:none">Save</button>
+                        <button type="button" class="btn btn-sm btn-secondary cancel-btn" style="display:none">Cancel</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <script>
+        const statusEl = document.getElementById('status');
+        function setStatus(msg, isErr) { statusEl.textContent = msg||''; statusEl.style.color = isErr ? '#cf222e' : '#1a7f37'; }
+        function setEditing(row, editing) {
+            row.classList.toggle('editing', editing);
+            row.querySelector('.edit-btn').style.display = editing ? 'none' : '';
+            row.querySelector('.save-btn').style.display = editing ? '' : 'none';
+            row.querySelector('.cancel-btn').style.display = editing ? '' : 'none';
+        }
+        document.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', () => setEditing(btn.closest('tr'), true)));
+        document.querySelectorAll('.cancel-btn').forEach(btn => btn.addEventListener('click', () => setEditing(btn.closest('tr'), false)));
+        document.querySelectorAll('.save-btn').forEach(btn => btn.addEventListener('click', async () => {
+            const row = btn.closest('tr');
+            const id = row.dataset.stockId;
+            const body = {};
+            row.querySelectorAll('.field-edit').forEach(i => body[i.dataset.field] = i.value);
             try {
-                const response = await fetch(`/stock-watchlist/stocks/${stockId}/inline-update`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-                    },
-                    body: form.toString()
-                });
-
-                const data = await response.json();
-                if (!response.ok) {
-                    setStatus(data.message || 'Update failed.', true);
-                    return;
-                }
-
-                ['cusip', 'cik', 'cl', 'country', 'sector'].forEach((field) => {
-                    const view = row.querySelector(`.field-view[data-field="${field}"]`);
-                    const value = data[field] || '';
-                    view.textContent = value || (field === 'sector' ? '-' : '');
-                });
-
-                const investorCell = row.children[7];
-                const investorView = investorCell.querySelector('.field-view');
-                const investorPage = data.investor_page || '';
-                investorView.innerHTML = investorPage
-                    ? `<a href="${investorPage}" target="_blank" rel="noopener noreferrer">${investorPage}</a>`
-                    : '-';
-
+                const r = await fetch('/stock-watchlist/stock/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                if (!r.ok) throw new Error(await r.text());
+                row.querySelectorAll('.field-edit').forEach(i => { const v = row.querySelector('.field-view[data-field="'+i.dataset.field+'"]'); if(v) v.textContent = i.value; });
                 setEditing(row, false);
-                setStatus(data.message || 'Saved.', false);
-            } catch (error) {
-                setStatus('Unexpected error while updating stock.', true);
-            }
-        });
-    });
-</script>
+                setStatus('Saved stock ' + id);
+            } catch(e) { setStatus(e.message, true); }
+        }));
+    </script>
+</div>
 </body>
 </html>

@@ -31,4 +31,44 @@ public class DayStockMovementEntryRepository {
             + "ORDER BY s.ticker, d.date DESC";
         return jdbc.queryForList(sql);
     }
+
+    public java.util.List<java.util.Map<String,Object>> listEntriesWithMeta(String ticker, String dayCode) {
+        StringBuilder sql = new StringBuilder(
+            "SELECT e.*, s.ticker as ticker, d.code as day_code, d.date as master_event_date "
+            + "FROM day_stock_movement_entry e "
+            + "JOIN day_stock_movement_map m ON e.day_stock_movement_map_id = m.id "
+            + "JOIN stock s ON m.stock_id = s.id "
+            + "JOIN day_stock_movement_key d ON m.day_stock_movement_key_id = d.id ");
+
+        java.util.List<Object> params = new java.util.ArrayList<>();
+        java.util.List<String> conditions = new java.util.ArrayList<>();
+
+        if (ticker != null && !ticker.isBlank()) {
+            conditions.add("UPPER(s.ticker) = UPPER(?)");
+            params.add(ticker.trim());
+        }
+        if (dayCode != null && !dayCode.isBlank()) {
+            conditions.add("d.code = ?");
+            params.add(dayCode.trim());
+        }
+        if (!conditions.isEmpty()) {
+            sql.append("WHERE ").append(String.join(" AND ", conditions)).append(" ");
+        }
+        sql.append("ORDER BY s.ticker, d.date DESC");
+        return jdbc.queryForList(sql.toString(), params.toArray());
+    }
+
+    public java.util.List<String> listDistinctEntryTickers() {
+        String sql = "SELECT DISTINCT s.ticker FROM day_stock_movement_entry e "
+            + "JOIN day_stock_movement_map m ON e.day_stock_movement_map_id = m.id "
+            + "JOIN stock s ON m.stock_id = s.id ORDER BY s.ticker";
+        return jdbc.queryForList(sql, String.class);
+    }
+
+    public java.util.List<String> listDistinctEntryCodes() {
+        String sql = "SELECT DISTINCT d.code FROM day_stock_movement_entry e "
+            + "JOIN day_stock_movement_map m ON e.day_stock_movement_map_id = m.id "
+            + "JOIN day_stock_movement_key d ON m.day_stock_movement_key_id = d.id ORDER BY d.code";
+        return jdbc.queryForList(sql, String.class);
+    }
 }

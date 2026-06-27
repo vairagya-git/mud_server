@@ -1,45 +1,26 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Add New Stock</title>
-    <style>
-        body { font-family: Arial, Helvetica, sans-serif; padding: 20px }
-        label { display:block; margin:8px 0 }
-        input[type=text] { padding:8px; width:300px }
-        button { margin-top:12px }
-    </style>
-</head>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Add Stock — MudStock</title></head>
 <body>
-<h1>Add New Stock</h1>
-<form th:action="@{/stock-watchlist/stock}" method="post">
-    <label>Ticker:
-        <input type="text" name="ticker" />
-    </label>
-    <label>Name:
-        <input type="text" name="name" />
-    </label>
-    <label>CUSIP: <small style="color:#666">required</small>
-        <input type="text" name="cusip" required />
-    </label>
-    <label>CIK: <small style="color:#666">required</small>
-        <input type="text" name="cik" required />
-    </label>
-    <label>CL: <small style="color:#666">required</small>
-        <input type="text" name="cl" required />
-    </label>
-    <label>Country: <small style="color:#666">required</small>
-        <input type="text" name="country" required />
-    </label>
-    <label>Investor Page:
-        <input type="text" name="investor_page" />
-    </label>
-    <label>Sector:
-        <input type="text" name="sector" />
-    </label>
-    <button type="submit">Create Stock</button>
-</form>
-
-<p><a th:href="@{/stock-watchlist/stocks}">Back to Stocks</a></p>
+<div id="page-content" th:fragment="content">
+    <div class="page-header"><h1>Add New Stock</h1></div>
+    <div class="card" style="max-width:480px">
+        <form th:action="@{/stock-watchlist/stock}" method="post">
+            <div class="form-group"><label>Ticker</label><input type="text" name="ticker" /></div>
+            <div class="form-group"><label>Name</label><input type="text" name="name" /></div>
+            <div class="form-group"><label>CUSIP *</label><input type="text" name="cusip" required /></div>
+            <div class="form-group"><label>CIK *</label><input type="text" name="cik" required /></div>
+            <div class="form-group"><label>CL *</label><input type="text" name="cl" required /></div>
+            <div class="form-group"><label>Country *</label><input type="text" name="country" required /></div>
+            <div class="form-group"><label>Investor Page</label><input type="text" name="investor_page" /></div>
+            <div class="form-group"><label>Sector</label><input type="text" name="sector" /></div>
+            <div class="actions-bar" style="margin-top:20px">
+                <button type="submit" class="btn btn-primary">Create Stock</button>
+                <a href="/stock-watchlist/stocks" hx-get="/stock-watchlist/stocks" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
 </body>
 </html>

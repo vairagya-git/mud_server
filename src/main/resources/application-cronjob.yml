@@ -1,8 +1,3 @@
-spring:
-  config:
-    activate:
-      on-profile: cronjob
-
 server:
   port: 8099
 
@@ -32,15 +27,20 @@ dayStockMovementKeyMapEntry:
   enabled: false
   # default: every night at 21:00 after market close, Portugal time (Europe/Lisbon). Override via env as needed.
   cron: "0 0 21 * * MON-FRI" # after market close, 22:00 Portugal time (Europe/Lisbon)
-  everyday-watchlist-code: "MOVING_STOCK"
+  everyday-watchlist-codes: "MOVING_STOCK"
 
 weeklyAnalystFirmUpdate:
-  enabled: true
+  enabled: false
   cron: "0 0 21 * * SUN" # every Sunday at 21:00 Portugal time
+
+dailyAnalystRatingUpdate:
+  enabled: true
+  cron: "0 0/1 * * * *" # every Sunday at 21:00 Portugal time
+  watchlist-codes: "MOVING_STOCK"
 
 #Populate the weekly upcoming earnings for the next week, after market close, Portugal time (Europe/Lisbon)
 weeklyUpcomingEarning:
-  enabled: true 
+  enabled: false 
   cron: "0 0 21 * * FRI" # every Monday at 08:00 Portugal time
   # Comma-separated watchlist codes whose stocks are queried against the yfinance service
   watchlists: "MOVING_STOCK"
@@ -55,7 +55,3 @@ logging:
       weeklyUpcomingEarning: logs/weekly-upcoming-earnings.log
 
 
-dailyAnalystRatingUpdate:
-  enabled: true
-  cron: "0 0/60 * * * MON-SUN"
-  watchlist-code: "MOVING_STOCK"

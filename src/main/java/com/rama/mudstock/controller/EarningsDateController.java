@@ -10,6 +10,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -28,7 +29,8 @@ public class EarningsDateController {
     }
 
     @GetMapping
-    public String list(Model model) {
+    public String list(Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         var list = service.listAll();
         var stocks = service.allStocks();
         java.util.Map<Long,String> sym = new java.util.HashMap<>();
@@ -46,17 +48,18 @@ public class EarningsDateController {
             view.add(v);
         }
         model.addAttribute("list", view);
-        return "earnings/list";
+        return hxRequest != null ? "earnings/list :: content" : "earnings/list";
     }
 
     @GetMapping("/new")
-    public String createForm(Model model) {
+    public String createForm(Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         EarningsDate ed = new EarningsDate();
         model.addAttribute("ed", ed);
         model.addAttribute("stocks", service.allStocks());
         model.addAttribute("releaseOptions", EarningsDate.ReleaseTime.values());
         model.addAttribute("stateOptions", EarningsDate.Status.values());
-        return "earnings/form";
+        return hxRequest != null ? "earnings/form :: content" : "earnings/form";
     }
     @PostMapping
     public String save(@RequestParam(required = false) Long id,
@@ -78,8 +81,9 @@ public class EarningsDateController {
     }
 
     @GetMapping("/bulk")
-    public String bulkForm() {
-        return "earnings/bulk";
+    public String bulkForm(
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
+        return hxRequest != null ? "earnings/bulk :: content" : "earnings/bulk";
     }
 
     @PostMapping("/bulk")
@@ -116,13 +120,14 @@ public class EarningsDateController {
     }
 
     @GetMapping("/{id}/edit")
-    public String editForm(@PathVariable Long id, Model model) {
+    public String editForm(@PathVariable Long id, Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         EarningsDate ed = service.get(id).orElse(new EarningsDate());
         model.addAttribute("ed", ed);
         model.addAttribute("stocks", service.allStocks());
         model.addAttribute("releaseOptions", EarningsDate.ReleaseTime.values());
         model.addAttribute("stateOptions", EarningsDate.Status.values());
-        return "earnings/form";
+        return hxRequest != null ? "earnings/form :: content" : "earnings/form";
     }
 
     @PostMapping("/{id}/delete")

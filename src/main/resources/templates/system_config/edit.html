@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Edit Config — MudStock</title></head>
+<body>
+<div id="page-content" th:fragment="content">
+    <div class="page-header">
+        <h1>Edit System Config</h1>
+        <div class="subtitle">Code: <code th:text="${config.code}"></code></div>
+    </div>
+    <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+    <div class="card" style="max-width:540px">
+        <form th:action="@{/system-config/{c}/edit(c=${config.code})}" method="post">
+            <div class="form-group">
+                <label for="value">Value</label>
+                <input type="text" id="value" name="value" th:value="${config.value}" required />
+            </div>
+            <div class="form-group">
+                <label for="type">Type</label>
+                <input type="text" id="type" name="type" th:value="${config.type}" required placeholder="e.g. String, Date" />
+            </div>
+            <div class="form-group">
+                <label for="description">Description</label>
+                <input type="text" id="description" name="description" th:value="${config.description}" required />
+            </div>
+            <div class="actions-bar" style="margin-top:20px">
+                <button type="submit" class="btn btn-primary">&#10003; Save</button>
+                <a href="/system-config" hx-get="/system-config" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+        <div th:if="${config.updatedAt != null}" style="margin-top:16px;font-size:.8rem;color:#57606a">
+            Last updated: <span th:text="${#temporals.format(config.updatedAt, 'yyyy-MM-dd HH:mm:ss')}"></span>
+        </div>
+    </div>
+</div>
+</body>
+</html>

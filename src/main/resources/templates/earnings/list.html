@@ -1,40 +1,35 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Earnings Dates</title>
-</head>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Earnings — MudStock</title></head>
 <body>
-<h1>Earnings Dates</h1>
-<p><a th:href="@{/earnings/new}">Create new earnings entry</a></p>
-<table border="1">
-    <thead>
-    <tr>
-        <th>ID</th>
-        <th>Stock (Ticker)</th>
-        <th>Quarter</th>
-        <th>Release Time</th>
-        <th>State</th>
-        <th>Earnings Date</th>
-        <th>Actions</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr th:each="ed : ${list}">
-        <td th:text="${ed.id}"></td>
-        <td th:text="${ed.stockSymbol}"></td>
-        <td th:text="${ed.quarter}"></td>
-        <td th:text="${ed.releaseTime}"></td>
-        <td th:text="${ed.state}"></td>
-        <td th:text="${ed.earningsDate}"></td>
-        <td>
-            <a th:href="@{/earnings/{id}/edit(id=${ed.id})}">Edit</a>
-            <form th:action="@{/earnings/{id}/delete(id=${ed.id})}" method="post" style="display:inline">
-                <button type="submit">Delete</button>
-            </form>
-        </td>
-    </tr>
-    </tbody>
-</table>
+<div id="page-content" th:fragment="content">
+    <div class="page-header"><h1>Earnings Dates</h1></div>
+    <div class="actions-bar">
+        <a href="/earnings/new" hx-get="/earnings/new" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true" class="btn btn-primary">+ Add Entry</a>
+        <a href="/earnings/bulk" hx-get="/earnings/bulk" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true" class="btn btn-secondary">&#8679; Bulk Upload</a>
+    </div>
+    <div class="card table-wrap">
+        <table>
+            <thead><tr><th>ID</th><th>Ticker</th><th>Quarter</th><th>Release</th><th>State</th><th>Earnings Date</th><th></th></tr></thead>
+            <tbody>
+                <tr th:each="ed : ${list}">
+                    <td th:text="${ed.id}"></td>
+                    <td><span class="badge badge-grey" th:text="${ed.stockSymbol}"></span></td>
+                    <td th:text="${ed.quarter}"></td>
+                    <td th:text="${ed.releaseTime}"></td>
+                    <td><span class="badge badge-blue" th:text="${ed.state}"></span></td>
+                    <td th:text="${ed.earningsDate}"></td>
+                    <td>
+                        <a th:href="@{/earnings/{id}/edit(id=${ed.id})}" class="btn btn-sm btn-secondary">Edit</a>
+                        <form th:action="@{/earnings/{id}/delete(id=${ed.id})}" method="post" style="display:inline">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 </body>
 </html>

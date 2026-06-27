@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>System Config — MudStock</title></head>
+<body>
+<div id="page-content" th:fragment="content">
+    <div class="page-header">
+        <h1>System Config</h1>
+        <div class="subtitle">All configuration entries. Total: <strong th:text="${configs.size()}">0</strong>.</div>
+    </div>
+    <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
+    <div th:if="${error}"   class="alert alert-error"   th:text="${error}"></div>
+    <div class="card table-wrap">
+        <div th:if="${configs.isEmpty()}" class="table-empty">No config entries found.</div>
+        <table th:unless="${configs.isEmpty()}">
+            <thead><tr><th>#</th><th>Code</th><th>Value</th><th>Type</th><th>Description</th><th>Updated At</th><th></th></tr></thead>
+            <tbody>
+                <tr th:each="cfg, stat : ${configs}">
+                    <td th:text="${stat.count}"></td>
+                    <td><code th:text="${cfg.code}"></code></td>
+                    <td th:text="${cfg.value}"></td>
+                    <td><span class="badge badge-blue" th:text="${cfg.type}"></span></td>
+                    <td th:text="${cfg.description}"></td>
+                    <td th:text="${cfg.updatedAt != null ? #temporals.format(cfg.updatedAt, 'yyyy-MM-dd HH:mm') : '&#8212;'}"></td>
+                    <td><a th:href="@{/system-config/{c}/edit(c=${cfg.code})}" class="btn btn-sm btn-primary">Edit</a></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

@@ -38,7 +38,7 @@ CREATE TABLE `firm_analyst` (
   CONSTRAINT unique_earnings_upcoming UNIQUE (`benzinga_analyst_id`, `benzinga_firm_id`)
 ) ENGINE=InnoDB;
 
-select * from stock;
+select * from firm_analyst_stock_rating;
 
 CREATE TABLE `firm_analyst_stock_rating` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -109,6 +109,8 @@ CREATE TABLE `earnings_date_entry` (
 ) ENGINE=InnoDB;
 
 /*  Day Stock Movement */
+
+select * from day_stock_movement_key;
 
 CREATE TABLE `day_stock_movement_key` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -194,6 +196,24 @@ INSERT INTO master_market_holidays (`year`, `country`, `holiday_date`) VALUES
 ('2027', 'USA', '2027-11-25'),
 ('2027', 'USA', '2027-12-24');
 
+CREATE TABLE `system_config` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `code` varchar(64) NOT NULL,
+  `value` varchar(64) NOT NULL,
+  `type` varchar(64) NOT NULL,
+  `description` varchar(128) NOT NULL,
+  `purpose` varchar(64) NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  CONSTRAINT unique_day_event_master UNIQUE (`code`)
+) ENGINE=InnoDB;
+
+
+INSERT INTO system_config (`code`, `value`, `type`, `description`, `purpose`) VALUES
+('benzinga-analyst-rating-date', '2026-01-01', 'date', 'Benzinga Analyst Rating Date', 'Cronjob');
+
+select * from system_config;
 
 /******************/
 

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -54,10 +55,11 @@ public class DayStockMovementController {
 
     // Day stock movement key list and create
     @GetMapping
-    public String list(Model model) {
+    public String list(Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         model.addAttribute("events", repo.findAll());
         model.addAttribute("newEvent", new DayStockMovementKey());
-        return "day_stock_movement/day_stock_movement_key";
+        return hxRequest != null ? "day_stock_movement/day_stock_movement_key :: content" : "day_stock_movement/day_stock_movement_key";
     }
 
     @PostMapping("/bulk")
@@ -105,14 +107,15 @@ public class DayStockMovementController {
 
     // Day stock movement mappings (list, add, bulk)
     @GetMapping("/mapping")
-    public String listMappings(Model model) {
+    public String listMappings(Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         List<Map<String,Object>> mappings = mappingRepo.listAllMappings();
         model.addAttribute("mappings", mappings);
         List<Stock> stocks = stockRepo.findAll();
         List<DayStockMovementKey> days = repo.findAll();
         model.addAttribute("stocks", stocks);
         model.addAttribute("days", days);
-        return "day_stock_movement/day_stock_movement_map";
+        return hxRequest != null ? "day_stock_movement/day_stock_movement_map :: content" : "day_stock_movement/day_stock_movement_map";
     }
 
     @PostMapping("/mapping")
@@ -140,7 +143,10 @@ public class DayStockMovementController {
     }
 
     @GetMapping("/mapping/bulk")
-    public String bulkForm() { return "day_stock_movement/day_stock_movement_map_bulk"; }
+    public String bulkForm(
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
+        return hxRequest != null ? "day_stock_movement/day_stock_movement_map_bulk :: content" : "day_stock_movement/day_stock_movement_map_bulk";
+    }
 
     @PostMapping("/mapping/bulk")
     public String bulkUpload(@RequestParam String bulkData, RedirectAttributes ra) {
@@ -182,13 +188,21 @@ public class DayStockMovementController {
 
     // Day stock movement entries listing
     @GetMapping("/entries")
-    public String listEntries(Model model) {
-        model.addAttribute("entries", entryRepo.listAllEntriesWithMeta());
-        return "day_stock_movement/day_stock_movement_entries";
+    public String listEntries(Model model,
+            @RequestParam(required = false) String ticker,
+            @RequestParam(required = false) String dayCode,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
+        model.addAttribute("entries", entryRepo.listEntriesWithMeta(ticker, dayCode));
+        model.addAttribute("tickers", entryRepo.listDistinctEntryTickers());
+        model.addAttribute("dayCodes", entryRepo.listDistinctEntryCodes());
+        model.addAttribute("selectedTicker", ticker);
+        model.addAttribute("selectedDayCode", dayCode);
+        return hxRequest != null ? "day_stock_movement/day_stock_movement_entries :: content" : "day_stock_movement/day_stock_movement_entries";
     }
 
     @GetMapping("/populate-watchlist")
-    public String populateWatchlistForm(Model model) {
+    public String populateWatchlistForm(Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         List<Watchlist> watchlists = watchlistRepo.findAll();
         List<DayStockMovementKey> allDays = repo.findAll();
 
@@ -211,7 +225,7 @@ public class DayStockMovementController {
             model.addAttribute("marketClosedRemovedCount", removedEntries.size());
             model.addAttribute("marketClosedRemovedEntries", removedEntries);
         }
-        return "day_stock_movement/day_stock_movement_watchlist";
+        return hxRequest != null ? "day_stock_movement/day_stock_movement_watchlist :: content" : "day_stock_movement/day_stock_movement_watchlist";
     }
 
     @PostMapping("/populate-watchlist/by-date")

@@ -62,9 +62,6 @@ public class BenzingaFirmService {
     @Value("${massive.benzinga-analyst-rating:}")
     private String analystRatingPath;
 
-    @Value("${massive.benzinga-analyst-rating-date:}")
-    private String analystRatingDate;
-
     @Value("${massive.base-url}")
     private String massiveBaseUrl;
 
@@ -204,13 +201,17 @@ public class BenzingaFirmService {
      * @param ticker the stock ticker to query ratings for
      * @return list of rating results, or empty list on error
      */
-    public java.util.List<BenzingaAnalystRatingResponse> fetchAnalystRatings(String ticker) {
+    public java.util.List<BenzingaAnalystRatingResponse> fetchAnalystRatings(String ticker, String ratingDate) {
         if (ticker == null || ticker.isBlank()) {
             log.warn("BenzingaFirmService.fetchAnalystRatings: ticker is blank, skipping");
             return java.util.Collections.emptyList();
         }
+        if (ratingDate == null || ratingDate.isBlank()) {
+            log.warn("BenzingaFirmService.fetchAnalystRatings: ratingDate is blank, skipping");
+            return java.util.Collections.emptyList();
+        }
         String base = massiveBaseUrl.endsWith("/") ? massiveBaseUrl : massiveBaseUrl + "/";
-        String path = String.format(analystRatingPath, ticker.trim(), analystRatingDate, massiveApiKey);
+        String path = String.format(analystRatingPath, ticker.trim(), ratingDate.trim(), massiveApiKey);
         if (path.startsWith("/")) path = path.substring(1);
         String url = base + path;
         log.info("BenzingaFirmService.fetchAnalystRatings: fetching ratings for ticker={} from {}", ticker, url);

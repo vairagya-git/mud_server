@@ -1,69 +1,42 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Day Stock Movement Keys</title>
-    <style>
-        body { font-family: Arial, Helvetica, sans-serif; padding: 12px }
-        table { border-collapse: collapse; width: 100%; }
-        table, th, td { border: 1px solid #ddd; }
-        th, td { padding: 8px; text-align: left }
-        form { margin-top: 12px }
-        .btn { padding:6px 10px; border-radius:4px; background:#0b79d0; color:white; text-decoration:none }
-    </style>
-</head>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Day Stock Movement Keys — MudStock</title></head>
 <body>
-<h1>Day Stock Movement Keys</h1>
-
-<h2>Existing Keys</h2>
-<table>
-    <thead>
-    <tr><th>ID</th><th>Code</th><th>Description</th><th>Event Date</th></tr>
-    </thead>
-    <tbody>
-    <tr th:each="e : ${events}">
-        <td th:text="${e.id}">1</td>
-        <td th:text="${e.code}">CODE</td>
-        <td th:text="${e.description}">Description</td>
-        <td th:text="${e.date}">2026-06-08</td>
-    </tr>
-    <tr th:if="${events.size()} == 0"><td colspan="4">No keys found</td></tr>
-    </tbody>
-</table>
-
-<h2>Create New Key</h2>
-<form th:action="@{/day-stock-movement}" method="post">
-    <div>
-        <label>Code: <input type="text" name="code" required /></label>
+<div id="page-content" th:fragment="content">
+    <div class="page-header"><h1>Day Stock Movement Keys</h1></div>
+    <div th:if="${csvMessage}" class="alert alert-success" th:text="${csvMessage}"></div>
+    <div class="actions-bar" style="display:flex;gap:16px;flex-wrap:wrap">
+        <form th:action="@{/day-stock-movement}" method="post" style="display:flex;gap:8px;align-items:flex-end">
+            <div class="form-group" style="margin:0">
+                <label>Code</label>
+                <input type="text" name="code" placeholder="e.g. 2026-06-01" required />
+            </div>
+            <div class="form-group" style="margin:0">
+                <label>Description</label>
+                <input type="text" name="description" placeholder="optional" />
+            </div>
+            <div class="form-group" style="margin:0">
+                <label>Date</label>
+                <input type="date" name="event_date" />
+            </div>
+            <button type="submit" class="btn btn-primary">+ Add Key</button>
+        </form>
     </div>
-    <div>
-        <label>Description: <input type="text" name="description" /></label>
+    <div class="card table-wrap" style="margin-top:20px">
+        <div th:if="${events.isEmpty()}" class="table-empty">No keys yet.</div>
+        <table th:unless="${events.isEmpty()}">
+            <thead><tr><th>ID</th><th>Code</th><th>Description</th><th>Date</th></tr></thead>
+            <tbody>
+                <tr th:each="k : ${events}">
+                    <td th:text="${k.id}"></td>
+                    <td><code th:text="${k.code}"></code></td>
+                    <td th:text="${k.description != null ? k.description : '&#8212;'}"></td>
+                    <td th:text="${k.date != null ? k.date : '&#8212;'}"></td>
+                </tr>
+            </tbody>
+        </table>
     </div>
-    <div>
-        <label>Event Date: <input type="date" name="event_date" /></label>
-    </div>
-    <div style="margin-top:8px">
-        <button type="submit" class="btn">Create</button>
-        <a th:href="@{/}" class="btn" style="background:#666; margin-left:8px">Back</a>
-    </div>
-</form>
-
-<h2>Bulk CSV Upload</h2>
-<p style="color:#555; font-size:0.9em">
-    One entry per line: <code>Code, Description, Date</code> — date as <code>yyyy-MM-dd</code> or <code>dd/MM/yyyy</code><br/>
-    Example: <code>10_MAY_26_MOVING_STOCK,"Everyday Event for 10 May",2026-05-10</code>
-</p>
-<div th:if="${csvError}" style="color:red; margin-bottom:8px" th:text="${csvError}"></div>
-<div th:if="${csvMessage}" style="color:green; margin-bottom:8px" th:text="${csvMessage}"></div>
-<form th:action="@{/day-stock-movement/bulk}" method="post">
-    <div>
-        <textarea name="csvData" rows="8" style="width:100%; font-family:monospace; font-size:0.9em"
-                  placeholder="10_MAY_26_MOVING_STOCK,Everyday Event for 10 May,10/05/2026"></textarea>
-    </div>
-    <div style="margin-top:8px">
-        <button type="submit" class="btn">Upload CSV</button>
-    </div>
-</form>
-
+</div>
 </body>
 </html>

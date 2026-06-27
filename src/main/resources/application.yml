@@ -26,14 +26,12 @@ alphavantage:
 massive:
   base-url: https://api.massive.com/
   open-close: v1/open-close/%s/%s/%s?adjusted=true&apiKey=%s
-  ticker-aggregate: /v2/aggs/ticker/%s/range/1/day/%s/%s?adjusted=true&apiKey=%s
-  benzinga-firm: /benzinga/v1/firms?limit=1000&sort=name.asc&apiKey=%s
-  benzinga-firm-id: /benzinga/v1/firms?benzinga_id=%s&limit=1000&sort=name.asc&apiKey=%s
-  benzinga-analyst: /benzinga/v1/analysts?benzinga_id=%s&apiKey=%s
-  benzinga-analyst-rating: /benzinga/v1/analyst-ratings?ticker=%s&last_updated.gte=%s&apiKey=%s
-  benzinga-analyst-rating-date: 2025-01-01
-  benzinga-analyst-rating: /benzinga/v1/analyst-ratings?ticker=%s&last_updated.gte=%s&apiKey=%s
-  benzinga-analyst-rating-date: 2025-01-01
+  ticker-aggregate: v2/aggs/ticker/%s/range/1/day/%s/%s?adjusted=true&apiKey=%s
+  benzinga-firm: benzinga/v1/firms?limit=1000&sort=name.asc&apiKey=%s
+  benzinga-firm-id: benzinga/v1/firms?benzinga_id=%s&limit=1000&sort=name.asc&apiKey=%s
+  benzinga-analyst: benzinga/v1/analysts?benzinga_id=%s&apiKey=%s
+  benzinga-analyst-rating: benzinga/v1/ratings?ticker=%s&last_updated.gte=%s&apiKey=%s
+  benzinga-analyst-rating-date: 2026-01-01
   apikey: ${MASSIVE_API_KEY:0jSwNlbvfYIgQ8OAVJsZ7T1sEmpWm7JV}
 
 python:
