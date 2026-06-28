@@ -10,47 +10,50 @@
         <div class="subtitle">Stock ratings by analyst. Total: <strong th:text="${ratings.size()}">0</strong></div>
     </div>
 
-    <form method="get" th:action="@{/analyst-rating/ratings}"
-          style="display:flex;gap:12px;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap">
-        <div class="form-group" style="margin:0">
-            <label>Ticker</label>
-            <select name="ticker">
-                <option value="">All Tickers</option>
-                <option th:each="t : ${tickers}"
-                        th:value="${t}"
-                        th:text="${t}"
-                        th:selected="${t == selectedTicker}"></option>
-            </select>
-        </div>
-        <div class="form-group" style="margin:0">
-            <label>Analyst</label>
-            <select name="analyst">
-                <option value="">All Analysts</option>
-                <option th:each="a : ${analysts}"
-                        th:value="${a}"
-                        th:text="${a}"
-                        th:selected="${a == selectedAnalyst}"></option>
-            </select>
-        </div>
-        <div class="form-group" style="margin:0">
-            <label>Firm</label>
-            <select name="firm">
-                <option value="">All Firms</option>
-                <option th:each="f : ${firms}"
-                        th:value="${f}"
-                        th:text="${f}"
-                        th:selected="${f == selectedFirm}"></option>
-            </select>
-        </div>
-        <button type="submit" class="btn btn-secondary">Filter</button>
-        <a th:if="${selectedTicker != null or selectedAnalyst != null or selectedFirm != null}"
-           href="/analyst-rating/ratings"
-           hx-get="/analyst-rating/ratings"
-           hx-target="#page-content"
-           hx-swap="outerHTML"
-           hx-push-url="true"
-           class="btn btn-secondary">Clear</a>
+    <!-- Hidden form: active filters pre-seeded; JS appends pending inputs before submit -->
+    <form id="ratingFilterForm" method="get" th:action="@{/analyst-rating/ratings}">
+        <input th:each="t : ${selectedTickers}" type="hidden" name="ticker" th:value="${t}">
+        <input th:each="a : ${selectedAnalysts}" type="hidden" name="analyst" th:value="${a}">
+        <input th:each="f : ${selectedFirms}" type="hidden" name="firm" th:value="${f}">
     </form>
+
+    <div class="filter-bar">
+        <span class="filter-bar-label">Filters</span>
+
+        <th:block th:each="t : ${selectedTickers}">
+            <span class="chip">
+                <span class="chip-type">ticker</span>
+                <strong th:text="${t}"></strong>
+                <button type="button" class="chip-remove" data-active="1" data-field="ticker" th:data-value="${t}" title="Remove">&#x2715;</button>
+            </span>
+        </th:block>
+        <th:block th:each="a : ${selectedAnalysts}">
+            <span class="chip">
+                <span class="chip-type">analyst</span>
+                <strong th:text="${a}"></strong>
+                <button type="button" class="chip-remove" data-active="1" data-field="analyst" th:data-value="${a}" title="Remove">&#x2715;</button>
+            </span>
+        </th:block>
+        <th:block th:each="f : ${selectedFirms}">
+            <span class="chip">
+                <span class="chip-type">firm</span>
+                <strong th:text="${f}"></strong>
+                <button type="button" class="chip-remove" data-active="1" data-field="firm" th:data-value="${f}" title="Remove">&#x2715;</button>
+            </span>
+        </th:block>
+
+        <span id="pendingChips"></span>
+
+        <span id="filterHint"
+              th:if="${selectedTickers.isEmpty() and selectedAnalysts.isEmpty() and selectedFirms.isEmpty()}"
+              class="filter-bar-empty">Click &#x2295; next to a ticker, firm or analyst to stage filters, then click Apply</span>
+
+        <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+            <button id="applyFilterBtn" type="button" class="btn btn-sm btn-secondary">Apply</button>
+            <a th:if="${!selectedTickers.isEmpty() or !selectedAnalysts.isEmpty() or !selectedFirms.isEmpty()}"
+               href="/analyst-rating/ratings" class="btn btn-sm btn-secondary">Clear all</a>
+        </div>
+    </div>
 
     <div class="card table-wrap">
         <div th:if="${ratings.isEmpty()}" class="table-empty">No ratings found.</div>
@@ -78,9 +81,34 @@
                 <tr th:each="r, stat : ${ratings}">
                     <td th:text="${stat.count}"></td>
                     <td th:text="${r.date != null ? r.date : '&#8212;'}"></td>
-                    <td><span class="badge badge-grey" th:text="${r.ticker}"></span></td>
-                    <td th:text="${r.firm_name}"></td>
-                    <td th:text="${r.analyst_name}"></td>
+                    <td>
+                        <span class="badge badge-grey" th:text="${r.ticker}"></span>
+                        <button type="button" class="filter-btn" data-field="ticker" th:data-value="${r.ticker}" title="Filter by ticker">&#x2295;</button>
+                    </td>
+                    <td>
+                        <span th:text="${r.firm_name}"></span>
+                        <button type="button" class="filter-btn" data-field="firm" th:data-value="${r.firm_name}" title="Filter by firm">&#x2295;</button>
+                    </td>
+                    <td>
+                        <button type="button" class="filter-btn" data-field="analyst" th:data-value="${r.analyst_name}" title="Filter by analyst">&#x2295;</button>
+                        <span x-data="{ open: false }" class="info-popup-wrap">
+                            <span th:text="${r.analyst_name}"></span>
+                            <button type="button" class="info-btn"
+                                    @click.stop="open = !open"
+                                    title="Analyst info">i</button>
+                            <div class="info-popup" x-show="open" x-cloak @click.outside="open = false">
+                                <div class="info-popup-name" th:text="${r.analyst_name}"></div>
+                                <table>
+                                    <tr><td>Smart Score</td><td th:text="${r.analyst_smart_score != null ? r.analyst_smart_score : '—'}"></td></tr>
+                                    <tr><td>Avg Return</td><td th:text="${r.analyst_avg_return != null ? r.analyst_avg_return : '—'}"></td></tr>
+                                    <tr><td>Avg Return %ile</td><td th:text="${r.analyst_avg_return_pct != null ? r.analyst_avg_return_pct : '—'}"></td></tr>
+                                    <tr><td>Success Rate</td><td th:text="${r.analyst_success_rate != null ? r.analyst_success_rate : '—'}"></td></tr>
+                                    <tr><td>Total Ratings</td><td th:text="${r.analyst_total_ratings != null ? r.analyst_total_ratings : '—'}"></td></tr>
+                                    <tr><td>Ratings %ile</td><td th:text="${r.analyst_ratings_pct != null ? r.analyst_ratings_pct : '—'}"></td></tr>
+                                </table>
+                            </div>
+                        </span>
+                    </td>
                     <td><span class="badge badge-blue" th:text="${r.rating_action}"></span></td>
                     <td><span class="badge badge-green" th:text="${r.rating}"></span></td>
                     <td><span th:if="${r.previous_rating != null}" class="badge badge-orange" th:text="${r.previous_rating}"></span>
@@ -105,6 +133,77 @@
             </tbody>
         </table>
     </div>
+
+    <script>
+        (function () {
+            var BASE = '/analyst-rating/ratings';
+            var form = document.getElementById('ratingFilterForm');
+            var pendingChips = document.getElementById('pendingChips');
+            var filterHint = document.getElementById('filterHint');
+
+            document.getElementById('applyFilterBtn').addEventListener('click', function () {
+                form.submit();
+            });
+
+            document.addEventListener('click', function (e) {
+                // × on active chip → immediate URL removal
+                var rmActive = e.target.closest('.chip-remove[data-active]');
+                if (rmActive) {
+                    var p = new URLSearchParams(window.location.search);
+                    var remaining = p.getAll(rmActive.dataset.field).filter(function (v) { return v !== rmActive.dataset.value; });
+                    p.delete(rmActive.dataset.field);
+                    remaining.forEach(function (v) { p.append(rmActive.dataset.field, v); });
+                    window.location.href = BASE + (p.toString() ? '?' + p.toString() : '');
+                    return;
+                }
+
+                // × on pending chip → remove chip + its hidden input
+                var rmPending = e.target.closest('.chip-remove[data-pending]');
+                if (rmPending) {
+                    var match = Array.from(form.querySelectorAll('input[data-pending][name="' + rmPending.dataset.field + '"]'))
+                        .find(function (inp) { return inp.value === rmPending.dataset.value; });
+                    if (match) match.remove();
+                    rmPending.closest('.chip').remove();
+                    if (filterHint && pendingChips.children.length === 0) filterHint.style.display = '';
+                    return;
+                }
+
+                // ⊕ → stage pending filter (no navigation)
+                var add = e.target.closest('.filter-btn[data-field]');
+                if (add) {
+                    var field = add.dataset.field;
+                    var value = add.dataset.value;
+                    var already = Array.from(form.querySelectorAll('input[name="' + field + '"]')).map(function (i) { return i.value; });
+                    if (already.includes(value)) return;
+
+                    if (filterHint) filterHint.style.display = 'none';
+
+                    // Hidden input
+                    var inp = document.createElement('input');
+                    inp.type = 'hidden'; inp.name = field; inp.value = value; inp.dataset.pending = '1';
+                    form.appendChild(inp);
+
+                    // Pending chip (built with DOM API to avoid XSS)
+                    var chip = document.createElement('span');
+                    chip.className = 'chip chip-pending';
+                    var typeSpan = document.createElement('span');
+                    typeSpan.className = 'chip-type'; typeSpan.textContent = field;
+                    var strong = document.createElement('strong');
+                    strong.textContent = value;
+                    var rmBtn = document.createElement('button');
+                    rmBtn.type = 'button'; rmBtn.className = 'chip-remove'; rmBtn.title = 'Remove';
+                    rmBtn.dataset.pending = '1'; rmBtn.dataset.field = field; rmBtn.dataset.value = value;
+                    rmBtn.textContent = '\u2715';
+                    chip.appendChild(typeSpan);
+                    chip.appendChild(document.createTextNode('\u00a0'));
+                    chip.appendChild(strong);
+                    chip.appendChild(document.createTextNode('\u00a0'));
+                    chip.appendChild(rmBtn);
+                    pendingChips.appendChild(chip);
+                }
+            });
+        })();
+    </script>
 
 </div>
 </body>

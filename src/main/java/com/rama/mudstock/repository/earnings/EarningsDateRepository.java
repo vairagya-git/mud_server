@@ -44,6 +44,18 @@ public class EarningsDateRepository {
         return jdbc.query("SELECT * FROM earnings_date ORDER BY earnings_date DESC", MAPPER);
     }
 
+    public List<java.util.Map<String, Object>> listUpcoming() {
+        String sql = """
+                SELECT ed.id, ed.earnings_date, ed.releaseTime, ed.status, ed.quarter,
+                       s.ticker
+                FROM earnings_date ed
+                JOIN stock s ON ed.stock_id = s.id
+                WHERE ed.status = 'UPCOMING'
+                ORDER BY ed.earnings_date ASC
+                """;
+        return jdbc.queryForList(sql);
+    }
+
     public Optional<EarningsDate> findById(Long id) {
         List<EarningsDate> list = jdbc.query("SELECT * FROM earnings_date WHERE id = ?", MAPPER, id);
         return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));

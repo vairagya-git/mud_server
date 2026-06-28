@@ -184,6 +184,61 @@ a:hover { text-decoration: underline; }
 
 /* Tag cloud (overview screens) */
 .tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* --- Filter chip bar --------------------------------------------- */
+.filter-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 10px 14px; margin-bottom: 18px;
+  background: var(--bg-alt, #f7f7f7); border: 1px solid var(--border); border-radius: var(--radius);
+  min-height: 42px;
+}
+.filter-bar-label { font-size: .75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.filter-bar-empty { font-size: .82rem; color: var(--text-muted); font-style: italic; }
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px 3px 8px; border-radius: 99px;
+  background: var(--brand-light, #5a0808); color: #fff;
+  font-size: .8rem; white-space: nowrap;
+}
+.chip .chip-type { opacity: .65; font-size: .72rem; }
+.chip-remove {
+  background: none; border: none; color: inherit; opacity: .7;
+  cursor: pointer; padding: 0 0 0 2px; font-size: .9rem; line-height: 1;
+}
+.chip-remove:hover { opacity: 1; }
+.chip-pending {
+  background: transparent;
+  border: 2px dashed var(--brand-light, #5a0808);
+  color: var(--brand, #300303);
+}
+
+/* --- Info popup --------------------------------------------------- */
+.info-popup-wrap { position: relative; display: inline-block; }
+.info-btn {
+  background: none; border: 1px solid var(--border); border-radius: 50%;
+  width: 18px; height: 18px; font-size: 11px; line-height: 17px; text-align: center;
+  cursor: pointer; color: var(--text-muted); padding: 0; vertical-align: middle;
+  margin-left: 4px;
+}
+.info-btn:hover { background: var(--border); }
+.filter-btn {
+  background: none; border: none; padding: 0 2px; cursor: pointer;
+  color: var(--text-muted); font-size: 13px; vertical-align: middle;
+  opacity: .45; transition: opacity .15s, color .15s;
+}
+.filter-btn:hover { opacity: 1; color: var(--brand); }
+.info-popup {
+  position: absolute; z-index: 200; left: 0; top: calc(100% + 4px);
+  background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0,0,0,.14);
+  padding: 12px 14px; min-width: 220px; white-space: nowrap;
+}
+.info-popup table { border: none; }
+.info-popup table tr { border: none; }
+.info-popup table td { padding: 2px 8px 2px 0; font-size: .82rem; border: none; background: none; }
+.info-popup table td:first-child { color: var(--text-muted); white-space: nowrap; }
+.info-popup table td:last-child { font-weight: 600; text-align: right; }
+.info-popup-name { font-weight: 700; font-size: .88rem; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
 table {
   border-collapse: collapse;
   width: 100%;
@@ -292,3 +347,15 @@ code {
   .nav-group-items a { padding: 10px 12px; border-left: none; border-bottom: 3px solid transparent; }
   .nav-group-items a.active { border-bottom-color: #e85d4a; border-left: none; }
 }
+
+/* --- Upcoming earnings row highlights ---------------------------- */
+tr.row-past  td { background: #f1f3f5; color: #9ea7b0; }
+tr.row-soon  td { background: #fff0f0; }
+tr.row-future td { background: #f0fdf4; }
+.upcoming-dot {
+  display: inline-block; width: 12px; height: 12px;
+  border-radius: 50%; vertical-align: middle; margin-right: 4px;
+}
+.upcoming-past   { background: #d0d7de; }
+.upcoming-soon   { background: #ffb3b3; }
+.upcoming-future { background: #86efac; }

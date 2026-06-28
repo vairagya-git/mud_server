@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Upcoming Earnings — MudStock</title></head>
+<body>
+<div id="page-content" th:fragment="content">
+
+    <div class="page-header">
+        <h1>Upcoming Earnings</h1>
+        <div class="subtitle">
+            Earnings dates with status <strong>UPCOMING</strong>, ordered by date.
+            Total: <strong th:text="${upcoming.size()}">0</strong>
+        </div>
+    </div>
+
+    <div class="upcoming-legend" style="display:flex;gap:16px;align-items:center;margin-bottom:16px;font-size:.83rem;">
+        <span><span class="upcoming-dot upcoming-past"></span> Past</span>
+        <span><span class="upcoming-dot upcoming-soon"></span> Next 2 weeks</span>
+        <span><span class="upcoming-dot upcoming-future"></span> Beyond 2 weeks</span>
+    </div>
+
+    <div class="card table-wrap">
+        <div th:if="${upcoming.isEmpty()}" class="table-empty">No upcoming earnings found.</div>
+        <table th:unless="${upcoming.isEmpty()}">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Ticker</th>
+                    <th>Earnings Date</th>
+                    <th>Release Time</th>
+                    <th>Quarter</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="e, stat : ${upcoming}"
+                    th:with="ed=${e.earnings_date != null ? e.earnings_date.toLocalDate() : null}"
+                    th:classappend="${ed == null} ? '' :
+                                   (${ed.isBefore(today)} ? 'row-past' :
+                                   (${!ed.isAfter(twoWeeksOut)} ? 'row-soon' : 'row-future'))">
+                    <td th:text="${stat.count}"></td>
+                    <td><span class="badge badge-grey" th:text="${e.ticker}"></span></td>
+                    <td th:text="${ed != null ? ed : '—'}"></td>
+                    <td>
+                        <span th:if="${e.releaseTime == 'BEFORE_MARKET'}" class="badge badge-blue">Before Market</span>
+                        <span th:if="${e.releaseTime == 'AFTER_MARKET'}"  class="badge badge-orange">After Market</span>
+                        <span th:if="${e.releaseTime == null}" style="color:#aaa">—</span>
+                    </td>
+                    <td th:text="${e.quarter != null ? e.quarter : '—'}"></td>
+                    <td><span class="badge badge-green" th:text="${e.status}"></span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+</body>
+</html>

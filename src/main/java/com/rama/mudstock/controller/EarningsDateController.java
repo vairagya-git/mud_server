@@ -19,6 +19,8 @@ import com.rama.mudstock.model.earnings.EarningsDateView;
 import com.rama.mudstock.model.stockwatchlist.Stock;
 import com.rama.mudstock.service.EarningsDateService;
 
+
+// Sync
 @Controller
 @RequestMapping("/earnings")
 public class EarningsDateController {
@@ -134,5 +136,14 @@ public class EarningsDateController {
     public String delete(@PathVariable Long id) {
         service.delete(id);
         return "redirect:/earnings";
+    }
+
+    @GetMapping("/upcoming")
+    public String upcoming(Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
+        model.addAttribute("upcoming", service.listUpcoming());
+        model.addAttribute("today", java.time.LocalDate.now());
+        model.addAttribute("twoWeeksOut", java.time.LocalDate.now().plusDays(14));
+        return hxRequest != null ? "earnings/upcoming :: content" : "earnings/upcoming";
     }
 }

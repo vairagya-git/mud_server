@@ -62,6 +62,10 @@
                     <profiles>
                         <profile>local</profile>
                     </profiles>
+                    <!-- Prevent mvn spring-boot:run from serving src/main/resources directly.
+                         Templates and static files are served from target/classes instead,
+                         which is not subject to iCloud Drive sync evictions. -->
+                    <addResources>false</addResources>
                 </configuration>
             </plugin>
         </plugins>
