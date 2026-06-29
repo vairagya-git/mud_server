@@ -15,15 +15,20 @@
         <table th:unless="${configs.isEmpty()}">
             <thead><tr><th>#</th><th>Code</th><th>Value</th><th>Type</th><th>Description</th><th>Updated At</th><th></th></tr></thead>
             <tbody>
-                <tr th:each="cfg, stat : ${configs}">
-                    <td th:text="${stat.count}"></td>
-                    <td><code th:text="${cfg.code}"></code></td>
-                    <td th:text="${cfg.value}"></td>
-                    <td><span class="badge badge-blue" th:text="${cfg.type}"></span></td>
-                    <td th:text="${cfg.description}"></td>
-                    <td th:text="${cfg.updatedAt != null ? #temporals.format(cfg.updatedAt, 'yyyy-MM-dd HH:mm') : '&#8212;'}"></td>
-                    <td><a th:href="@{/system-config/{c}/edit(c=${cfg.code})}" class="btn btn-sm btn-primary">Edit</a></td>
-                </tr>
+                <th:block th:each="entry : ${configGroups}">
+                    <tr>
+                        <td colspan="7" style="font-weight:700;background:#f6f8fb;"><span th:text="${entry.key}"></span></td>
+                    </tr>
+                    <tr th:each="cfg, stat : ${entry.value}">
+                        <td th:text="${stat.count}"></td>
+                        <td><code th:text="${cfg.code}"></code></td>
+                        <td th:text="${cfg.value}"></td>
+                        <td><span class="badge badge-blue" th:text="${cfg.type}"></span></td>
+                        <td th:text="${cfg.description}"></td>
+                        <td th:text="${cfg.updatedAt != null ? #temporals.format(cfg.updatedAt, 'yyyy-MM-dd HH:mm') : '&#8212;'}"></td>
+                        <td><a th:href="@{/system-config/{c}/edit(c=${cfg.code})}" class="btn btn-sm btn-primary">Edit</a></td>
+                    </tr>
+                </th:block>
             </tbody>
         </table>
     </div>

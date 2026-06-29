@@ -2,6 +2,8 @@ package com.rama.mudstock.service;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,8 +21,10 @@ import com.rama.mudstock.repository.SystemConfigRepository;
  *
  * <p>The {@code type} column drives value conversion:
  * <ul>
- *   <li>{@code Date}  — value is returned as a {@link LocalDate} (date only, no timestamp)</li>
- *   <li>Anything else — value is returned as the raw {@link String}</li>
+ *   <li>{@code Date}       — value is returned as a {@link LocalDate} (date only, no timestamp)</li>
+ *   <li>{@code StringArray} — value is returned as {@link java.util.List} of comma-separated strings</li>
+ *   <li>{@code Boolean}    — value is returned as {@link Boolean}</li>
+ *   <li>Anything else      — value is returned as the raw {@link String}</li>
  * </ul>
  */
 @Service
@@ -44,7 +48,8 @@ public class SystemConfigService {
     /**
      * Returns all system config entries as a map of code → typed value.
      * The Java type of each map value depends on the {@code type} column:
-     * {@code Date} → {@link LocalDate}, otherwise {@link String}.
+        * {@code Date} → {@link LocalDate}, {@code StringArray} → {@link java.util.List},
+        * {@code Boolean} → {@link Boolean}, otherwise {@link String}.
      */
     public Map<String, Object> findAll() {
         List<SystemConfig> configs = systemConfigRepository.findAll();
@@ -61,6 +66,15 @@ public class SystemConfigService {
      */
     public Optional<Object> findByCode(String code) {
         return systemConfigRepository.findByCode(code)
+                .map(this::convertValue);
+    }
+
+    /**
+     * Returns the typed value for a single config entry identified by {@code purpose} + {@code code},
+     * or {@link Optional#empty()} if no row matches.
+     */
+    public Optional<Object> findByPurposeAndCode(String purpose, String code) {
+        return systemConfigRepository.findByPurposeAndCode(purpose, code)
                 .map(this::convertValue);
     }
 
@@ -106,7 +120,38 @@ public class SystemConfigService {
         if ("Date".equalsIgnoreCase(type)) {
             return parseDate(cfg.getCode(), raw);
         }
+        if ("StringArray".equalsIgnoreCase(type)) {
+            return parseStringArray(raw);
+        }
+        if ("Boolean".equalsIgnoreCase(type) || "bool".equalsIgnoreCase(type)) {
+            return parseBoolean(cfg.getCode(), raw);
+        }
         return raw;
+    }
+
+    private List<String> parseStringArray(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return Collections.emptyList();
+        }
+        return Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .toList();
+    }
+
+    private Boolean parseBoolean(String code, String raw) {
+        if (raw == null || raw.isBlank()) {
+            return Boolean.FALSE;
+        }
+        String normalized = raw.trim();
+        if ("true".equalsIgnoreCase(normalized)) {
+            return Boolean.TRUE;
+        }
+        if ("false".equalsIgnoreCase(normalized)) {
+            return Boolean.FALSE;
+        }
+        log.warn("SystemConfigService: code={} has type=Boolean but value '{}' is invalid; returning false", code, raw);
+        return Boolean.FALSE;
     }
 
     private LocalDate parseDate(String code, String raw) {

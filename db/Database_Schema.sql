@@ -73,6 +73,9 @@ CREATE TABLE `firm_analyst_stock_rating` (
 ) ENGINE=InnoDB;
 
 /*  Earnings Data */
+
+select * from earnings_date;
+
 CREATE TABLE `earnings_date` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `stock_id` bigint unsigned NOT NULL,
@@ -201,19 +204,27 @@ CREATE TABLE `system_config` (
   `code` varchar(64) NOT NULL,
   `value` varchar(64) NOT NULL,
   `type` varchar(64) NOT NULL,
-  `description` varchar(128) NOT NULL,
   `purpose` varchar(64) NOT NULL,
+  `description` varchar(128) NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  CONSTRAINT unique_day_event_master UNIQUE (`code`)
+  CONSTRAINT unique_day_event_master UNIQUE (`code`, `purpose`)
 ) ENGINE=InnoDB;
 
+delete from system_config;
 
-INSERT INTO system_config (`code`, `value`, `type`, `description`, `purpose`) VALUES
-('benzinga-analyst-rating-date', '2026-01-01', 'date', 'Benzinga Analyst Rating Date', 'Cronjob');
+SELECT * FROM watchlist;
 
-select * from system_config;
+
+INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VALUES
+('benzinga-analyst-rating-date', '2026-01-01', 'date', 'DailyAnalystRatingCronjob', 'Benzinga Analyst Rating > Last Processed Date'),
+('watchlist-codes', 'MOVING_STOCK,SEMI_WATCHLIST', 'StringArray', 'DailyAnalystRatingCronjob', 'Benzinga Analyst Rating > Watchlist Codes'),
+('enabled', 'true', 'boolean', 'DailyAnalystRatingCronjob', 'Benzinga Analyst Rating > cronjob Enabled'),
+('enabled', 'true', 'boolean', 'WeeklyUpcomingEarningCronjob', 'Weekly Upcoming Earning Cronjob > cronjob Enabled'),
+('enabled', 'true', 'boolean', 'WeeklyAnalystFirmUpdateCronjob', 'Weekly Analyst Firm Update > cronjob Enabled');
+
+
 
 /******************/
 

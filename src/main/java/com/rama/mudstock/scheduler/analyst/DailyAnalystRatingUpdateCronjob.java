@@ -1,41 +1,32 @@
 package com.rama.mudstock.scheduler.analyst;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import com.rama.mudstock.constant.SystemConfigEnum;
 import com.rama.mudstock.facade.AnalystRatingFacade;
 import com.rama.mudstock.model.stockwatchlist.Stock;
-import com.rama.mudstock.model.stockwatchlist.Watchlist;
 import com.rama.mudstock.repository.stockwatchlist.WatchlistRepository;
 import com.rama.mudstock.service.SystemConfigService;
 import com.rama.mudstock.util.WatchlistUtil;
 
 @Component
 @Profile("cronjob")
-@ConditionalOnProperty(prefix = "dailyAnalystRatingUpdate", name = "enabled", havingValue = "true")
 public class DailyAnalystRatingUpdateCronjob {
 
     private static final Logger log = LoggerFactory.getLogger(DailyAnalystRatingUpdateCronjob.class);
 
-    /** Key used to look up and update the rating date in {@code system_config}. */
-    private static final String RATING_DATE_CODE = "benzinga-analyst-rating-date";
-
     private final AnalystRatingFacade analystRatingFacade;
     private final WatchlistRepository watchlistRepository;
     private final SystemConfigService systemConfigService;
-
-    @Value("${dailyAnalystRatingUpdate.watchlist-codes}")
-    private String watchlistCodes;
 
     public DailyAnalystRatingUpdateCronjob(AnalystRatingFacade analystRatingFacade,
                                            WatchlistRepository watchlistRepository,
@@ -47,11 +38,42 @@ public class DailyAnalystRatingUpdateCronjob {
 
     @Scheduled(cron = "${dailyAnalystRatingUpdate.cron}")
     public void run() {
+        boolean enabled = systemConfigService
+            .findByPurposeAndCode(
+                SystemConfigEnum.DAILY_ANALYST_RATING_ENABLED.getPurpose(),
+                SystemConfigEnum.DAILY_ANALYST_RATING_ENABLED.getCode())
+            .filter(Boolean.class::isInstance)
+            .map(Boolean.class::cast)
+            .orElse(Boolean.FALSE);
+
+        if (!enabled) {
+            log.info("DailyAnalystRatingUpdateCronjob: disabled by system_config (purpose={}, code={})",
+                SystemConfigEnum.DAILY_ANALYST_RATING_ENABLED.getPurpose(),
+                SystemConfigEnum.DAILY_ANALYST_RATING_ENABLED.getCode());
+            return;
+        }
+
+        List<String> watchlistCodeList = systemConfigService
+            .findByPurposeAndCode(
+                SystemConfigEnum.DAILY_ANALYST_RATING_WATCHLIST_CODES.getPurpose(),
+                SystemConfigEnum.DAILY_ANALYST_RATING_WATCHLIST_CODES.getCode())
+            .filter(List.class::isInstance)
+            .map(v -> ((List<?>) v).stream()
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .toList())
+            .orElse(List.of());
+
+        String watchlistCodes = String.join(",", watchlistCodeList);
         log.info("DailyAnalystRatingUpdateCronjob: starting for watchlist-codes=[{}]", watchlistCodes);
 
-        Optional<Object> ratingDateOpt = systemConfigService.findByCode(RATING_DATE_CODE);
+        Optional<Object> ratingDateOpt = systemConfigService.findByPurposeAndCode(
+            SystemConfigEnum.DAILY_ANALYST_RATING_DATE.getPurpose(),
+            SystemConfigEnum.DAILY_ANALYST_RATING_DATE.getCode());
         if (ratingDateOpt.isEmpty()) {
-            log.warn("DailyAnalystRatingUpdateCronjob: system_config code='{}' not found, skipping", RATING_DATE_CODE);
+            log.warn("DailyAnalystRatingUpdateCronjob: system_config not found for purpose='{}', code='{}'; skipping",
+                SystemConfigEnum.DAILY_ANALYST_RATING_DATE.getPurpose(),
+                SystemConfigEnum.DAILY_ANALYST_RATING_DATE.getCode());
             return;
         }
         LocalDate ratingDate = (LocalDate) ratingDateOpt.get();
@@ -82,9 +104,10 @@ public class DailyAnalystRatingUpdateCronjob {
         log.info("DailyAnalystRatingUpdateCronjob: done — total ratings saved={}", totalSaved);
 
         String yesterday = LocalDate.now().minusDays(1).toString();
-        boolean updated = systemConfigService.updateValue(RATING_DATE_CODE, yesterday);
+        boolean updated = systemConfigService.updateValue(SystemConfigEnum.DAILY_ANALYST_RATING_DATE.getCode(), yesterday);
         if (updated) {
-            log.info("DailyAnalystRatingUpdateCronjob: updated system_config '{}' to {}", RATING_DATE_CODE, yesterday);
+            log.info("DailyAnalystRatingUpdateCronjob: updated system_config '{}' to {}",
+                    SystemConfigEnum.DAILY_ANALYST_RATING_DATE.getCode(), yesterday);
         }
     }
 }

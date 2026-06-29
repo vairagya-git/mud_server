@@ -184,11 +184,23 @@ public class StockWatchlistController {
     }
 
     @PostMapping("/watchlist")
-    public String addWatchlist(@RequestParam String name) {
-        if (name != null && !name.isBlank()) {
-            Watchlist w = new Watchlist(name.trim());
-            watchlistRepo.save(w);
+    public String addWatchlist(@RequestParam String code,
+                               @RequestParam String name,
+                               @RequestParam String country,
+                               RedirectAttributes ra) {
+        if (code == null || code.isBlank() || name == null || name.isBlank() || country == null || country.isBlank()) {
+            ra.addFlashAttribute("error", "Code, Name, and Country are required.");
+            return "redirect:/stock-watchlist/watchlists/new";
         }
+
+        String normalizedCode = code.trim().toUpperCase();
+        if (watchlistRepo.findByCode(normalizedCode).isPresent()) {
+            ra.addFlashAttribute("error", "Watchlist code already exists: " + normalizedCode);
+            return "redirect:/stock-watchlist/watchlists/new";
+        }
+
+        Watchlist w = new Watchlist(normalizedCode, name.trim(), country.trim());
+        watchlistRepo.save(w);
         return "redirect:/stock-watchlist";
     }
 
@@ -259,26 +271,73 @@ public class StockWatchlistController {
 
     @PostMapping("/mapping")
     public String addMapping(@RequestParam Long watchlistId,
-                             @RequestParam String ticker,
+                             @RequestParam(required = false) String ticker,
+                             @RequestParam(required = false) String tickers,
                              RedirectAttributes ra) {
         Watchlist w = watchlistRepo.findById(watchlistId).orElse(null);
         if (w == null) {
             ra.addFlashAttribute("error", "Watchlist not found");
             return "redirect:/stock-watchlist/mapping";
         }
-        Stock s = (ticker == null || ticker.isBlank())
-                ? null
-                : stockRepo.findByTicker(ticker.trim().toUpperCase()).orElse(null);
-        if (s == null) {
-            ra.addFlashAttribute("error", "Stock ticker not found: " + ticker);
+
+        java.util.List<String> requestedTickers = new java.util.ArrayList<>();
+        if (ticker != null && !ticker.isBlank()) {
+            requestedTickers.add(ticker.trim().toUpperCase());
+        }
+        if (tickers != null && !tickers.isBlank()) {
+            for (String raw : tickers.split("\\r?\\n")) {
+                String t = raw == null ? "" : raw.trim();
+                if (!t.isEmpty()) {
+                    requestedTickers.add(t.toUpperCase());
+                }
+            }
+        }
+
+        if (requestedTickers.isEmpty()) {
+            ra.addFlashAttribute("error", "Please enter at least one ticker.");
             return "redirect:/stock-watchlist/mapping";
         }
-        if (w.getStocks().stream().anyMatch(x -> x.getId().equals(s.getId()))) {
-            ra.addFlashAttribute("message", s.getTicker() + " is already mapped to " + w.getCode());
-        } else {
+
+        java.util.LinkedHashSet<String> uniqueTickers = new java.util.LinkedHashSet<>(requestedTickers);
+        int mapped = 0;
+        int alreadyMapped = 0;
+        java.util.List<String> unknownTickers = new java.util.ArrayList<>();
+
+        for (String t : uniqueTickers) {
+            Stock s = stockRepo.findByTicker(t).orElse(null);
+            if (s == null) {
+                unknownTickers.add(t);
+                continue;
+            }
+            if (w.getStocks().stream().anyMatch(x -> x.getId().equals(s.getId()))) {
+                alreadyMapped++;
+                continue;
+            }
             w.addStock(s);
+            mapped++;
+        }
+
+        if (mapped > 0) {
             watchlistRepo.save(w);
-            ra.addFlashAttribute("message", "Mapped " + s.getTicker() + " to " + w.getCode());
+        }
+
+        StringBuilder msg = new StringBuilder();
+        if (mapped > 0) {
+            msg.append("Mapped ").append(mapped).append(" stock(s) to ").append(w.getCode()).append('.');
+        }
+        if (alreadyMapped > 0) {
+            if (msg.length() > 0) msg.append(' ');
+            msg.append(alreadyMapped).append(" ticker(s) were already mapped.");
+        }
+        if (!unknownTickers.isEmpty()) {
+            if (msg.length() > 0) msg.append(' ');
+            msg.append("Unknown ticker(s): ").append(String.join(", ", unknownTickers)).append('.');
+        }
+
+        if (msg.length() == 0) {
+            ra.addFlashAttribute("error", "No mappings were created.");
+        } else {
+            ra.addFlashAttribute("message", msg.toString());
         }
         return "redirect:/stock-watchlist/mapping";
     }

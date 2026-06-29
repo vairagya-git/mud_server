@@ -26,6 +26,9 @@ public class SystemConfig {
     @Column(name = "type", nullable = false, length = 64)
     private String type;
 
+    @Column(name = "purpose", nullable = false, length = 128)
+    private String purpose;
+
     @Column(name = "description", nullable = false, length = 128)
     private String description;
 
@@ -48,6 +51,9 @@ public class SystemConfig {
 
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
+
+    public String getPurpose() { return purpose; }
+    public void setPurpose(String purpose) { this.purpose = purpose; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }

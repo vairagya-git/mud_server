@@ -1,5 +1,11 @@
 package com.rama.mudstock.controller;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,7 +32,19 @@ public class SystemConfigController {
     @GetMapping
     public String list(Model model,
             @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
-        model.addAttribute("configs", systemConfigService.findAllEntities());
+        List<SystemConfig> configs = new ArrayList<>(systemConfigService.findAllEntities());
+        configs.sort(Comparator
+                .comparing((SystemConfig c) -> c.getPurpose() == null ? "" : c.getPurpose(), String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(c -> c.getCode() == null ? "" : c.getCode(), String.CASE_INSENSITIVE_ORDER));
+
+        Map<String, List<SystemConfig>> configGroups = new LinkedHashMap<>();
+        for (SystemConfig cfg : configs) {
+            String purpose = (cfg.getPurpose() == null || cfg.getPurpose().isBlank()) ? "Uncategorized" : cfg.getPurpose();
+            configGroups.computeIfAbsent(purpose, k -> new ArrayList<>()).add(cfg);
+        }
+
+        model.addAttribute("configs", configs);
+        model.addAttribute("configGroups", configGroups);
         return hxRequest != null ? "system_config/list :: content" : "system_config/list";
     }
 
