@@ -199,6 +199,8 @@ INSERT INTO master_market_holidays (`year`, `country`, `holiday_date`) VALUES
 ('2027', 'USA', '2027-11-25'),
 ('2027', 'USA', '2027-12-24');
 
+drop table system_config;
+
 CREATE TABLE `system_config` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `code` varchar(64) NOT NULL,
@@ -211,10 +213,6 @@ CREATE TABLE `system_config` (
   PRIMARY KEY (`id`),
   CONSTRAINT unique_day_event_master UNIQUE (`code`, `purpose`)
 ) ENGINE=InnoDB;
-
-delete from system_config;
-
-SELECT * FROM watchlist;
 
 
 INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VALUES

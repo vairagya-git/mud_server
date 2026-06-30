@@ -9,45 +9,63 @@
         <div class="subtitle">Total: <strong th:text="${entries.size()}">0</strong></div>
     </div>
 
-    <form method="get" th:action="@{/day-stock-movement/entries}"
-          style="display:flex;gap:12px;align-items:flex-end;margin-bottom:20px;flex-wrap:wrap">
-        <div class="form-group" style="margin:0">
-            <label>Ticker</label>
-            <select name="ticker">
-                <option value="">All Tickers</option>
-                <option th:each="t : ${tickers}"
-                        th:value="${t}"
-                        th:text="${t}"
-                        th:selected="${t == selectedTicker}"></option>
-            </select>
-        </div>
-        <div class="form-group" style="margin:0">
-            <label>Day Code</label>
-            <select name="dayCode">
-                <option value="">All Codes</option>
-                <option th:each="c : ${dayCodes}"
-                        th:value="${c}"
-                        th:text="${c}"
-                        th:selected="${c == selectedDayCode}"></option>
-            </select>
-        </div>
-        <button type="submit" class="btn btn-secondary">Filter</button>
-        <a th:if="${selectedTicker != null or selectedDayCode != null}"
-           href="/day-stock-movement/entries"
-           hx-get="/day-stock-movement/entries"
-           hx-target="#page-content"
-           hx-swap="outerHTML"
-           hx-push-url="true"
-           class="btn btn-secondary">Clear</a>
+    <form id="entryFilterForm" method="get" th:action="@{/day-stock-movement/entries}">
+        <input th:each="t : ${selectedTickers}" type="hidden" name="ticker" th:value="${t}">
+        <input th:each="c : ${selectedDayCodes}" type="hidden" name="dayCode" th:value="${c}">
     </form>
+
+    <div class="filter-bar" style="margin-bottom:16px">
+        <span class="filter-bar-label">Filters</span>
+
+        <th:block th:each="t : ${selectedTickers}">
+            <span class="chip">
+                <span class="chip-type">ticker</span>
+                <strong th:text="${t}"></strong>
+                <button type="button" class="chip-remove" data-active="1" data-field="ticker" th:data-value="${t}" title="Remove">&#x2715;</button>
+            </span>
+        </th:block>
+
+        <th:block th:each="c : ${selectedDayCodes}">
+            <span class="chip">
+                <span class="chip-type">dayCode</span>
+                <strong th:text="${c}"></strong>
+                <button type="button" class="chip-remove" data-active="1" data-field="dayCode" th:data-value="${c}" title="Remove">&#x2715;</button>
+            </span>
+        </th:block>
+
+        <span id="pendingChips"></span>
+
+        <span id="filterHint"
+              th:if="${selectedTickers.isEmpty() and selectedDayCodes.isEmpty()}"
+              class="filter-bar-empty">Click &#x2295; next to a ticker or day code to stage filters, then click Apply (max 10 each)</span>
+
+        <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+            <button id="applyFilterBtn" type="button" class="btn btn-sm btn-secondary">Apply</button>
+            <a th:if="${!selectedTickers.isEmpty() or !selectedDayCodes.isEmpty()}"
+               href="/day-stock-movement/entries" class="btn btn-sm btn-secondary">Clear all</a>
+        </div>
+    </div>
+
     <div class="card table-wrap">
         <div th:if="${entries.isEmpty()}" class="table-empty">No entries found. Run the scheduler to populate.</div>
-        <table th:unless="${entries.isEmpty()}">
+        <table id="dsmEntriesTable" th:unless="${entries.isEmpty()}">
             <thead>
                 <tr>
-                    <th>Ticker</th>
-                    <th>Day Code</th>
-                    <th>Date</th>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="ticker" style="padding:2px 8px;line-height:1.2;background:#dff5df;border:1px solid #9dd59d;color:#1f5d1f;">
+                            Ticker <span class="sort-indicator" data-for="ticker"></span>
+                        </button>
+                    </th>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="dayCode" style="padding:2px 8px;line-height:1.2;background:#dff5df;border:1px solid #9dd59d;color:#1f5d1f;">
+                            Day Code <span class="sort-indicator" data-for="dayCode"></span>
+                        </button>
+                    </th>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="date" style="padding:2px 8px;line-height:1.2;background:#dff5df;border:1px solid #9dd59d;color:#1f5d1f;">
+                            Date <span class="sort-indicator" data-for="date"></span>
+                        </button>
+                    </th>
                     <th>Open</th>
                     <th>Close</th>
                     <th>High</th>
@@ -58,9 +76,15 @@
             </thead>
             <tbody>
                 <tr th:each="e : ${entries}">
-                    <td><span class="badge badge-grey" th:text="${e.ticker}"></span></td>
-                    <td><code th:text="${e.day_code}"></code></td>
-                    <td th:text="${e.master_event_date}"></td>
+                    <td th:attr="data-sort-value=${e.ticker}">
+                        <span class="badge badge-grey" th:text="${e.ticker}"></span>
+                        <button type="button" class="filter-btn" data-field="ticker" th:data-value="${e.ticker}" title="Filter by ticker">&#x2295;</button>
+                    </td>
+                    <td th:attr="data-sort-value=${e.day_code}">
+                        <code th:text="${e.day_code}"></code>
+                        <button type="button" class="filter-btn" data-field="dayCode" th:data-value="${e.day_code}" title="Filter by day code">&#x2295;</button>
+                    </td>
+                    <td th:attr="data-sort-value=${e.master_event_date}" th:text="${e.master_event_date}"></td>
                     <td th:text="${e.cur_day_open}"></td>
                     <td th:text="${e.cur_day_close}"></td>
                     <td th:text="${e.cur_day_high}"></td>
@@ -71,6 +95,138 @@
             </tbody>
         </table>
     </div>
+
+    <script>
+        (function () {
+            var BASE = '/day-stock-movement/entries';
+            var form = document.getElementById('entryFilterForm');
+            var pendingChips = document.getElementById('pendingChips');
+            var filterHint = document.getElementById('filterHint');
+            var table = document.getElementById('dsmEntriesTable');
+            var sortState = { key: null, dir: 'asc' };
+
+            function countExisting(field) {
+                return form.querySelectorAll('input[name="' + field + '"]').length;
+            }
+
+            document.getElementById('applyFilterBtn').addEventListener('click', function () {
+                form.submit();
+            });
+
+            function compareValues(a, b, sortKey) {
+                if (sortKey === 'date') {
+                    var da = Date.parse(a || '');
+                    var db = Date.parse(b || '');
+                    if (isNaN(da) && isNaN(db)) return 0;
+                    if (isNaN(da)) return -1;
+                    if (isNaN(db)) return 1;
+                    return da - db;
+                }
+                return String(a || '').localeCompare(String(b || ''), undefined, { sensitivity: 'base' });
+            }
+
+            function updateSortIndicators() {
+                document.querySelectorAll('.sort-indicator').forEach(function (el) {
+                    var key = el.dataset.for;
+                    if (sortState.key !== key) {
+                        el.textContent = '';
+                        return;
+                    }
+                    el.textContent = sortState.dir === 'asc' ? '\u2191' : '\u2193';
+                });
+            }
+
+            function sortTable(sortKey) {
+                if (!table) return;
+                var tbody = table.querySelector('tbody');
+                if (!tbody) return;
+
+                if (sortState.key === sortKey) {
+                    sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortState.key = sortKey;
+                    sortState.dir = 'asc';
+                }
+
+                var indexByKey = { ticker: 0, dayCode: 1, date: 2 };
+                var colIndex = indexByKey[sortKey];
+                var rows = Array.from(tbody.querySelectorAll('tr'));
+
+                rows.sort(function (r1, r2) {
+                    var v1 = (r1.children[colIndex] && r1.children[colIndex].dataset.sortValue) || '';
+                    var v2 = (r2.children[colIndex] && r2.children[colIndex].dataset.sortValue) || '';
+                    var cmp = compareValues(v1, v2, sortKey);
+                    return sortState.dir === 'asc' ? cmp : -cmp;
+                });
+
+                rows.forEach(function (row) { tbody.appendChild(row); });
+                updateSortIndicators();
+            }
+
+            document.querySelectorAll('.table-sort-btn[data-sort-key]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    sortTable(btn.dataset.sortKey);
+                });
+            });
+
+            document.addEventListener('click', function (e) {
+                var rmActive = e.target.closest('.chip-remove[data-active]');
+                if (rmActive) {
+                    var p = new URLSearchParams(window.location.search);
+                    var remaining = p.getAll(rmActive.dataset.field).filter(function (v) { return v !== rmActive.dataset.value; });
+                    p.delete(rmActive.dataset.field);
+                    remaining.forEach(function (v) { p.append(rmActive.dataset.field, v); });
+                    window.location.href = BASE + (p.toString() ? '?' + p.toString() : '');
+                    return;
+                }
+
+                var rmPending = e.target.closest('.chip-remove[data-pending]');
+                if (rmPending) {
+                    var match = Array.from(form.querySelectorAll('input[data-pending][name="' + rmPending.dataset.field + '"]'))
+                        .find(function (inp) { return inp.value === rmPending.dataset.value; });
+                    if (match) match.remove();
+                    rmPending.closest('.chip').remove();
+                    if (filterHint && pendingChips.children.length === 0) filterHint.style.display = '';
+                    return;
+                }
+
+                var add = e.target.closest('.filter-btn[data-field]');
+                if (add) {
+                    var field = add.dataset.field;
+                    var value = add.dataset.value;
+                    var already = Array.from(form.querySelectorAll('input[name="' + field + '"]')).map(function (i) { return i.value; });
+                    if (already.includes(value)) return;
+
+                    if (countExisting(field) >= 10) {
+                        return;
+                    }
+
+                    if (filterHint) filterHint.style.display = 'none';
+
+                    var inp = document.createElement('input');
+                    inp.type = 'hidden'; inp.name = field; inp.value = value; inp.dataset.pending = '1';
+                    form.appendChild(inp);
+
+                    var chip = document.createElement('span');
+                    chip.className = 'chip chip-pending';
+                    var typeSpan = document.createElement('span');
+                    typeSpan.className = 'chip-type'; typeSpan.textContent = field;
+                    var strong = document.createElement('strong');
+                    strong.textContent = value;
+                    var rmBtn = document.createElement('button');
+                    rmBtn.type = 'button'; rmBtn.className = 'chip-remove'; rmBtn.title = 'Remove';
+                    rmBtn.dataset.pending = '1'; rmBtn.dataset.field = field; rmBtn.dataset.value = value;
+                    rmBtn.textContent = '\u2715';
+                    chip.appendChild(typeSpan);
+                    chip.appendChild(document.createTextNode('\u00a0'));
+                    chip.appendChild(strong);
+                    chip.appendChild(document.createTextNode('\u00a0'));
+                    chip.appendChild(rmBtn);
+                    pendingChips.appendChild(chip);
+                }
+            });
+        })();
+    </script>
 </div>
 </body>
 </html>

@@ -32,7 +32,7 @@ public class DayStockMovementEntryRepository {
         return jdbc.queryForList(sql);
     }
 
-    public java.util.List<java.util.Map<String,Object>> listEntriesWithMeta(String ticker, String dayCode) {
+    public java.util.List<java.util.Map<String,Object>> listEntriesWithMeta(java.util.List<String> tickers, java.util.List<String> dayCodes) {
         StringBuilder sql = new StringBuilder(
             "SELECT e.*, s.ticker as ticker, d.code as day_code, d.date as master_event_date "
             + "FROM day_stock_movement_entry e "
@@ -43,19 +43,34 @@ public class DayStockMovementEntryRepository {
         java.util.List<Object> params = new java.util.ArrayList<>();
         java.util.List<String> conditions = new java.util.ArrayList<>();
 
-        if (ticker != null && !ticker.isBlank()) {
-            conditions.add("UPPER(s.ticker) = UPPER(?)");
-            params.add(ticker.trim());
+        java.util.List<String> effectiveTickers = nonBlank(tickers);
+        if (!effectiveTickers.isEmpty()) {
+            conditions.add("UPPER(s.ticker) IN (" + placeholders(effectiveTickers.size()) + ")");
+            effectiveTickers.stream().map(String::trim).map(String::toUpperCase).forEach(params::add);
         }
-        if (dayCode != null && !dayCode.isBlank()) {
-            conditions.add("d.code = ?");
-            params.add(dayCode.trim());
+
+        java.util.List<String> effectiveDayCodes = nonBlank(dayCodes);
+        if (!effectiveDayCodes.isEmpty()) {
+            conditions.add("d.code IN (" + placeholders(effectiveDayCodes.size()) + ")");
+            effectiveDayCodes.forEach(params::add);
         }
+
         if (!conditions.isEmpty()) {
             sql.append("WHERE ").append(String.join(" AND ", conditions)).append(" ");
         }
         sql.append("ORDER BY s.ticker, d.date DESC");
         return jdbc.queryForList(sql.toString(), params.toArray());
+    }
+
+    private static String placeholders(int count) {
+        return java.util.stream.IntStream.range(0, count).mapToObj(i -> "?").collect(java.util.stream.Collectors.joining(","));
+    }
+
+    private static java.util.List<String> nonBlank(java.util.List<String> values) {
+        if (values == null) {
+            return java.util.Collections.emptyList();
+        }
+        return values.stream().filter(v -> v != null && !v.isBlank()).collect(java.util.stream.Collectors.toList());
     }
 
     public java.util.List<String> listDistinctEntryTickers() {

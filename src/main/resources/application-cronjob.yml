@@ -12,7 +12,7 @@ earnings:
 
 # Populated the day stock movment data for the current day, after market close, Portugal time (Europe/Lisbon)
 dayStockMovementData:
-  enabled: false
+  enabled: true
   # cron: "0 0 22 * * MON-FRI" # after market close, 22:00 Portugal time (Europe/Lisbon)
   cron: "0 0/1 * * * *" # every 1 minutes
 
