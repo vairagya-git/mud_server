@@ -5,7 +5,43 @@
 <body>
 <div id="page-content" th:fragment="content">
 
-    <div class="page-header">
+    <style>
+        .ratings-sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            background: var(--bg);
+            padding-top: 6px;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+        }
+
+        .ratings-sticky-filter {
+            position: sticky;
+            top: 56px;
+            z-index: 25;
+            background: #f7f7f7;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+        }
+
+        .ratings-filter-input {
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+            margin-left: 6px;
+        }
+
+        .ratings-filter-input input {
+            width: 130px;
+            padding: 4px 8px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 0.82rem;
+            text-transform: uppercase;
+        }
+    </style>
+
+    <div class="page-header ratings-sticky-header">
         <h1>Analyst Ratings</h1>
         <div class="subtitle">Stock ratings by analyst. Total: <strong th:text="${ratings.size()}">0</strong></div>
     </div>
@@ -17,8 +53,16 @@
         <input th:each="f : ${selectedFirms}" type="hidden" name="firm" th:value="${f}">
     </form>
 
-    <div class="filter-bar">
+    <div class="filter-bar ratings-sticky-filter" style="margin-bottom:16px">
         <span class="filter-bar-label">Filters</span>
+
+        <div class="ratings-filter-input">
+            <input id="tickerSearchInput" list="tickerOptions" type="text" placeholder="Search ticker" aria-label="Search ticker">
+            <button id="addTickerFilterBtn" type="button" class="btn btn-sm btn-secondary">Add ticker</button>
+            <datalist id="tickerOptions">
+                <option th:each="t : ${tickers}" th:value="${t}"></option>
+            </datalist>
+        </div>
 
         <th:block th:each="t : ${selectedTickers}">
             <span class="chip">
@@ -57,14 +101,30 @@
 
     <div class="card table-wrap">
         <div th:if="${ratings.isEmpty()}" class="table-empty">No ratings found.</div>
-        <table th:unless="${ratings.isEmpty()}">
+        <table id="ratingsTable" th:unless="${ratings.isEmpty()}">
             <thead>
                 <tr>
                     <th>#</th>
-                    <th>Date</th>
-                    <th>Ticker</th>
-                    <th>Firm</th>
-                    <th>Analyst</th>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="date" style="padding:2px 8px;line-height:1.2;background:#dff5df;border:1px solid #9dd59d;color:#1f5d1f;" title="Sort by date">
+                            Date <span class="sort-indicator" data-for="date"></span>
+                        </button>
+                    </th>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="ticker" style="padding:2px 8px;line-height:1.2;background:#dff5df;border:1px solid #9dd59d;color:#1f5d1f;" title="Sort by ticker">
+                            Ticker <span class="sort-indicator" data-for="ticker"></span>
+                        </button>
+                    </th>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="firm" style="padding:2px 8px;line-height:1.2;background:#dff5df;border:1px solid #9dd59d;color:#1f5d1f;" title="Sort by firm">
+                            Firm <span class="sort-indicator" data-for="firm"></span>
+                        </button>
+                    </th>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="analyst" style="padding:2px 8px;line-height:1.2;background:#dff5df;border:1px solid #9dd59d;color:#1f5d1f;" title="Sort by analyst">
+                            Analyst <span class="sort-indicator" data-for="analyst"></span>
+                        </button>
+                    </th>
                     <th>Action</th>
                     <th>Rating</th>
                     <th>Prev Rating</th>
@@ -80,16 +140,16 @@
             <tbody>
                 <tr th:each="r, stat : ${ratings}">
                     <td th:text="${stat.count}"></td>
-                    <td th:text="${r.date != null ? r.date : '&#8212;'}"></td>
-                    <td>
+                    <td th:attr="data-sort-value=${r.date != null ? r.date : ''}" th:text="${r.date != null ? r.date : '&#8212;'}"></td>
+                    <td th:attr="data-sort-value=${r.ticker}">
                         <span class="badge badge-grey" th:text="${r.ticker}"></span>
                         <button type="button" class="filter-btn" data-field="ticker" th:data-value="${r.ticker}" title="Filter by ticker">&#x2295;</button>
                     </td>
-                    <td>
+                    <td th:attr="data-sort-value=${r.firm_name}">
                         <span th:text="${r.firm_name}"></span>
                         <button type="button" class="filter-btn" data-field="firm" th:data-value="${r.firm_name}" title="Filter by firm">&#x2295;</button>
                     </td>
-                    <td>
+                    <td th:attr="data-sort-value=${r.analyst_name}">
                         <button type="button" class="filter-btn" data-field="analyst" th:data-value="${r.analyst_name}" title="Filter by analyst">&#x2295;</button>
                         <span x-data="{ open: false }" class="info-popup-wrap">
                             <span th:text="${r.analyst_name}"></span>
@@ -140,9 +200,133 @@
             var form = document.getElementById('ratingFilterForm');
             var pendingChips = document.getElementById('pendingChips');
             var filterHint = document.getElementById('filterHint');
+            var ratingsTable = document.getElementById('ratingsTable');
+            var tickerSearchInput = document.getElementById('tickerSearchInput');
+            var addTickerFilterBtn = document.getElementById('addTickerFilterBtn');
+            var currentSort = { key: null, dir: 'asc' };
+
+            function parseDateValue(text) {
+                var t = (text || '').trim();
+                if (!t) return Number.NEGATIVE_INFINITY;
+                var timestamp = Date.parse(t);
+                if (!Number.isNaN(timestamp)) return timestamp;
+                return t.toLowerCase();
+            }
+
+            function getSortValue(row, key) {
+                if (key === 'date') {
+                    return parseDateValue(row.cells[1].getAttribute('data-sort-value') || row.cells[1].textContent);
+                }
+                if (key === 'ticker') {
+                    return (row.cells[2].getAttribute('data-sort-value') || row.cells[2].textContent || '').trim().toLowerCase();
+                }
+                if (key === 'firm') {
+                    return (row.cells[3].getAttribute('data-sort-value') || row.cells[3].textContent || '').trim().toLowerCase();
+                }
+                if (key === 'analyst') {
+                    return (row.cells[4].getAttribute('data-sort-value') || row.cells[4].textContent || '').trim().toLowerCase();
+                }
+                return '';
+            }
+
+            function updateSortIndicators() {
+                document.querySelectorAll('.sort-indicator').forEach(function (el) {
+                    var key = el.dataset.for;
+                    if (currentSort.key !== key) {
+                        el.textContent = '';
+                        return;
+                    }
+                    el.textContent = currentSort.dir === 'asc' ? '\u2191' : '\u2193';
+                });
+            }
+
+            function renumberRows(tbody) {
+                Array.from(tbody.rows).forEach(function (row, idx) {
+                    if (row.cells.length > 0) row.cells[0].textContent = String(idx + 1);
+                });
+            }
+
+            function sortRows(key) {
+                if (!ratingsTable) return;
+                var tbody = ratingsTable.tBodies[0];
+                if (!tbody) return;
+
+                currentSort.dir = (currentSort.key === key && currentSort.dir === 'asc') ? 'desc' : 'asc';
+                currentSort.key = key;
+
+                var dirFactor = currentSort.dir === 'asc' ? 1 : -1;
+                var rows = Array.from(tbody.rows);
+                rows.sort(function (a, b) {
+                    var av = getSortValue(a, key);
+                    var bv = getSortValue(b, key);
+                    if (av < bv) return -1 * dirFactor;
+                    if (av > bv) return 1 * dirFactor;
+                    return 0;
+                });
+                rows.forEach(function (row) { tbody.appendChild(row); });
+                renumberRows(tbody);
+                updateSortIndicators();
+            }
 
             document.getElementById('applyFilterBtn').addEventListener('click', function () {
                 form.submit();
+            });
+
+            function stageFilter(field, value) {
+                var normalized = (value || '').trim();
+                if (!normalized) return;
+                if (field === 'ticker') {
+                    normalized = normalized.toUpperCase();
+                }
+
+                var already = Array.from(form.querySelectorAll('input[name="' + field + '"]')).map(function (i) { return i.value; });
+                if (already.includes(normalized)) return;
+
+                if (filterHint) filterHint.style.display = 'none';
+
+                var inp = document.createElement('input');
+                inp.type = 'hidden'; inp.name = field; inp.value = normalized; inp.dataset.pending = '1';
+                form.appendChild(inp);
+
+                var chip = document.createElement('span');
+                chip.className = 'chip chip-pending';
+                var typeSpan = document.createElement('span');
+                typeSpan.className = 'chip-type'; typeSpan.textContent = field;
+                var strong = document.createElement('strong');
+                strong.textContent = normalized;
+                var rmBtn = document.createElement('button');
+                rmBtn.type = 'button'; rmBtn.className = 'chip-remove'; rmBtn.title = 'Remove';
+                rmBtn.dataset.pending = '1'; rmBtn.dataset.field = field; rmBtn.dataset.value = normalized;
+                rmBtn.textContent = '\u2715';
+                chip.appendChild(typeSpan);
+                chip.appendChild(document.createTextNode('\u00a0'));
+                chip.appendChild(strong);
+                chip.appendChild(document.createTextNode('\u00a0'));
+                chip.appendChild(rmBtn);
+                pendingChips.appendChild(chip);
+            }
+
+            if (addTickerFilterBtn) {
+                addTickerFilterBtn.addEventListener('click', function () {
+                    stageFilter('ticker', tickerSearchInput ? tickerSearchInput.value : '');
+                    if (tickerSearchInput) tickerSearchInput.value = '';
+                });
+            }
+
+            if (tickerSearchInput) {
+                tickerSearchInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        stageFilter('ticker', tickerSearchInput.value);
+                        tickerSearchInput.value = '';
+                    }
+                });
+            }
+
+            document.querySelectorAll('.table-sort-btn[data-sort-key]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    sortRows(btn.dataset.sortKey);
+                });
             });
 
             document.addEventListener('click', function (e) {
@@ -173,33 +357,7 @@
                 if (add) {
                     var field = add.dataset.field;
                     var value = add.dataset.value;
-                    var already = Array.from(form.querySelectorAll('input[name="' + field + '"]')).map(function (i) { return i.value; });
-                    if (already.includes(value)) return;
-
-                    if (filterHint) filterHint.style.display = 'none';
-
-                    // Hidden input
-                    var inp = document.createElement('input');
-                    inp.type = 'hidden'; inp.name = field; inp.value = value; inp.dataset.pending = '1';
-                    form.appendChild(inp);
-
-                    // Pending chip (built with DOM API to avoid XSS)
-                    var chip = document.createElement('span');
-                    chip.className = 'chip chip-pending';
-                    var typeSpan = document.createElement('span');
-                    typeSpan.className = 'chip-type'; typeSpan.textContent = field;
-                    var strong = document.createElement('strong');
-                    strong.textContent = value;
-                    var rmBtn = document.createElement('button');
-                    rmBtn.type = 'button'; rmBtn.className = 'chip-remove'; rmBtn.title = 'Remove';
-                    rmBtn.dataset.pending = '1'; rmBtn.dataset.field = field; rmBtn.dataset.value = value;
-                    rmBtn.textContent = '\u2715';
-                    chip.appendChild(typeSpan);
-                    chip.appendChild(document.createTextNode('\u00a0'));
-                    chip.appendChild(strong);
-                    chip.appendChild(document.createTextNode('\u00a0'));
-                    chip.appendChild(rmBtn);
-                    pendingChips.appendChild(chip);
+                    stageFilter(field, value);
                 }
             });
         })();

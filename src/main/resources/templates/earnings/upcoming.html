@@ -21,12 +21,20 @@
 
     <div class="card table-wrap">
         <div th:if="${upcoming.isEmpty()}" class="table-empty">No upcoming earnings found.</div>
-        <table th:unless="${upcoming.isEmpty()}">
+        <table id="upcomingEarningsTable" th:unless="${upcoming.isEmpty()}">
             <thead>
                 <tr>
                     <th>#</th>
-                    <th>Ticker</th>
-                    <th>Earnings Date</th>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="ticker" style="padding:2px 8px;line-height:1.2;background:#dff5df;border:1px solid #9dd59d;color:#1f5d1f;" title="Sort by ticker">
+                            Ticker <span class="sort-indicator" data-for="ticker"></span>
+                        </button>
+                    </th>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="earningsDate" style="padding:2px 8px;line-height:1.2;background:#dff5df;border:1px solid #9dd59d;color:#1f5d1f;" title="Sort by earnings date">
+                            Earnings Date <span class="sort-indicator" data-for="earningsDate"></span>
+                        </button>
+                    </th>
                     <th>Release Time</th>
                     <th>Quarter</th>
                     <th>Status</th>
@@ -37,7 +45,8 @@
                     th:with="ed=${e.earnings_date != null ? e.earnings_date.toLocalDate() : null}"
                     th:classappend="${ed == null} ? '' :
                                    (${ed.isBefore(today)} ? 'row-past' :
-                                   (${!ed.isAfter(twoWeeksOut)} ? 'row-soon' : 'row-future'))">
+                                   (${!ed.isAfter(twoWeeksOut)} ? 'row-soon' : 'row-future'))"
+                    th:attr="data-sort-ticker=${e.ticker},data-sort-earnings-date=${ed != null ? ed : ''}">
                     <td th:text="${stat.count}"></td>
                     <td><span class="badge badge-grey" th:text="${e.ticker}"></span></td>
                     <td th:text="${ed != null ? ed : '—'}"></td>
@@ -52,6 +61,74 @@
             </tbody>
         </table>
     </div>
+
+    <script>
+        (function () {
+            var table = document.getElementById('upcomingEarningsTable');
+            if (!table) return;
+
+            var sortState = { key: null, dir: 'asc' };
+
+            function compareValues(a, b, key) {
+                if (key === 'earningsDate') {
+                    var da = Date.parse(a || '');
+                    var db = Date.parse(b || '');
+                    if (isNaN(da) && isNaN(db)) return 0;
+                    if (isNaN(da)) return -1;
+                    if (isNaN(db)) return 1;
+                    return da - db;
+                }
+                return String(a || '').localeCompare(String(b || ''), undefined, { sensitivity: 'base' });
+            }
+
+            function updateSortIndicators() {
+                document.querySelectorAll('.sort-indicator').forEach(function (el) {
+                    var key = el.dataset.for;
+                    if (sortState.key !== key) {
+                        el.textContent = '';
+                        return;
+                    }
+                    el.textContent = sortState.dir === 'asc' ? '\u2191' : '\u2193';
+                });
+            }
+
+            function renumberRows(tbody) {
+                Array.from(tbody.rows).forEach(function (row, idx) {
+                    if (row.cells.length > 0) row.cells[0].textContent = String(idx + 1);
+                });
+            }
+
+            function sortTable(sortKey) {
+                var tbody = table.querySelector('tbody');
+                if (!tbody) return;
+
+                if (sortState.key === sortKey) {
+                    sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortState.key = sortKey;
+                    sortState.dir = 'asc';
+                }
+
+                var rows = Array.from(tbody.querySelectorAll('tr'));
+                rows.sort(function (r1, r2) {
+                    var v1 = sortKey === 'ticker' ? r1.dataset.sortTicker : r1.dataset.sortEarningsDate;
+                    var v2 = sortKey === 'ticker' ? r2.dataset.sortTicker : r2.dataset.sortEarningsDate;
+                    var cmp = compareValues(v1, v2, sortKey);
+                    return sortState.dir === 'asc' ? cmp : -cmp;
+                });
+
+                rows.forEach(function (row) { tbody.appendChild(row); });
+                renumberRows(tbody);
+                updateSortIndicators();
+            }
+
+            document.querySelectorAll('.table-sort-btn[data-sort-key]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    sortTable(btn.dataset.sortKey);
+                });
+            });
+        })();
+    </script>
 
 </div>
 </body>
