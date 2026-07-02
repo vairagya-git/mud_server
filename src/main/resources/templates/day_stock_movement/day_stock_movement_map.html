@@ -4,30 +4,161 @@
 <head><title>DSM Mapping — MudStock</title></head>
 <body>
 <div id="page-content" th:fragment="content">
+    <style>
+        .mapping-tab-shell { margin-bottom: 24px; }
+
+        .mapping-tabs {
+            display:flex;
+            gap:0;
+            flex-wrap:wrap;
+            margin: 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .mapping-tab-btn {
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text);
+            border-radius: 8px 8px 0 0;
+            padding: 8px 12px;
+            margin: 0 6px -1px 0;
+            cursor: pointer;
+            font-size: .84rem;
+            font-weight: 600;
+            border-bottom-color: var(--border);
+        }
+        .mapping-tab-btn.active {
+            background: #fff;
+            border-color: #9dd59d;
+            border-bottom-color: #fff;
+            color: #1f5d1f;
+            box-shadow: inset 0 3px 0 #63b663;
+        }
+
+        .mapping-tab-panel {
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 var(--radius) var(--radius);
+            background: #fff;
+            box-shadow: var(--shadow);
+        }
+
+        .mapping-tab-pane { display: none; }
+        .mapping-tab-pane.active { display: block; }
+
+        .mapping-form-section {
+            max-width: 640px;
+            padding: 16px 18px 14px;
+        }
+
+        .mapping-form-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--brand);
+            margin-bottom: 10px;
+        }
+
+        .mapping-form-subtitle {
+            margin-bottom: 10px;
+            color: var(--text-muted);
+            font-size: .84rem;
+        }
+    </style>
+
     <div class="page-header">
         <h1>Day Stock Movement Mapping</h1>
-        <div class="subtitle">Assign stocks to a movement key.</div>
+        <div class="subtitle">Manage stock mappings, watchlist mappings, and CSV uploads in one place.</div>
     </div>
+
+    <div th:if="${bulkMessage}" class="alert alert-success" th:text="${bulkMessage}"></div>
+    <div th:if="${csvMessage}" class="alert alert-success" th:text="${csvMessage}"></div>
+    <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
     <div th:if="${marketClosedWarning}" class="alert alert-error" th:text="${marketClosedWarning}"></div>
-    <div class="card" style="max-width:540px">
-        <form th:action="@{/day-stock-movement/mapping}" method="post">
-            <div class="form-group">
-                <label>Key (Code)</label>
-                <select name="code" required>
-                    <option value="">-- select --</option>
-                    <option th:each="k : ${days}" th:value="${k.code}" th:text="${k.code} + ' (' + ${k.date != null ? k.date : 'no date'} + ')'"></option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Stock Ticker</label>
-                <input type="text" name="ticker" placeholder="AAPL" required />
-            </div>
-            <div class="actions-bar" style="margin-top:20px">
-                <button type="submit" class="btn btn-primary">Save Mapping</button>
-                <a href="/day-stock-movement" hx-get="/day-stock-movement" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true" class="btn btn-secondary">Cancel</a>
-            </div>
-        </form>
+
+    <div th:if="${csvError}" class="alert alert-error" th:text="${csvError}"></div>
+    <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+    <div th:if="${marketClosedRemovedCount != null}" class="alert alert-error">
+        <strong th:text="${marketClosedRemovedCount}"></strong> key(s) hidden from watchlist mapping because market was closed:
+        <ul style="margin:8px 0 0 16px">
+            <li th:each="e : ${marketClosedRemovedEntries}" th:text="${e}"></li>
+        </ul>
     </div>
+
+    <div class="mapping-tab-shell">
+        <div class="mapping-tabs" role="tablist" aria-label="Mapping modes">
+            <button type="button" class="mapping-tab-btn active" data-tab-target="pane-stock">Stock Movement Mapping</button>
+            <button type="button" class="mapping-tab-btn" data-tab-target="pane-watchlist">Watchlist Movement Mapping</button>
+            <button type="button" class="mapping-tab-btn" data-tab-target="pane-csv">Stock Movement Mapping CSV Upload</button>
+        </div>
+
+        <div class="mapping-tab-panel">
+            <div id="pane-stock" class="mapping-tab-pane active">
+                <div class="mapping-form-section">
+                    <h3 class="mapping-form-title">Stock Movement Mapping</h3>
+                    <form th:action="@{/day-stock-movement/mapping}" method="post">
+                        <div class="form-group">
+                            <label>Key (Code)</label>
+                            <select name="code" required>
+                                <option value="">-- select --</option>
+                                <option th:each="k : ${days}" th:value="${k.code}" th:text="${k.code} + ' (' + ${k.date != null ? k.date : 'no date'} + ')'"></option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Stock Ticker</label>
+                            <input type="text" name="ticker" placeholder="AAPL" required />
+                        </div>
+                        <div class="actions-bar" style="margin-top:20px">
+                            <button type="submit" class="btn btn-primary">Save Mapping</button>
+                            <a href="/day-stock-movement" hx-get="/day-stock-movement" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div id="pane-watchlist" class="mapping-tab-pane">
+                <div class="mapping-form-section">
+                    <h3 class="mapping-form-title">Watchlist Movement Mapping</h3>
+                    <form th:action="@{/day-stock-movement/populate-watchlist}" method="post">
+                        <div class="form-group">
+                            <label>Day Key</label>
+                            <select name="dayEventMasterId" required>
+                                <option value="">-- select --</option>
+                                <option th:each="k : ${watchlistDays}" th:value="${k.id}" th:text="${k.code} + ' (' + ${k.date != null ? k.date : 'no date'} + ')'">
+                                </option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Watchlist</label>
+                            <select name="watchlistId" required>
+                                <option value="">-- select --</option>
+                                <option th:each="w : ${watchlists}" th:value="${w.id}" th:text="${w.name}"></option>
+                            </select>
+                        </div>
+                        <div class="actions-bar" style="margin-top:20px">
+                            <button type="submit" class="btn btn-primary">Populate</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div id="pane-csv" class="mapping-tab-pane">
+                <div class="mapping-form-section">
+                    <h3 class="mapping-form-title">Stock Movement Mapping CSV Upload</h3>
+                    <div class="mapping-form-subtitle">Format per line: <code>TICKER, DAY_CODE</code></div>
+                    <form th:action="@{/day-stock-movement/mapping/bulk}" method="post">
+                        <div class="form-group">
+                            <textarea name="bulkData" rows="12" style="max-width:100%;font-family:monospace" placeholder="AAPL, 2026-06-01&#10;MSFT, 2026-06-01"></textarea>
+                        </div>
+                        <div class="actions-bar">
+                            <button type="submit" class="btn btn-primary">Upload</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card table-wrap" style="margin-top:24px">
         <h3 style="margin-bottom:12px">Current Mappings</h3>
         <div th:if="${mappings.isEmpty()}" class="table-empty">No mappings yet.</div>
@@ -73,6 +204,24 @@
     </div>
 
     <script>
+        (function () {
+            var tabs = Array.from(document.querySelectorAll('.mapping-tab-btn[data-tab-target]'));
+            var panes = Array.from(document.querySelectorAll('.mapping-tab-pane'));
+            if (tabs.length === 0) return;
+
+            function activate(tab) {
+                tabs.forEach(function (t) { t.classList.remove('active'); });
+                panes.forEach(function (p) { p.classList.remove('active'); });
+                tab.classList.add('active');
+                var pane = document.getElementById(tab.dataset.tabTarget);
+                if (pane) pane.classList.add('active');
+            }
+
+            tabs.forEach(function (tab) {
+                tab.addEventListener('click', function () { activate(tab); });
+            });
+        })();
+
         (function () {
             var table = document.getElementById('mappingTable');
             if (!table) return;

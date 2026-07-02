@@ -115,6 +115,24 @@ public class DayStockMovementController {
         List<DayStockMovementKey> days = repo.findAll();
         model.addAttribute("stocks", stocks);
         model.addAttribute("days", days);
+        model.addAttribute("watchlists", watchlistRepo.findAll());
+        model.addAttribute("everydayWatchlistCode", dayStockMovementService.getWatchlistCode());
+
+        List<DayStockMovementKey> watchlistDays = new java.util.ArrayList<>();
+        List<String> removedEntries = new java.util.ArrayList<>();
+        for (DayStockMovementKey key : days) {
+            if (key.getDate() != null && marketCalendarService.isMarketClosed(key.getDate())) {
+                String reason = marketCalendarService.isWeekend(key.getDate()) ? "weekend" : "holiday/vacation";
+                removedEntries.add(key.getCode() + " [" + key.getDate() + "] — removed as it is a " + reason);
+            } else {
+                watchlistDays.add(key);
+            }
+        }
+        model.addAttribute("watchlistDays", watchlistDays);
+        if (!removedEntries.isEmpty()) {
+            model.addAttribute("marketClosedRemovedCount", removedEntries.size());
+            model.addAttribute("marketClosedRemovedEntries", removedEntries);
+        }
         return hxRequest != null ? "day_stock_movement/day_stock_movement_map :: content" : "day_stock_movement/day_stock_movement_map";
     }
 
@@ -145,7 +163,7 @@ public class DayStockMovementController {
     @GetMapping("/mapping/bulk")
     public String bulkForm(
             @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
-        return hxRequest != null ? "day_stock_movement/day_stock_movement_map_bulk :: content" : "day_stock_movement/day_stock_movement_map_bulk";
+        return "redirect:/day-stock-movement/mapping";
     }
 
     @PostMapping("/mapping/bulk")
@@ -221,29 +239,7 @@ public class DayStockMovementController {
     @GetMapping("/populate-watchlist")
     public String populateWatchlistForm(Model model,
             @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
-        List<Watchlist> watchlists = watchlistRepo.findAll();
-        List<DayStockMovementKey> allDays = repo.findAll();
-
-        // Filter out entries where the market was closed (weekend or holiday)
-        List<DayStockMovementKey> activeDays = new java.util.ArrayList<>();
-        List<String> removedEntries = new java.util.ArrayList<>();
-        for (DayStockMovementKey key : allDays) {
-            if (key.getDate() != null && marketCalendarService.isMarketClosed(key.getDate())) {
-                String reason = marketCalendarService.isWeekend(key.getDate()) ? "weekend" : "holiday/vacation";
-                removedEntries.add(key.getCode() + " [" + key.getDate() + "] — removed as it is a " + reason);
-            } else {
-                activeDays.add(key);
-            }
-        }
-
-        model.addAttribute("watchlists", watchlists);
-        model.addAttribute("days", activeDays);
-        model.addAttribute("everydayWatchlistCode", dayStockMovementService.getWatchlistCode());
-        if (!removedEntries.isEmpty()) {
-            model.addAttribute("marketClosedRemovedCount", removedEntries.size());
-            model.addAttribute("marketClosedRemovedEntries", removedEntries);
-        }
-        return hxRequest != null ? "day_stock_movement/day_stock_movement_watchlist :: content" : "day_stock_movement/day_stock_movement_watchlist";
+        return "redirect:/day-stock-movement/mapping";
     }
 
     @PostMapping("/populate-watchlist/by-date")
@@ -258,14 +254,14 @@ public class DayStockMovementController {
                     + result.mappingsCreated() + " of " + result.stocksTotal() + " stock(s) from watchlist "
                     + result.watchlistCode() + ".");
         }
-        return "redirect:/day-stock-movement/populate-watchlist";
+        return "redirect:/day-stock-movement/mapping";
     }
 
     @PostMapping("/populate-watchlist/bulk")
     public String populateWatchlistBulk(@RequestParam String csvData, RedirectAttributes ra) {
         if (csvData == null || csvData.isBlank()) {
             ra.addFlashAttribute("csvError", "No data provided.");
-            return "redirect:/day-stock-movement/populate-watchlist";
+            return "redirect:/day-stock-movement/mapping";
         }
         int created = 0;
         int skipped = 0;
@@ -290,7 +286,7 @@ public class DayStockMovementController {
         }
         ra.addFlashAttribute("csvMessage", "Created " + created + " mapping(s)." +
                 (skipped > 0 ? " Skipped " + skipped + " unresolved line(s)." : ""));
-        return "redirect:/day-stock-movement/populate-watchlist";
+        return "redirect:/day-stock-movement/mapping";
     }
 
     @PostMapping("/populate-watchlist")
@@ -298,7 +294,7 @@ public class DayStockMovementController {
         var maybe = watchlistRepo.findById(watchlistId);
         if (maybe.isEmpty()) {
             ra.addFlashAttribute("error", "Watchlist not found");
-            return "redirect:/day-stock-movement/populate-watchlist";
+            return "redirect:/day-stock-movement/mapping";
         }
         Watchlist w = maybe.get();
         int created = 0;
