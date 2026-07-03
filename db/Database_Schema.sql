@@ -233,7 +233,7 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('useage', 'useage', 'String', 'WeeklyUpcomingEarningCronjob', 'Populate the weekly upcoming earnings for the next week from yfinance'),
 ('enabled', 'false', 'boolean', 'WeeklyUpcomingEarningCronjob', 'Weekly Upcoming Earning Cronjob > cronjob Enabled'),
 ('watchlist-codes', 'MOVING_STOCK,SEMI_WATCHLIST', 'StringArray', 'WeeklyUpcomingEarningCronjob', 'Weekly Upcoming Earning Cronjob > Watchlist Codes'),
-('cronExpression', '0 0 21 * * FRI', 'CronExpression', 'WeeklyUpcomingEarningCronjob', 'CronExpression for the cronjob'),
+('cronExpression', '0 0 21 * * MON-FRI', 'CronExpression', 'WeeklyUpcomingEarningCronjob', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'WeeklyUpcomingEarningCronjob', 'LastUpdated dateTime'),
 /*DayStockMovementData Settings*/
 ('useage', 'useage', 'String', 'DayStockMovementData', 'Populated the day stock movment data for the current day'),

@@ -1,6 +1,10 @@
 package com.rama.mudstock.service;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -29,19 +33,23 @@ import com.rama.mudstock.util.MudDateUtil;
 @Service
 public class DayStockMovementService {
     private final Logger log = LoggerFactory.getLogger(DayStockMovementService.class);
+    private static final ZoneId LISBON = ZoneId.of("Europe/Lisbon");
 
     private final WatchlistRepository watchlistRepo;
     private final DayStockMovementKeyRepository masterRepo;
     private final DayStockMovementMapRepository mappingRepo;
     private final SystemConfigService systemConfigService;
+    private final MarketCalendarService marketCalendarService;
 
     public DayStockMovementService(WatchlistRepository watchlistRepo, DayStockMovementKeyRepository masterRepo,
                                 DayStockMovementMapRepository mappingRepo,
-                                SystemConfigService systemConfigService) {
+                                SystemConfigService systemConfigService,
+                                MarketCalendarService marketCalendarService) {
         this.watchlistRepo = watchlistRepo;
         this.masterRepo = masterRepo;
         this.mappingRepo = mappingRepo;
         this.systemConfigService = systemConfigService;
+        this.marketCalendarService = marketCalendarService;
     }
 
     public String getWatchlistCode() {
@@ -71,39 +79,86 @@ public class DayStockMovementService {
      */
     @Transactional
     public Result populateForDate(LocalDate date) {
+        KeyPreparationResult preparation = prepareDayStockMovementKeys(date);
+        return createMappingsForPreparedKeys(date, preparation);
+    }
+
+    /**
+     * Step 1: Prepare keys for the target date.
+     * - Validates market-open day (not weekend/holiday)
+     * - Creates missing day_stock_movement_key rows or reuses existing ones
+     */
+    @Transactional
+    public KeyPreparationResult prepareDayStockMovementKeys(LocalDate date) {
         List<String> watchlistCodes = getWatchlistCodes();
         if (watchlistCodes.isEmpty()) {
-            log.warn("watchlist-codes is not configured in system_config; skipping populate");
-            return new Result(null, "", 0, 0, false);
+            log.warn("watchlist-codes is not configured in system_config; skipping key preparation");
+            return new KeyPreparationResult(Collections.emptyList(), "", Collections.emptyList(), false);
         }
 
-        String dayPart = date.format(MudDateUtil.FMT_DAY_CODE).toUpperCase(); // e.g. 01_JUN_26
-        List<String> missingWatchlists = new ArrayList<>();
-        List<String> processedWatchlists = new ArrayList<>();
-        String lastMasterCode = null;
-        int created = 0;
-        int total = 0;
+        LocalDate startDate = resolveBackfillStartDate(date);
+        if (startDate.isAfter(date)) {
+            return new KeyPreparationResult(Collections.emptyList(), String.join(",", watchlistCodes), Collections.emptyList(), false);
+        }
 
-        for (String watchlistCode : watchlistCodes) {
-            var maybe = watchlistRepo.findByCode(watchlistCode);
-            if (maybe.isEmpty()) {
-                missingWatchlists.add(watchlistCode);
-                log.warn("Watchlist with code '{}' not found; skipping", watchlistCode);
+        List<String> processedWatchlists = new ArrayList<>();
+        List<PreparedKey> preparedKeys = new ArrayList<>();
+
+        for (LocalDate d = startDate; !d.isAfter(date); d = d.plusDays(1)) {
+            if (marketCalendarService.isMarketClosed(d)) {
                 continue;
             }
 
-            Watchlist w = maybe.get();
-            processedWatchlists.add(watchlistCode);
+            String dayPart = d.format(MudDateUtil.FMT_DAY_CODE).toUpperCase(); // e.g. 01_JUN_26
+            for (String watchlistCode : watchlistCodes) {
+                processedWatchlists.add(watchlistCode);
+                String code = String.format("%s_%s", dayPart, watchlistCode);
+                DayStockMovementKey master = getOrCreateDayStockMovementKey(code, watchlistCode, d);
+                preparedKeys.add(new PreparedKey(watchlistCode, master));
+            }
+        }
 
-            String code = String.format("%s_%s", dayPart, watchlistCode);
-            DayStockMovementKey master = masterRepo.findByCode(code).orElseGet(() -> {
-                DayStockMovementKey saved = masterRepo.save(new DayStockMovementKey(code, "Every-day-event > " + watchlistCode, date));
-                log.info("Created DayStockMovementKey with code={} id={}", saved.getCode(), saved.getId());
-                return saved;
-            });
+        String watchlistCodeSummary = String.join(",", processedWatchlists.stream().distinct().toList());
+        log.info("prepareDayStockMovementKeys({}): prepared {} key(s) for watchlist-codes [{}]",
+                date, preparedKeys.size(), watchlistCodeSummary);
+
+        return new KeyPreparationResult(preparedKeys, watchlistCodeSummary, Collections.emptyList(), false);
+    }
+
+    /**
+     * Step 2: Create stock-to-key mappings for the prepared keys.
+     */
+    @Transactional
+    public Result createMappingsForPreparedKeys(LocalDate date, KeyPreparationResult preparation) {
+        if (preparation == null || preparation.marketClosed()) {
+            return new Result(null, "", 0, 0, false);
+        }
+
+        List<PreparedKey> preparedKeys = preparation.preparedKeys();
+        if (preparedKeys.isEmpty()) {
+            return new Result(null, preparation.watchlistCodeSummary(), 0, 0, false);
+        }
+
+        String lastMasterCode = null;
+        int created = 0;
+        int total = 0;
+        List<String> missingWatchlists = new ArrayList<>();
+
+        for (PreparedKey prepared : preparedKeys) {
+            String watchlistCode = prepared.watchlistCode();
+            DayStockMovementKey master = prepared.master();
             lastMasterCode = master.getCode();
 
-            for (Stock s : w.getStocks()) {
+            var maybe = watchlistRepo.findByCode(watchlistCode);
+            if (maybe.isEmpty()) {
+                missingWatchlists.add(watchlistCode);
+                log.warn("createMappingsForPreparedKeys({}): watchlist with code '{}' not found; skipping mappings for key={}",
+                    date, watchlistCode, master.getCode());
+                continue;
+            }
+            Watchlist watchlist = maybe.get();
+
+            for (Stock s : watchlist.getStocks()) {
                 total++;
                 try {
                     mappingRepo.createMapping(s.getId(), master.getId());
@@ -115,14 +170,14 @@ public class DayStockMovementService {
             }
         }
 
-        String watchlistCodeSummary = String.join(",", processedWatchlists);
         if (!missingWatchlists.isEmpty()) {
-            log.warn("populateForDate({}): missing watchlist code(s): {}", date, String.join(",", missingWatchlists));
+            log.warn("createMappingsForPreparedKeys({}): missing watchlist code(s): {}",
+            date, String.join(",", missingWatchlists));
         }
 
-        log.info("populateForDate({}): created {} of {} mappings for watchlist-codes [{}]",
-                date, created, total, watchlistCodeSummary);
-        return new Result(lastMasterCode, watchlistCodeSummary, created, total, !processedWatchlists.isEmpty());
+        log.info("createMappingsForPreparedKeys({}): created {} of {} mappings for watchlist-codes [{}]",
+                date, created, total, preparation.watchlistCodeSummary());
+        return new Result(lastMasterCode, preparation.watchlistCodeSummary(), created, total, true);
     }
 
     /**
@@ -179,6 +234,62 @@ public class DayStockMovementService {
     private boolean isAutoMaster(DayStockMovementKey m, String suffix) {
         return m.getCode() != null && m.getCode().endsWith(suffix);
     }
+
+    private DayStockMovementKey getOrCreateDayStockMovementKey(String code, String watchlistCode, LocalDate date) {
+        return masterRepo.findByCode(code).orElseGet(() -> {
+            DayStockMovementKey saved = masterRepo.save(
+                new DayStockMovementKey(code, "Every-day-event > " + watchlistCode, date));
+            log.info("Created DayStockMovementKey with code={} id={}", saved.getCode(), saved.getId());
+            return saved;
+        });
+    }
+
+    private LocalDate resolveBackfillStartDate(LocalDate endDate) {
+        var lastUpdatedCfg = SystemConfigEnum.DayStockMovementKeyMapEntry.LAST_UPDATED;
+        String raw = systemConfigService
+            .findByPurposeAndCode(lastUpdatedCfg.purpose(), lastUpdatedCfg.code())
+            .filter(String.class::isInstance)
+            .map(String.class::cast)
+            .map(String::trim)
+            .orElse("");
+
+        LocalDate lastExecutedDate = parseLastUpdatedDate(raw);
+        if (lastExecutedDate == null) {
+            return endDate;
+        }
+        return lastExecutedDate.plusDays(1);
+    }
+
+    private LocalDate parseLastUpdatedDate(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String value = raw.trim();
+        try {
+            return Instant.parse(value).atZone(LISBON).toLocalDate();
+        } catch (Exception ignored) {
+        }
+        try {
+            return OffsetDateTime.parse(value).atZoneSameInstant(LISBON).toLocalDate();
+        } catch (Exception ignored) {
+        }
+        try {
+            return ZonedDateTime.parse(value).withZoneSameInstant(LISBON).toLocalDate();
+        } catch (Exception ignored) {
+        }
+        try {
+            return LocalDate.parse(value.substring(0, Math.min(value.length(), 10)));
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    public record PreparedKey(String watchlistCode, DayStockMovementKey master) {}
+
+    public record KeyPreparationResult(List<PreparedKey> preparedKeys,
+                                       String watchlistCodeSummary,
+                                       List<String> missingWatchlists,
+                                       boolean marketClosed) {}
 
     public record Result(String masterCode, String watchlistCode, int mappingsCreated, int stocksTotal,
                          boolean watchlistFound) {}

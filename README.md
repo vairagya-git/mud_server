@@ -64,3 +64,14 @@ http://localhost:9003/benzinga/v1/firms?limit=1000&sort=name.asc&apiKey=0jSwNlbv
 
 Firm Details By ID
 https://api.massive.com/benzinga/v1/firms?benzinga_id=643e5ba89eebb2000134dc4e&apiKey=0jSwNlbvfYIgQ8OAVJsZ7T1sEmpWm7JV
+
+
+
+
+
+Go Back Ctrl + -
+Go Forward Ctrl + Shift + -
+Go to Definition F12
+Peek Definition Option + F12
+Go to File Cmd + P
+Go to Symbol Cmd + Shift + O

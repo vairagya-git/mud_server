@@ -14,7 +14,6 @@ import org.springframework.stereotype.Component;
 import com.rama.mudstock.constant.SystemConfigEnum;
 import com.rama.mudstock.service.CronJobConfigSupport;
 import com.rama.mudstock.service.DayStockMovementService;
-import com.rama.mudstock.service.MarketCalendarService;
 
 @Component
 @Profile("cronjob")
@@ -22,7 +21,6 @@ public class DayStockMovementKeyMapEntryScheduler {
     private static final java.time.ZoneId LISBON = java.time.ZoneId.of("Europe/Lisbon");
 
     private final DayStockMovementService dayStockMovementService;
-    private final MarketCalendarService marketCalendarService;
     private final CronJobConfigSupport cronJobConfigSupport;
     private final Logger log = LoggerFactory.getLogger(DayStockMovementKeyMapEntryScheduler.class);
 
@@ -30,10 +28,8 @@ public class DayStockMovementKeyMapEntryScheduler {
     private String dayStockMovementKeyMapEntryCron;
 
     public DayStockMovementKeyMapEntryScheduler(DayStockMovementService dayStockMovementService,
-                                                MarketCalendarService marketCalendarService,
                                                 CronJobConfigSupport cronJobConfigSupport) {
         this.dayStockMovementService = dayStockMovementService;
-        this.marketCalendarService = marketCalendarService;
         this.cronJobConfigSupport = cronJobConfigSupport;
     }
 
@@ -61,12 +57,22 @@ public class DayStockMovementKeyMapEntryScheduler {
         }
 
         LocalDate today = LocalDate.now(LISBON);
-        if (marketCalendarService.isMarketClosed(today)) {
+
+        DayStockMovementService.KeyPreparationResult preparation =
+            dayStockMovementService.prepareDayStockMovementKeys(today);
+        if (preparation.marketClosed()) {
             log.info("DayStockMovementKeyMapEntryScheduler: market is closed on {} (weekend or holiday), skipping", today);
             return;
         }
-        log.info("DayStockMovementKeyMapEntryScheduler: creating day_stock_movement_key and mappings for today");
-        dayStockMovementService.populateForDate(today);
+
+        DayStockMovementService.Result mappingResult =
+            dayStockMovementService.createMappingsForPreparedKeys(today, preparation);
+
+        if (!mappingResult.watchlistFound()) {
+            log.info("DayStockMovementKeyMapEntryScheduler: no watchlist found/configured for day-stock mapping; skipping lastUpdated update");
+            return;
+        }
+
         cronJobConfigSupport.updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
     }
 
