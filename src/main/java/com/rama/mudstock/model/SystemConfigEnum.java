@@ -1,29 +1,219 @@
 package com.rama.mudstock.model;
 
 public enum SystemConfigEnum {
-    DAILY_ANALYST_RATING_WATCHLIST_CODES("DailyAnalystRatingCronjob", "watchlist-codes", "StringArray"),
-    DAILY_ANALYST_RATING_ENABLED("DailyAnalystRatingCronjob", "enabled", "Boolean"),
-    DAILY_ANALYST_RATING_DATE("DailyAnalystRatingCronjob", "benzinga-analyst-rating-date", "Date");
+    ;
 
-    private final String purpose;
-    private final String code;
-    private final String type;
+    public enum DailyAnalystRatingCronjob {
+        WATCHLIST_CODES("watchlist-codes", "StringArray", "Daily Analyst Rating Cronjob > Watchlist Codes"),
+        ENABLED("enabled", "Boolean", "Daily Analyst Rating Cronjob > Enabled"),
+        CRON_EXPRESSION("cronExpression", "CronExpression", "Daily Analyst Rating Cronjob > Cron Expression"),
+        LAST_UPDATED("lastUpdated", "DateTime", "Daily Analyst Rating Cronjob > Last Updated"),
+        USEAGE("useage", "String", "Daily Analyst Rating Cronjob > Usage");
 
-    SystemConfigEnum(String purpose, String code, String type) {
-        this.purpose = purpose;
-        this.code = code;
-        this.type = type;
+        private static final String PURPOSE = "DailyAnalystRatingCronjob";
+
+        private final String code;
+        private final String type;
+        private final String description;
+
+        DailyAnalystRatingCronjob(String code, String type, String description) {
+            this.code = code;
+            this.type = type;
+            this.description = description;
+        }
+
+        public String purpose() {
+            return PURPOSE;
+        }
+
+        public String code() {
+            return code;
+        }
+
+        public String type() {
+            return type;
+        }
+
+        public String description() {
+            return description;
+        }
     }
 
-    public String getPurpose() {
-        return purpose;
+    public enum WeeklyAnalystFirmUpdateCronjob {
+        ENABLED("enabled", "Boolean", "Weekly Analyst Firm Update Cronjob > Enabled"),
+        CRON_EXPRESSION("cronExpression", "CronExpression", "Weekly Analyst Firm Update Cronjob > Cron Expression"),
+        LAST_UPDATED("lastUpdated", "DateTime", "Weekly Analyst Firm Update Cronjob > Last Updated"),
+        USEAGE("useage", "String", "Weekly Analyst Firm Update Cronjob > Usage");
+
+        private static final String PURPOSE = "WeeklyAnalystFirmUpdateCronjob";
+
+        private final String code;
+        private final String type;
+        private final String description;
+
+        WeeklyAnalystFirmUpdateCronjob(String code, String type, String description) {
+            this.code = code;
+            this.type = type;
+            this.description = description;
+        }
+
+        public String purpose() {
+            return PURPOSE;
+        }
+
+        public String code() {
+            return code;
+        }
+
+        public String type() {
+            return type;
+        }
+
+        public String description() {
+            return description;
+        }
     }
 
-    public String getCode() {
-        return code;
+    public enum WeeklyUpcomingEarningCronjob {
+        WATCHLIST_CODES("watchlist-codes", "StringArray", "Weekly Upcoming Earning Cronjob > Watchlist Codes"),
+        ENABLED("enabled", "Boolean", "Weekly Upcoming Earning Cronjob > Enabled"),
+        CRON_EXPRESSION("cronExpression", "CronExpression", "Weekly Upcoming Earning Cronjob > Cron Expression"),
+        LAST_UPDATED("lastUpdated", "DateTime", "Weekly Upcoming Earning Cronjob > Last Updated"),
+        USEAGE("useage", "String", "Weekly Upcoming Earning Cronjob > Usage");
+
+        private static final String PURPOSE = "WeeklyUpcomingEarningCronjob";
+
+        private final String code;
+        private final String type;
+        private final String description;
+
+        WeeklyUpcomingEarningCronjob(String code, String type, String description) {
+            this.code = code;
+            this.type = type;
+            this.description = description;
+        }
+
+        public String purpose() {
+            return PURPOSE;
+        }
+
+        public String code() {
+            return code;
+        }
+
+        public String type() {
+            return type;
+        }
+
+        public String description() {
+            return description;
+        }
     }
 
-    public String getType() {
-        return type;
+    public enum DayStockMovementData {
+        ENABLED("enabled", "Boolean", "Day Stock Movement Data > cronjob Enabled"),
+        CRON_EXPRESSION("cronExpression", "CronExpression", "Day Stock Movement Data > Cron Expression"),
+        LAST_UPDATED("lastUpdated", "DateTime", "Day Stock Movement Data > Last Updated"),
+        USEAGE("useage", "String", "Day Stock Movement Data > Usage");
+
+        private static final String PURPOSE = "DayStockMovementData";
+
+        private final String code;
+        private final String type;
+        private final String description;
+
+        DayStockMovementData(String code, String type, String description) {
+            this.code = code;
+            this.type = type;
+            this.description = description;
+        }
+
+        public String purpose() {
+            return PURPOSE;
+        }
+
+        public String code() {
+            return code;
+        }
+
+        public String type() {
+            return type;
+        }
+
+        public String description() {
+            return description;
+        }
     }
+
+    public enum DayStockMovementCleanup {
+        ENABLED("enabled", "Boolean", "Day Stock Movement Cleanup > cronjob Enabled"),
+        CRON_EXPRESSION("cronExpression", "CronExpression", "Day Stock Movement Cleanup > Cron Expression"),
+        LAST_UPDATED("lastUpdated", "DateTime", "Day Stock Movement Cleanup > Last Updated"),
+        USEAGE("useage", "String", "Day Stock Movement Cleanup > Usage");
+
+        private static final String PURPOSE = "DayStockMovementCleanup";
+
+        private final String code;
+        private final String type;
+        private final String description;
+
+        DayStockMovementCleanup(String code, String type, String description) {
+            this.code = code;
+            this.type = type;
+            this.description = description;
+        }
+
+        public String purpose() {
+            return PURPOSE;
+        }
+
+        public String code() {
+            return code;
+        }
+
+        public String type() {
+            return type;
+        }
+
+        public String description() {
+            return description;
+        }
+    }
+
+    public enum DayStockMovementKeyMapEntry {
+        ENABLED("enabled", "Boolean", "Day Stock Movement Key Map Entry > cronjob Enabled"),
+        CRON_EXPRESSION("cronExpression", "CronExpression", "Day Stock Movement Key Map Entry > Cron Expression"),
+        LAST_UPDATED("lastUpdated", "DateTime", "Day Stock Movement Key Map Entry > Last Updated"),
+        WATCHLIST_CODES("watchlist-codes", "StringArray", "Day Stock Movement Key Map Entry > Watchlist Codes"),
+        USEAGE("useage", "String", "Day Stock Movement Key Map Entry > Usage");
+
+        private static final String PURPOSE = "DayStockMovementKeyMapEntry";
+
+        private final String code;
+        private final String type;
+        private final String description;
+
+        DayStockMovementKeyMapEntry(String code, String type, String description) {
+            this.code = code;
+            this.type = type;
+            this.description = description;
+        }
+
+        public String purpose() {
+            return PURPOSE;
+        }
+
+        public String code() {
+            return code;
+        }
+
+        public String type() {
+            return type;
+        }
+
+        public String description() {
+            return description;
+        }
+    }
+
 }

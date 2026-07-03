@@ -2,39 +2,34 @@ package com.rama.mudstock.scheduler.earnings;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import com.rama.mudstock.util.MudDateUtil;
+import com.rama.mudstock.util.WatchlistUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.rama.mudstock.model.earnings.EarningsDate;
 import com.rama.mudstock.model.yfinance.YFinanceTickerResponse;
-import com.rama.mudstock.model.stockwatchlist.Watchlist;
 import com.rama.mudstock.model.stockwatchlist.Stock;
+import com.rama.mudstock.constant.SystemConfigEnum;
 import com.rama.mudstock.repository.earnings.EarningsDateRepository;
 import com.rama.mudstock.repository.stockwatchlist.WatchlistRepository;
+import com.rama.mudstock.service.CronJobConfigSupport;
+import com.rama.mudstock.service.SystemConfigService;
 import com.rama.mudstock.service.YFinanceService;
 
 /**
  * Weekly cronjob that, for each stock in the configured watchlists, calls the
  * yfinance Python service and persists upcoming earnings dates.
- *
- * Cron and watchlist config come from application-cronjob.yml:
- *   weeklyUpcomingEarning.cron
- *   weeklyUpcomingEarning.watchlists  (comma-separated watchlist codes)
  */
 @Component
 @Profile("cronjob")
-@ConditionalOnProperty(prefix = "weeklyUpcomingEarning", name = "enabled", havingValue = "true")
 public class WeeklyUpcomingEarningCronjob {
 
     private static final Logger log = LoggerFactory.getLogger(WeeklyUpcomingEarningCronjob.class);
@@ -42,30 +37,65 @@ public class WeeklyUpcomingEarningCronjob {
     private final WatchlistRepository watchlistRepository;
     private final EarningsDateRepository earningsDateRepository;
     private final YFinanceService yFinanceService;
-
-    @Value("${weeklyUpcomingEarning.watchlists}")
-    private String watchlistCodes;
+    private final SystemConfigService systemConfigService;
+    private final CronJobConfigSupport cronJobConfigSupport;
 
     public WeeklyUpcomingEarningCronjob(WatchlistRepository watchlistRepository,
                                  EarningsDateRepository earningsDateRepository,
-                                 YFinanceService yFinanceService) {
+                                 YFinanceService yFinanceService,
+                                 SystemConfigService systemConfigService,
+                                 CronJobConfigSupport cronJobConfigSupport) {
         this.watchlistRepository = watchlistRepository;
         this.earningsDateRepository = earningsDateRepository;
         this.yFinanceService = yFinanceService;
+        this.systemConfigService = systemConfigService;
+        this.cronJobConfigSupport = cronJobConfigSupport;
     }
 
-    @Scheduled(cron = "${weeklyUpcomingEarning.cron}", zone = "Europe/Lisbon")
+    @Scheduled(cron = "${all-cronjob-schedule}", zone = "Europe/Lisbon")
     public void run() {
-        log.info("WeeklyUpcomingEarningCronjob: starting for watchlists [{}]", watchlistCodes);
-        Map<String, Stock> uniqueStocks = new LinkedHashMap<>();
-        for (String code : watchlistCodes.split(",")) {
-            String trimmed = code.trim();
-            watchlistRepository.findByCodeWithStocks(trimmed)
-                .ifPresentOrElse(
-                    w -> collectUniqueStocks(w, uniqueStocks),
-                    () -> log.warn("WeeklyUpcomingEarningCronjob: watchlist not found: {}", trimmed)
-                );
+        var enabledCfg = SystemConfigEnum.WeeklyUpcomingEarningCronjob.ENABLED;
+        var cronCfg = SystemConfigEnum.WeeklyUpcomingEarningCronjob.CRON_EXPRESSION;
+        var lastUpdatedCfg = SystemConfigEnum.WeeklyUpcomingEarningCronjob.LAST_UPDATED;
+        var watchlistCfg = SystemConfigEnum.WeeklyUpcomingEarningCronjob.WATCHLIST_CODES;
+        String purpose = enabledCfg.purpose();
+
+        boolean enabled = cronJobConfigSupport.isEnabled(purpose, enabledCfg.code());
+
+        if (!enabled) {
+            log.info("WeeklyUpcomingEarningCronjob: disabled by system_config (purpose={}, code={})",
+                purpose,
+                enabledCfg.code());
+            return;
         }
+
+        if (!cronJobConfigSupport.shouldExecuteSinceLastUpdated(
+            purpose,
+            cronCfg.code(),
+            lastUpdatedCfg.code(),
+            java.time.ZoneId.of("Europe/Lisbon"))) {
+            return;
+        }
+
+        List<String> watchlistCodeList = systemConfigService
+            .findByPurposeAndCode(
+                watchlistCfg.purpose(),
+                watchlistCfg.code())
+            .filter(List.class::isInstance)
+            .map(v -> ((List<?>) v).stream()
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .toList())
+            .orElse(List.of());
+
+        String watchlistCodes = String.join(",", watchlistCodeList);
+
+        log.info("WeeklyUpcomingEarningCronjob: starting for watchlists [{}]", watchlistCodes);
+        Map<String, Stock> uniqueStocks = WatchlistUtil.collectUniqueStocksByTicker(
+                watchlistCodes,
+                watchlistRepository,
+                log,
+                "WeeklyUpcomingEarningCronjob");
 
         log.info("WeeklyUpcomingEarningCronjob: collected {} unique stock(s) from configured watchlists", uniqueStocks.size());
         for (Stock stock : uniqueStocks.values()) {
@@ -75,15 +105,8 @@ public class WeeklyUpcomingEarningCronjob {
                 log.error("WeeklyUpcomingEarningCronjob: error processing stock {}", stock.getTicker(), ex);
             }
         }
+        cronJobConfigSupport.updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
         log.info("WeeklyUpcomingEarningCronjob: finished");
-    }
-
-    private void collectUniqueStocks(Watchlist watchlist, Map<String, Stock> uniqueStocks) {
-        log.info("WeeklyUpcomingEarningCronjob: processing watchlist '{}'", watchlist.getCode());
-        for (Stock stock : watchlist.getStocks()) {
-            String key = stock.getId() != null ? String.valueOf(stock.getId()) : stock.getTicker();
-            uniqueStocks.putIfAbsent(key, stock);
-        }
     }
 
     private void processStock(Stock stock) {

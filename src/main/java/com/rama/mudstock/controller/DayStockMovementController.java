@@ -248,7 +248,7 @@ public class DayStockMovementController {
         var result = dayStockMovementService.populateForDate(date);
         if (!result.watchlistFound()) {
             ra.addFlashAttribute("error", "Watchlist '" + result.watchlistCode()
-                    + "' not found or everyday-watchlist-code not configured");
+                    + "' not found or watchlist-codes not configured in system_config");
         } else {
             ra.addFlashAttribute("message", "Day stock movement key '" + result.masterCode() + "' ready. Mapped "
                     + result.mappingsCreated() + " of " + result.stocksTotal() + " stock(s) from watchlist "

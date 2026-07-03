@@ -12,12 +12,12 @@ import com.rama.mudstock.model.SystemConfig;
 
 public interface SystemConfigRepository extends JpaRepository<SystemConfig, Long> {
 
-    Optional<SystemConfig> findByCode(String code);
-
     Optional<SystemConfig> findByPurposeAndCode(String purpose, String code);
 
     @Modifying
     @Transactional
-    @Query("UPDATE SystemConfig sc SET sc.value = :value WHERE sc.code = :code")
-    int updateValueByCode(@Param("code") String code, @Param("value") String value);
+    @Query("UPDATE SystemConfig sc SET sc.value = :value WHERE sc.purpose = :purpose AND sc.code = :code")
+    int updateValueByPurposeAndCode(@Param("purpose") String purpose,
+                                    @Param("code") String code,
+                                    @Param("value") String value);
 }

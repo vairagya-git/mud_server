@@ -31,7 +31,6 @@ massive:
   benzinga-firm-id: benzinga/v1/firms?benzinga_id=%s&limit=1000&sort=name.asc&apiKey=%s
   benzinga-analyst: benzinga/v1/analysts?benzinga_id=%s&apiKey=%s
   benzinga-analyst-rating: benzinga/v1/ratings?ticker=%s&last_updated.gte=%s&apiKey=%s
-  benzinga-analyst-rating-date: 2026-01-01
   apikey: ${MASSIVE_API_KEY:0jSwNlbvfYIgQ8OAVJsZ7T1sEmpWm7JV}
 
 python:
@@ -41,3 +40,5 @@ python:
 master:
   tables:
     - master_market_holidays
+
+all-cronjob-schedule: "0 0/1 * * * *"

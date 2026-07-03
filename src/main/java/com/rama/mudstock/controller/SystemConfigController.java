@@ -18,6 +18,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.rama.mudstock.model.SystemConfig;
 import com.rama.mudstock.service.SystemConfigService;
+import com.rama.mudstock.controller.dto.SystemConfigSectionDto;
 
 @Controller
 @RequestMapping("/system-config")
@@ -37,49 +38,104 @@ public class SystemConfigController {
                 .comparing((SystemConfig c) -> c.getPurpose() == null ? "" : c.getPurpose(), String.CASE_INSENSITIVE_ORDER)
                 .thenComparing(c -> c.getCode() == null ? "" : c.getCode(), String.CASE_INSENSITIVE_ORDER));
 
-        Map<String, List<SystemConfig>> configGroups = new LinkedHashMap<>();
+        Map<String, SystemConfigSectionDto> sectionsByPurpose = new LinkedHashMap<>();
         for (SystemConfig cfg : configs) {
-            String purpose = (cfg.getPurpose() == null || cfg.getPurpose().isBlank()) ? "Uncategorized" : cfg.getPurpose();
-            configGroups.computeIfAbsent(purpose, k -> new ArrayList<>()).add(cfg);
+            String code = cfg.getCode() == null ? "" : cfg.getCode().trim();
+            String purpose = cfg.getPurpose() == null ? "" : cfg.getPurpose().trim();
+            if (purpose.isBlank()) {
+                purpose = "Uncategorized";
+            }
+
+            SystemConfigSectionDto section = sectionsByPurpose.computeIfAbsent(purpose, SystemConfigSectionDto::new);
+            if ("useage".equalsIgnoreCase(code) || "usage".equalsIgnoreCase(code)) {
+                String sectionDescription = cfg.getDescription();
+                if (sectionDescription == null || sectionDescription.isBlank()) {
+                    sectionDescription = cfg.getValue();
+                }
+                if (sectionDescription != null && !sectionDescription.isBlank()) {
+                    // Keep the first meaningful description in case duplicate useage rows exist.
+                    if (section.getDescription() == null || section.getDescription().isBlank()) {
+                        section.setDescription(sectionDescription);
+                    }
+                }
+                continue;
+            }
+            section.addField(cfg);
         }
 
         model.addAttribute("configs", configs);
-        model.addAttribute("configGroups", configGroups);
+        model.addAttribute("sections", new ArrayList<>(sectionsByPurpose.values()));
         return hxRequest != null ? "system_config/list :: content" : "system_config/list";
     }
 
     @GetMapping("/{code}/edit")
-    public String editForm(@PathVariable String code, Model model, RedirectAttributes ra,
+    public String editForm(@PathVariable String code,
+            @RequestParam(value = "purpose", required = false) String purpose,
+            Model model, RedirectAttributes ra,
             @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
-        return systemConfigService.findEntityByCode(code)
+        final String normalizedPurpose = normalizePurpose(purpose);
+        if (normalizedPurpose == null || normalizedPurpose.isBlank()) {
+            ra.addFlashAttribute("error", "Purpose is required to edit config: " + code);
+            return "redirect:/system-config";
+        }
+
+        if ("useage".equalsIgnoreCase(code) || "usage".equalsIgnoreCase(code)) {
+            ra.addFlashAttribute("error", "Code 'useage/usage' is display-only and not editable.");
+            return "redirect:/system-config";
+        }
+
+        return systemConfigService.findEntityByPurposeAndCode(normalizedPurpose, code)
                 .map(cfg -> {
                     model.addAttribute("config", cfg);
                     return hxRequest != null ? "system_config/edit :: content" : "system_config/edit";
                 })
                 .orElseGet(() -> {
-                    ra.addFlashAttribute("error", "Config not found: " + code);
+                    ra.addFlashAttribute("error", "Config not found: " + normalizedPurpose + "/" + code);
                     return "redirect:/system-config";
                 });
     }
 
     @PostMapping("/{code}/edit")
     public String save(@PathVariable String code,
+                       @RequestParam String purpose,
                        @RequestParam String value,
-                       @RequestParam String type,
-                       @RequestParam String description,
                        RedirectAttributes ra) {
-        return systemConfigService.findEntityByCode(code)
+        final String normalizedPurpose = normalizePurpose(purpose);
+        if ("useage".equalsIgnoreCase(code) || "usage".equalsIgnoreCase(code)) {
+            ra.addFlashAttribute("error", "Code 'useage/usage' is display-only and not editable.");
+            return "redirect:/system-config";
+        }
+
+        return systemConfigService.findEntityByPurposeAndCode(normalizedPurpose, code)
                 .map(cfg -> {
                     cfg.setValue(value);
-                    cfg.setType(type);
-                    cfg.setDescription(description);
                     systemConfigService.save(cfg);
-                    ra.addFlashAttribute("message", "Saved config: " + code);
+                    ra.addFlashAttribute("message", "Saved config: " + normalizedPurpose + "/" + code);
                     return "redirect:/system-config";
                 })
                 .orElseGet(() -> {
-                    ra.addFlashAttribute("error", "Config not found: " + code);
+                    ra.addFlashAttribute("error", "Config not found: " + normalizedPurpose + "/" + code);
                     return "redirect:/system-config";
                 });
+    }
+
+    private String normalizePurpose(String purpose) {
+        if (purpose == null) {
+            return null;
+        }
+        String trimmed = purpose.trim();
+        if (trimmed.isBlank()) {
+            return trimmed;
+        }
+        if (!trimmed.contains(",")) {
+            return trimmed;
+        }
+        for (String part : trimmed.split(",")) {
+            String candidate = part == null ? "" : part.trim();
+            if (!candidate.isBlank()) {
+                return candidate;
+            }
+        }
+        return trimmed;
     }
 }

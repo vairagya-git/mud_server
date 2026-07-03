@@ -5,44 +5,69 @@ import java.time.LocalDate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import com.rama.mudstock.constant.SystemConfigEnum;
+import com.rama.mudstock.service.CronJobConfigSupport;
 import com.rama.mudstock.service.DayStockMovementService;
 import com.rama.mudstock.service.MarketCalendarService;
 
 @Component
 @Profile("cronjob")
-@ConditionalOnProperty(prefix = "dayStockMovementKeyMapEntry", name = "enabled", havingValue = "true")
 public class DayStockMovementKeyMapEntryScheduler {
+    private static final java.time.ZoneId LISBON = java.time.ZoneId.of("Europe/Lisbon");
+
     private final DayStockMovementService dayStockMovementService;
     private final MarketCalendarService marketCalendarService;
+    private final CronJobConfigSupport cronJobConfigSupport;
     private final Logger log = LoggerFactory.getLogger(DayStockMovementKeyMapEntryScheduler.class);
 
     @Value("${dayStockMovementKeyMapEntry.cron:}")
     private String dayStockMovementKeyMapEntryCron;
 
     public DayStockMovementKeyMapEntryScheduler(DayStockMovementService dayStockMovementService,
-                                                MarketCalendarService marketCalendarService) {
+                                                MarketCalendarService marketCalendarService,
+                                                CronJobConfigSupport cronJobConfigSupport) {
         this.dayStockMovementService = dayStockMovementService;
         this.marketCalendarService = marketCalendarService;
+        this.cronJobConfigSupport = cronJobConfigSupport;
     }
 
-    // Cron configured in application-cronjob.yml: dayStockMovementKeyMapEntry.cron
-    // zone ensures 22:00 is interpreted as Portugal local time (WET/WEST) on any host
-    @Scheduled(cron = "${dayStockMovementKeyMapEntry.cron}", zone = "Europe/Lisbon")
+    @Scheduled(cron = "${all-cronjob-schedule}", zone = "Europe/Lisbon")
     public void runDayStockMovementKeyMapEntry() {
-        LocalDate today = LocalDate.now();
+        var enabledCfg = SystemConfigEnum.DayStockMovementKeyMapEntry.ENABLED;
+        var cronCfg = SystemConfigEnum.DayStockMovementKeyMapEntry.CRON_EXPRESSION;
+        var lastUpdatedCfg = SystemConfigEnum.DayStockMovementKeyMapEntry.LAST_UPDATED;
+        String purpose = enabledCfg.purpose();
+
+        boolean enabled = cronJobConfigSupport.isEnabled(purpose, enabledCfg.code());
+
+        if (!enabled) {
+            log.info("DayStockMovementKeyMapEntryScheduler: disabled by system_config (purpose={}, code={})",
+                purpose, enabledCfg.code());
+            return;
+        }
+
+        if (!cronJobConfigSupport.shouldExecuteSinceLastUpdated(
+            purpose,
+            cronCfg.code(),
+            lastUpdatedCfg.code(),
+            LISBON)) {
+            return;
+        }
+
+        LocalDate today = LocalDate.now(LISBON);
         if (marketCalendarService.isMarketClosed(today)) {
             log.info("DayStockMovementKeyMapEntryScheduler: market is closed on {} (weekend or holiday), skipping", today);
             return;
         }
         log.info("DayStockMovementKeyMapEntryScheduler: creating day_stock_movement_key and mappings for today");
         dayStockMovementService.populateForDate(today);
+        cronJobConfigSupport.updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
     }
 
     @EventListener(ApplicationReadyEvent.class)

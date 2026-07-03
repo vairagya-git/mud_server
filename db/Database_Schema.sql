@@ -199,28 +199,61 @@ INSERT INTO master_market_holidays (`year`, `country`, `holiday_date`) VALUES
 ('2027', 'USA', '2027-11-25'),
 ('2027', 'USA', '2027-12-24');
 
-drop table system_config;
-
 CREATE TABLE `system_config` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `code` varchar(64) NOT NULL,
   `value` varchar(64) NOT NULL,
   `type` varchar(64) NOT NULL,
   `purpose` varchar(64) NOT NULL,
-  `description` varchar(128) NOT NULL,
+  `description` varchar(1024) NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   CONSTRAINT unique_day_event_master UNIQUE (`code`, `purpose`)
 ) ENGINE=InnoDB;
 
+drop table system_config;
+
+SELECT * FROM watchlist;
+
 
 INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VALUES
-('benzinga-analyst-rating-date', '2026-01-01', 'date', 'DailyAnalystRatingCronjob', 'Benzinga Analyst Rating > Last Processed Date'),
+/* WeeklyAnalystFirmUpdateCronjob Settings*/
+('useage', 'useage', 'String', 'WeeklyAnalystFirmUpdateCronjob', 'Populate weekly analyst firm details from Benzinga API'),
+('enabled', 'false', 'boolean', 'WeeklyAnalystFirmUpdateCronjob', 'Weekly Analyst Firm Update > cronjob Enabled'),
+('cronExpression', '0 0 21 * * SUN', 'CronExpression', 'WeeklyAnalystFirmUpdateCronjob', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'WeeklyAnalystFirmUpdateCronjob', 'LastUpdated dateTime'),
+/* DailyAnalystRatingCronjob Settings*/
+('useage', 'useage', 'String', 'DailyAnalystRatingCronjob', 'Pull the Analyst rating details from Benzinga API'),
 ('watchlist-codes', 'MOVING_STOCK,SEMI_WATCHLIST', 'StringArray', 'DailyAnalystRatingCronjob', 'Benzinga Analyst Rating > Watchlist Codes'),
-('enabled', 'true', 'boolean', 'DailyAnalystRatingCronjob', 'Benzinga Analyst Rating > cronjob Enabled'),
-('enabled', 'true', 'boolean', 'WeeklyUpcomingEarningCronjob', 'Weekly Upcoming Earning Cronjob > cronjob Enabled'),
-('enabled', 'true', 'boolean', 'WeeklyAnalystFirmUpdateCronjob', 'Weekly Analyst Firm Update > cronjob Enabled');
+('enabled', 'false', 'boolean', 'DailyAnalystRatingCronjob', 'Benzinga Analyst Rating > cronjob Enabled'),
+('cronExpression', '0 0 0/15 * * SUN', 'CronExpression', 'DailyAnalystRatingCronjob', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'DailyAnalystRatingCronjob', 'LastUpdated dateTime'),
+/* WeeklyUpcomingEarningCronjob Settings*/
+('useage', 'useage', 'String', 'WeeklyUpcomingEarningCronjob', 'Populate the weekly upcoming earnings for the next week from yfinance'),
+('enabled', 'false', 'boolean', 'WeeklyUpcomingEarningCronjob', 'Weekly Upcoming Earning Cronjob > cronjob Enabled'),
+('watchlist-codes', 'MOVING_STOCK,SEMI_WATCHLIST', 'StringArray', 'WeeklyUpcomingEarningCronjob', 'Weekly Upcoming Earning Cronjob > Watchlist Codes'),
+('cronExpression', '0 0 21 * * FRI', 'CronExpression', 'WeeklyUpcomingEarningCronjob', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'WeeklyUpcomingEarningCronjob', 'LastUpdated dateTime'),
+/*DayStockMovementData Settings*/
+('useage', 'useage', 'String', 'DayStockMovementData', 'Populated the day stock movment data for the current day'),
+('enabled', 'false', 'boolean', 'DayStockMovementData', 'Day Stock Movement Data > cronjob Enabled'),
+('cronExpression', '0 0 21 * * FRI', 'CronExpression', 'DayStockMovementData', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'DayStockMovementData', 'LastUpdated dateTime'),
+/*DayStockMovementCleanup Settings*/
+('useage', 'useage', 'String', 'DayStockMovementCleanup', 'Cleanup the day stock movement data for the current day'),
+('enabled', 'false', 'boolean', 'DayStockMovementCleanup', 'Day Stock Movement Cleanup > cronjob Enabled'),
+('cronExpression', '0 0 8 * * MON-FRI', 'CronExpression', 'DayStockMovementCleanup', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'DayStockMovementCleanup', 'LastUpdated dateTime'),
+/*DayStockMovementKeyMapEntry Settings*/
+('useage', 'useage', 'String', 'DayStockMovementKeyMapEntry', 'Populate the day stock movement key map entry for the current day'),
+('enabled', 'false', 'boolean', 'DayStockMovementKeyMapEntry', 'Day Stock Movement Key Map Entry > cronjob Enabled'),
+('watchlist-codes', 'MOVING_STOCK,SEMI_WATCHLIST', 'StringArray', 'DayStockMovementKeyMapEntry', 'Day Stock Movement Key Map Entry > Watchlist Codes'),
+('cronExpression', '0 0 22 * * FRI', 'CronExpression', 'DayStockMovementKeyMapEntry', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'DayStockMovementKeyMapEntry', 'LastUpdated dateTime');
+
+
+delete from system_config;
 
 
 

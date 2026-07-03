@@ -6,22 +6,16 @@
 <div id="page-content" th:fragment="content">
     <div class="page-header">
         <h1>Edit System Config</h1>
+        <div class="subtitle" th:if="${#strings.equalsIgnoreCase(config.code, 'useage')}" th:text="${config.description}"></div>
         <div class="subtitle">Code: <code th:text="${config.code}"></code></div>
     </div>
     <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
     <div class="card" style="max-width:540px">
         <form th:action="@{/system-config/{c}/edit(c=${config.code})}" method="post">
+            <input type="hidden" name="purpose" th:value="${config.purpose}" />
             <div class="form-group">
                 <label for="value">Value</label>
                 <input type="text" id="value" name="value" th:value="${config.value}" required />
-            </div>
-            <div class="form-group">
-                <label for="type">Type</label>
-                <input type="text" id="type" name="type" th:value="${config.type}" required placeholder="e.g. String, Date" />
-            </div>
-            <div class="form-group">
-                <label for="description">Description</label>
-                <input type="text" id="description" name="description" th:value="${config.description}" required />
             </div>
             <div class="actions-bar" style="margin-top:20px">
                 <button type="submit" class="btn btn-primary">&#10003; Save</button>

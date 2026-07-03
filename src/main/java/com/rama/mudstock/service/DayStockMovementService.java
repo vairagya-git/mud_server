@@ -1,13 +1,16 @@
 package com.rama.mudstock.service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.rama.mudstock.constant.SystemConfigEnum;
 import com.rama.mudstock.model.daystock.DayStockMovementKey;
 import com.rama.mudstock.model.stockwatchlist.Stock;
 import com.rama.mudstock.model.stockwatchlist.Watchlist;
@@ -18,7 +21,7 @@ import com.rama.mudstock.util.MudDateUtil;
 
 /**
  * Shared logic for the "every day event" feature: for a given date, create a single
- * day_stock_movement_key entry for the configured watchlist (everyday-watchlist-code) and
+ * day_stock_movement_key entry for the configured watchlist-codes (from system_config) and
  * map every stock in that watchlist into day_stock_movement_map.
  *
  * Used by both the scheduled job (for today) and the manual date form.
@@ -30,19 +33,35 @@ public class DayStockMovementService {
     private final WatchlistRepository watchlistRepo;
     private final DayStockMovementKeyRepository masterRepo;
     private final DayStockMovementMapRepository mappingRepo;
-
-    @Value("${everyday-watchlist-code:}")
-    private String everydayWatchlistCode;
+    private final SystemConfigService systemConfigService;
 
     public DayStockMovementService(WatchlistRepository watchlistRepo, DayStockMovementKeyRepository masterRepo,
-                                DayStockMovementMapRepository mappingRepo) {
+                                DayStockMovementMapRepository mappingRepo,
+                                SystemConfigService systemConfigService) {
         this.watchlistRepo = watchlistRepo;
         this.masterRepo = masterRepo;
         this.mappingRepo = mappingRepo;
+        this.systemConfigService = systemConfigService;
     }
 
     public String getWatchlistCode() {
-        return everydayWatchlistCode == null ? "" : everydayWatchlistCode.trim();
+        return String.join(",", getWatchlistCodes());
+    }
+
+    public List<String> getWatchlistCodes() {
+        var watchlistCfg = SystemConfigEnum.DayStockMovementKeyMapEntry.WATCHLIST_CODES;
+        return systemConfigService
+                .findByPurposeAndCode(watchlistCfg.purpose(), watchlistCfg.code())
+                .filter(List.class::isInstance)
+                .map(v -> ((List<?>) v).stream()
+                        .filter(String.class::isInstance)
+                        .map(String.class::cast)
+                        .map(String::trim)
+                        .filter(s -> !s.isBlank())
+                        .map(String::toUpperCase)
+                        .distinct()
+                        .toList())
+                .orElse(Collections.emptyList());
     }
 
     /**
@@ -52,60 +71,73 @@ public class DayStockMovementService {
      */
     @Transactional
     public Result populateForDate(LocalDate date) {
-        String watchlistCode = getWatchlistCode();
-        if (watchlistCode.isEmpty()) {
-            log.warn("everyday-watchlist-code is not configured; skipping populate");
-            return new Result(null, watchlistCode, 0, 0, false);
+        List<String> watchlistCodes = getWatchlistCodes();
+        if (watchlistCodes.isEmpty()) {
+            log.warn("watchlist-codes is not configured in system_config; skipping populate");
+            return new Result(null, "", 0, 0, false);
         }
-
-        var maybe = watchlistRepo.findByCode(watchlistCode);
-        if (maybe.isEmpty()) {
-            log.warn("Watchlist with code '{}' not found; skipping populate", watchlistCode);
-            return new Result(null, watchlistCode, 0, 0, false);
-        }
-        Watchlist w = maybe.get();
 
         String dayPart = date.format(MudDateUtil.FMT_DAY_CODE).toUpperCase(); // e.g. 01_JUN_26
-        String code = String.format("%s_%s", dayPart, watchlistCode);
-
-        DayStockMovementKey master = masterRepo.findByCode(code).orElseGet(() -> {
-            DayStockMovementKey saved = masterRepo.save(new DayStockMovementKey(code, "Every-day-event > " + watchlistCode, date));
-            log.info("Created DayStockMovementKey with code={} id={}", saved.getCode(), saved.getId());
-            return saved;
-        });
-
+        List<String> missingWatchlists = new ArrayList<>();
+        List<String> processedWatchlists = new ArrayList<>();
+        String lastMasterCode = null;
         int created = 0;
         int total = 0;
-        for (Stock s : w.getStocks()) {
-            total++;
-            try {
-                mappingRepo.createMapping(s.getId(), master.getId());
-                created++;
-            } catch (Exception ex) {
-                // duplicates (unique_dem_day_event_master) and other per-row errors are skipped
-                log.debug("Skip mapping stock {} -> master {}: {}", s.getId(), master.getId(), ex.getMessage());
+
+        for (String watchlistCode : watchlistCodes) {
+            var maybe = watchlistRepo.findByCode(watchlistCode);
+            if (maybe.isEmpty()) {
+                missingWatchlists.add(watchlistCode);
+                log.warn("Watchlist with code '{}' not found; skipping", watchlistCode);
+                continue;
+            }
+
+            Watchlist w = maybe.get();
+            processedWatchlists.add(watchlistCode);
+
+            String code = String.format("%s_%s", dayPart, watchlistCode);
+            DayStockMovementKey master = masterRepo.findByCode(code).orElseGet(() -> {
+                DayStockMovementKey saved = masterRepo.save(new DayStockMovementKey(code, "Every-day-event > " + watchlistCode, date));
+                log.info("Created DayStockMovementKey with code={} id={}", saved.getCode(), saved.getId());
+                return saved;
+            });
+            lastMasterCode = master.getCode();
+
+            for (Stock s : w.getStocks()) {
+                total++;
+                try {
+                    mappingRepo.createMapping(s.getId(), master.getId());
+                    created++;
+                } catch (Exception ex) {
+                    // duplicates (unique_dem_day_event_master) and other per-row errors are skipped
+                    log.debug("Skip mapping stock {} -> master {}: {}", s.getId(), master.getId(), ex.getMessage());
+                }
             }
         }
 
-        log.info("populateForDate({}): created {} of {} mappings for watchlist '{}' dayEventMaster id={}",
-                date, created, total, watchlistCode, master.getId());
-        return new Result(master.getCode(), watchlistCode, created, total, true);
+        String watchlistCodeSummary = String.join(",", processedWatchlists);
+        if (!missingWatchlists.isEmpty()) {
+            log.warn("populateForDate({}): missing watchlist code(s): {}", date, String.join(",", missingWatchlists));
+        }
+
+        log.info("populateForDate({}): created {} of {} mappings for watchlist-codes [{}]",
+                date, created, total, watchlistCodeSummary);
+        return new Result(lastMasterCode, watchlistCodeSummary, created, total, !processedWatchlists.isEmpty());
     }
 
     /**
      * Cleanup: when a date has more than one day_event_master and one of them is the auto-generated
-     * every-day master (code ends with "_" + everyday-watchlist-code), remove that redundant master
+    * every-day master (code ends with "_" + watchlist-code), remove that redundant master
      * along with its day_event_map and day_event_entry rows. The genuine (manually created) master is kept.
      *
      * @return number of redundant masters removed
      */
     @Transactional
     public int cleanupRedundantMasters() {
-        String watchlistCode = getWatchlistCode();
-        if (watchlistCode.isEmpty()) {
+        List<String> watchlistCodes = getWatchlistCodes();
+        if (watchlistCodes.isEmpty()) {
             return 0;
         }
-        String suffix = "_" + watchlistCode; // auto-generated masters look like 12_JUN_26_MOVING_STOCK
 
         java.util.Map<LocalDate, java.util.List<DayStockMovementKey>> byDate = new java.util.HashMap<>();
         for (DayStockMovementKey m : masterRepo.findAll()) {
@@ -114,27 +146,32 @@ public class DayStockMovementService {
         }
 
         int removed = 0;
-        for (var entry : byDate.entrySet()) {
-            java.util.List<DayStockMovementKey> masters = entry.getValue();
-            if (masters.size() < 2) continue;
+        for (String watchlistCode : watchlistCodes) {
+            String suffix = "_" + watchlistCode; // auto-generated masters look like 12_JUN_26_MOVING_STOCK
 
-            boolean hasGenuine = masters.stream().anyMatch(m -> !isAutoMaster(m, suffix));
-            if (!hasGenuine) continue; // only auto key(s) for this date — keep them
+            for (var entry : byDate.entrySet()) {
+                java.util.List<DayStockMovementKey> masters = entry.getValue();
+                if (masters.size() < 2) continue;
 
-            for (DayStockMovementKey m : masters) {
-                if (isAutoMaster(m, suffix)) {
-                    int entries = mappingRepo.deleteEntriesByMasterId(m.getId());
-                    int maps = mappingRepo.deleteMappingsByMasterId(m.getId());
-                    mappingRepo.deleteMasterById(m.getId());
-                    removed++;
-                    log.info("Cleanup: removed redundant master id={} code={} date={} ({} entries, {} mappings)",
-                            m.getId(), m.getCode(), entry.getKey(), entries, maps);
+                boolean hasGenuine = masters.stream().anyMatch(m -> !isAutoMaster(m, suffix));
+                if (!hasGenuine) continue; // only auto key(s) for this date — keep them
+
+                for (DayStockMovementKey m : masters) {
+                    if (isAutoMaster(m, suffix)) {
+                        int entries = mappingRepo.deleteEntriesByMasterId(m.getId());
+                        int maps = mappingRepo.deleteMappingsByMasterId(m.getId());
+                        mappingRepo.deleteMasterById(m.getId());
+                        removed++;
+                        log.info("Cleanup: removed redundant master id={} code={} date={} ({} entries, {} mappings)",
+                                m.getId(), m.getCode(), entry.getKey(), entries, maps);
+                    }
                 }
             }
         }
 
         if (removed > 0) {
-            log.info("cleanupRedundantMasters: removed {} redundant '{}' master(s)", removed, watchlistCode);
+            log.info("cleanupRedundantMasters: removed {} redundant master(s) for watchlist-codes [{}]",
+                    removed, String.join(",", watchlistCodes));
         }
         return removed;
     }

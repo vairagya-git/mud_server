@@ -61,15 +61,6 @@ public class SystemConfigService {
     }
 
     /**
-     * Returns the typed value for a single config entry identified by {@code code},
-     * or {@link Optional#empty()} if the code does not exist.
-     */
-    public Optional<Object> findByCode(String code) {
-        return systemConfigRepository.findByCode(code)
-                .map(this::convertValue);
-    }
-
-    /**
      * Returns the typed value for a single config entry identified by {@code purpose} + {@code code},
      * or {@link Optional#empty()} if no row matches.
      */
@@ -79,27 +70,28 @@ public class SystemConfigService {
     }
 
     /**
-     * Returns the raw {@link SystemConfig} entity for {@code code},
+     * Returns the raw {@link SystemConfig} entity for {@code purpose} + {@code code},
      * or {@link Optional#empty()} if not found.
      */
-    public Optional<SystemConfig> findEntityByCode(String code) {
-        return systemConfigRepository.findByCode(code);
+    public Optional<SystemConfig> findEntityByPurposeAndCode(String purpose, String code) {
+        return systemConfigRepository.findByPurposeAndCode(purpose, code);
     }
 
     /**
-     * Updates the {@code value} column for the config identified by {@code code}.
+     * Updates the {@code value} column for the config identified by {@code purpose} + {@code code}.
      *
-     * @param code  the unique config code
-     * @param value the new raw string value to store
-     * @return {@code true} if a row was updated, {@code false} if the code was not found
+     * @param purpose the config purpose namespace
+     * @param code    the config code (not globally unique)
+     * @param value   the new raw string value to store
+     * @return {@code true} if a row was updated, {@code false} if not found
      */
-    public boolean updateValue(String code, String value) {
-        int updated = systemConfigRepository.updateValueByCode(code, value);
+    public boolean updateValue(String purpose, String code, String value) {
+        int updated = systemConfigRepository.updateValueByPurposeAndCode(purpose, code, value);
         if (updated == 0) {
-            log.warn("SystemConfigService.updateValue: no config found for code={}", code);
+            log.warn("SystemConfigService.updateValue: no config found for purpose={} code={}", purpose, code);
             return false;
         }
-        log.info("SystemConfigService.updateValue: updated code={} value={}", code, value);
+        log.info("SystemConfigService.updateValue: updated purpose={} code={} value={}", purpose, code, value);
         return true;
     }
 
