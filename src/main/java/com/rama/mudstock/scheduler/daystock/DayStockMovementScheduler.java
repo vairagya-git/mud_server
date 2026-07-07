@@ -28,6 +28,7 @@ public class DayStockMovementScheduler {
         var enabledCfg = SystemConfigEnum.DayStockMovementData.ENABLED;
         var cronCfg = SystemConfigEnum.DayStockMovementData.CRON_EXPRESSION;
         var lastUpdatedCfg = SystemConfigEnum.DayStockMovementData.LAST_UPDATED;
+        var cutOffTimeCfg = SystemConfigEnum.DayStockMovementData.CUTOFF_TIME;
         String purpose = enabledCfg.purpose();
 
         boolean enabled = cronJobConfigSupport.isEnabled(purpose, enabledCfg.code());
@@ -42,6 +43,8 @@ public class DayStockMovementScheduler {
             purpose,
             cronCfg.code(),
             lastUpdatedCfg.code(),
+            cutOffTimeCfg.code(),
+            cutOffTimeCfg.format(),
             java.time.ZoneId.of("Europe/Lisbon"))) {
             return;
         }

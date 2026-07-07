@@ -240,11 +240,12 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('enabled', 'false', 'boolean', 'DayStockMovementData', 'Day Stock Movement Data > cronjob Enabled'),
 ('cronExpression', '0 0 21 * * FRI', 'CronExpression', 'DayStockMovementData', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'DayStockMovementData', 'LastUpdated dateTime'),
+('cutOffTime', '22:00', 'DateTime', 'DayStockMovementData', 'Record should only be fetched after the cutoffTime'),
 /*DayStockMovementCleanup Settings*/
 ('useage', 'useage', 'String', 'DayStockMovementCleanup', 'Cleanup the day stock movement data for the current day'),
 ('enabled', 'false', 'boolean', 'DayStockMovementCleanup', 'Day Stock Movement Cleanup > cronjob Enabled'),
 ('cronExpression', '0 0 8 * * MON-FRI', 'CronExpression', 'DayStockMovementCleanup', 'CronExpression for the cronjob'),
-('lastUpdated', '', 'DateTime', 'DayStockMovementCleanup', 'LastUpdated dateTime'),
+('lastUpdated', '22:00', 'DateTime', 'DayStockMovementCleanup', 'LastUpdated dateTime'),
 /*DayStockMovementKeyMapEntry Settings*/
 ('useage', 'useage', 'String', 'DayStockMovementKeyMapEntry', 'Populate the day stock movement key map entry for the current day'),
 ('enabled', 'false', 'boolean', 'DayStockMovementKeyMapEntry', 'Day Stock Movement Key Map Entry > cronjob Enabled'),
@@ -252,9 +253,159 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('cronExpression', '0 0 22 * * FRI', 'CronExpression', 'DayStockMovementKeyMapEntry', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'DayStockMovementKeyMapEntry', 'LastUpdated dateTime');
 
+select * from system_config where `code` = 'cutOffTime';
 
 delete from system_config;
 
+
+/**** OPTION CONTRACT START ****/
+
+CREATE TABLE option_contract (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+    option_ticker VARCHAR(64) NOT NULL UNIQUE,
+    underlying_ticker VARCHAR(16) NOT NULL,
+
+    contract_type ENUM('CALL', 'PUT') NOT NULL,
+    exercise_style VARCHAR(32),
+    expiration_date DATE NOT NULL,
+    strike_price DECIMAL(12,4) NOT NULL,
+    shares_per_contract INT NOT NULL DEFAULT 100,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_contract_lookup (
+        underlying_ticker,
+        expiration_date,
+        strike_price,
+        contract_type
+    )
+);
+
+CREATE TABLE option_snapshot (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+    option_contract_id BIGINT NOT NULL,
+
+    snapshot_time DATETIME(6) NOT NULL,
+    option_quote_time DATETIME(6),
+    option_trade_time DATETIME(6),
+    underlying_time DATETIME(6),
+
+    underlying_price DECIMAL(14,4) NOT NULL,
+    break_even_price DECIMAL(14,4),
+    change_to_break_even DECIMAL(14,4),
+
+    bid DECIMAL(14,4),
+    ask DECIMAL(14,4),
+    midpoint DECIMAL(14,4),
+    last_trade_price DECIMAL(14,4),
+
+    bid_size INT,
+    ask_size INT,
+    last_trade_size INT,
+
+    implied_volatility DECIMAL(10,6),
+
+    delta DECIMAL(12,8),
+    gamma DECIMAL(12,8),
+    theta DECIMAL(12,8),
+    vega DECIMAL(12,8),
+
+    open_interest INT,
+    day_volume INT,
+
+    quote_timeframe VARCHAR(32),
+    underlying_timeframe VARCHAR(32),
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_option_snapshot_contract
+        FOREIGN KEY (option_contract_id)
+        REFERENCES option_contract(id),
+
+    INDEX idx_snapshot_contract_time (
+        option_contract_id,
+        snapshot_time
+    ),
+
+    INDEX idx_snapshot_underlying_time (
+        snapshot_time,
+        underlying_price
+    )
+);
+
+CREATE TABLE option_snapshot_metric (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+    option_snapshot_id BIGINT NOT NULL,
+
+    moneyness_pct DECIMAL(10,4),
+    days_to_expiry DECIMAL(10,4),
+
+    bid_ask_spread DECIMAL(14,4),
+    bid_ask_spread_pct DECIMAL(10,4),
+
+    volume_oi_ratio DECIMAL(12,6),
+
+    gamma_theta_ratio DECIMAL(14,8),
+    vega_theta_ratio DECIMAL(14,8),
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_option_metric_snapshot
+        FOREIGN KEY (option_snapshot_id)
+        REFERENCES option_snapshot(id),
+
+    UNIQUE KEY uk_metric_snapshot (option_snapshot_id)
+);
+
+CREATE TABLE option_pair_snapshot (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+    underlying_ticker VARCHAR(16) NOT NULL,
+    expiration_date DATE NOT NULL,
+    strike_price DECIMAL(12,4) NOT NULL,
+
+    snapshot_time DATETIME(6) NOT NULL,
+    underlying_price DECIMAL(14,4) NOT NULL,
+
+    call_snapshot_id BIGINT,
+    put_snapshot_id BIGINT,
+
+    call_iv DECIMAL(10,6),
+    put_iv DECIMAL(10,6),
+
+    call_delta DECIMAL(12,8),
+    put_delta DECIMAL(12,8),
+    net_delta DECIMAL(12,8),
+
+    combined_gamma DECIMAL(12,8),
+    combined_theta DECIMAL(12,8),
+    combined_vega DECIMAL(12,8),
+
+    call_midpoint DECIMAL(14,4),
+    put_midpoint DECIMAL(14,4),
+    combined_midpoint DECIMAL(14,4),
+
+    call_open_interest INT,
+    put_open_interest INT,
+    total_open_interest INT,
+
+    call_volume INT,
+    put_volume INT,
+    total_volume INT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_pair_lookup (
+        underlying_ticker,
+        expiration_date,
+        strike_price,
+        snapshot_time
+    )
+);
+/***** OPTION CONTRACT END ****/
 
 
 /******************/

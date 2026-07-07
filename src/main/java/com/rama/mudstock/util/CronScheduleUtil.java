@@ -2,9 +2,11 @@ package com.rama.mudstock.util;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 import org.springframework.scheduling.support.CronExpression;
 
@@ -20,6 +22,21 @@ public final class CronScheduleUtil {
 
     public static boolean shouldExecuteSinceLastUpdated(String rawCronExpression,
                                                         String rawLastUpdated,
+                                                        ZoneId zoneId) {
+        return shouldExecuteSinceLastUpdated(rawCronExpression, rawLastUpdated, "", zoneId);
+    }
+
+    public static boolean shouldExecuteSinceLastUpdated(String rawCronExpression,
+                                                        String rawLastUpdated,
+                                                        String rawCutOffTime,
+                                                        ZoneId zoneId) {
+        return shouldExecuteSinceLastUpdated(rawCronExpression, rawLastUpdated, rawCutOffTime, "HH:mm", zoneId);
+    }
+
+    public static boolean shouldExecuteSinceLastUpdated(String rawCronExpression,
+                                                        String rawLastUpdated,
+                                                        String rawCutOffTime,
+                                                        String rawCutOffTimeFormat,
                                                         ZoneId zoneId) {
         String cronExpression = normalizeCronExpression(rawCronExpression);
         if (cronExpression.isBlank()) {
@@ -38,7 +55,18 @@ public final class CronScheduleUtil {
         try {
             CronExpression cron = CronExpression.parse(cronExpression);
             LocalDateTime nextExecution = cron.next(reference);
-            return nextExecution != null && !nextExecution.isAfter(now);
+            if (nextExecution == null || nextExecution.isAfter(now)) {
+                return false;
+            }
+
+            if (nextExecution.toLocalDate().isEqual(now.toLocalDate())) {
+                java.util.Optional<LocalTime> cutOffTime = parseCutOffLocalTime(rawCutOffTime, rawCutOffTimeFormat);
+                if (cutOffTime.isPresent() && !now.toLocalTime().isAfter(cutOffTime.get())) {
+                    return false;
+                }
+            }
+
+            return true;
         } catch (IllegalArgumentException ex) {
             return false;
         }
@@ -101,6 +129,25 @@ public final class CronScheduleUtil {
 
         try {
             return java.util.Optional.of(LocalDateTime.parse(value));
+        } catch (Exception ignored) {
+            return java.util.Optional.empty();
+        }
+    }
+
+    private static java.util.Optional<LocalTime> parseCutOffLocalTime(String rawCutOffTime, String rawCutOffTimeFormat) {
+        String normalizedCutOffTime = normalizeCronExpression(rawCutOffTime);
+        if (normalizedCutOffTime.isBlank()) {
+            return java.util.Optional.empty();
+        }
+
+        String normalizedFormat = normalizeCronExpression(rawCutOffTimeFormat);
+        if (normalizedFormat.isBlank()) {
+            normalizedFormat = "HH:mm";
+        }
+
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(normalizedFormat);
+            return java.util.Optional.of(LocalTime.parse(normalizedCutOffTime, formatter));
         } catch (Exception ignored) {
             return java.util.Optional.empty();
         }

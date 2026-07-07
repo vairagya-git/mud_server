@@ -114,17 +114,24 @@ public enum SystemConfigEnum {
         ENABLED("enabled", "Boolean", "Day Stock Movement Data > cronjob Enabled"),
         CRON_EXPRESSION("cronExpression", "CronExpression", "Day Stock Movement Data > Cron Expression"),
         LAST_UPDATED("lastUpdated", "DateTime", "Day Stock Movement Data > Last Updated"),
+        CUTOFF_TIME("cutOffTime", "Time", "HH:mm", "Day Stock Movement Data > Cutoff Time"),
         USEAGE("useage", "String", "Day Stock Movement Data > Usage");
 
         private static final String PURPOSE = "DayStockMovementData";
 
         private final String code;
         private final String type;
+        private final String format;
         private final String description;
 
         DayStockMovementData(String code, String type, String description) {
+            this(code, type, "", description);
+        }
+
+        DayStockMovementData(String code, String type, String format, String description) {
             this.code = code;
             this.type = type;
+            this.format = format;
             this.description = description;
         }
 
@@ -138,6 +145,10 @@ public enum SystemConfigEnum {
 
         public String type() {
             return type;
+        }
+
+        public String format() {
+            return format;
         }
 
         public String description() {

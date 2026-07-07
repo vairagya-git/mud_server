@@ -51,6 +51,15 @@ public class CronJobConfigSupport {
             .orElse("");
     }
 
+    public String resolveStringValue(String purpose, String code) {
+        return systemConfigService
+            .findByPurposeAndCode(purpose, code)
+            .filter(String.class::isInstance)
+            .map(String.class::cast)
+            .map(String::trim)
+            .orElse("");
+    }
+
     public boolean shouldExecuteSinceLastUpdated(String purpose,
                                                  String cronCode,
                                                  String lastUpdatedCode,
@@ -58,6 +67,18 @@ public class CronJobConfigSupport {
         String cronExpression = resolveCronExpression(purpose, cronCode);
         String lastUpdated = resolveLastUpdated(purpose, lastUpdatedCode);
         return CronScheduleUtil.shouldExecuteSinceLastUpdated(cronExpression, lastUpdated, zoneId);
+    }
+
+    public boolean shouldExecuteSinceLastUpdated(String purpose,
+                                                 String cronCode,
+                                                 String lastUpdatedCode,
+                                                 String cutOffTimeCode,
+                                                 String cutOffTimeFormat,
+                                                 ZoneId zoneId) {
+        String cronExpression = resolveCronExpression(purpose, cronCode);
+        String lastUpdated = resolveLastUpdated(purpose, lastUpdatedCode);
+        String cutOffTime = resolveStringValue(purpose, cutOffTimeCode);
+        return CronScheduleUtil.shouldExecuteSinceLastUpdated(cronExpression, lastUpdated, cutOffTime, cutOffTimeFormat, zoneId);
     }
 
     public void updateLastUpdatedNowUtc(String purpose, String lastUpdatedCode) {
