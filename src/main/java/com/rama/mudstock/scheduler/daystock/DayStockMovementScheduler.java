@@ -7,19 +7,19 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.rama.mudstock.constant.SystemConfigEnum;
+import com.rama.mudstock.facade.DayStockMovementFacade;
 import com.rama.mudstock.service.CronJobConfigSupport;
-import com.rama.mudstock.service.MassiveRestStockService;
 
 @Component
 @Profile("cronjob")
 public class DayStockMovementScheduler {
-    private final MassiveRestStockService massiveService;
+    private final DayStockMovementFacade dayStockMovementFacade;
     private final CronJobConfigSupport cronJobConfigSupport;
     private final Logger log = LoggerFactory.getLogger(DayStockMovementScheduler.class);
 
-    public DayStockMovementScheduler(MassiveRestStockService massiveService,
+    public DayStockMovementScheduler(DayStockMovementFacade dayStockMovementFacade,
                                      CronJobConfigSupport cronJobConfigSupport) {
-        this.massiveService = massiveService;
+        this.dayStockMovementFacade = dayStockMovementFacade;
         this.cronJobConfigSupport = cronJobConfigSupport;
     }
 
@@ -51,7 +51,7 @@ public class DayStockMovementScheduler {
 
         log.info("DayStockMovementScheduler: polling for NEW day-stock-movement mappings and fetching aggregates");
         try {
-            massiveService.fetchAggregatesForNewMappings();
+            dayStockMovementFacade.fetchAggregatesForNewMappings();
             cronJobConfigSupport.updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
         } catch (Exception ex) {
             log.error("DayStockMovementScheduler: error while fetching aggregates", ex);

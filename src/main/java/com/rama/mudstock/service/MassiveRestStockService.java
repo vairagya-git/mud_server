@@ -1,12 +1,9 @@
 package com.rama.mudstock.service;
 
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -14,10 +11,6 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.rama.mudstock.repository.daystock.DayStockMovementEntryRepository;
-import com.rama.mudstock.repository.daystock.DayStockMovementMapRepository;
 import com.rama.mudstock.util.MudDateUtil;
 
 @Service
@@ -36,21 +29,10 @@ public class MassiveRestStockService {
     private String tickerAggregatePattern;
 
     private final MassiveRestApiCallLimiter apiCallLimiter;
-    private final DayStockMovementMapRepository mappingRepository;
-    private final DayStockMovementEntryRepository dayStockMovementEntryRepository;
-    private final MarketCalendarService marketCalendarService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private static final Logger log = LoggerFactory.getLogger(MassiveRestStockService.class);
 
-    @Autowired
-    public MassiveRestStockService(MassiveRestApiCallLimiter apiCallLimiter,
-                                   DayStockMovementMapRepository mappingRepository,
-                                   DayStockMovementEntryRepository dayStockMovementEntryRepository,
-                                   MarketCalendarService marketCalendarService) {
+    public MassiveRestStockService(MassiveRestApiCallLimiter apiCallLimiter) {
         this.apiCallLimiter = apiCallLimiter;
-        this.mappingRepository = mappingRepository;
-        this.dayStockMovementEntryRepository = dayStockMovementEntryRepository;
-        this.marketCalendarService = marketCalendarService;
     }
 
     public String fetchOpenClose(String ticker, LocalDate date) {
@@ -98,127 +80,6 @@ public class MassiveRestStockService {
         } catch (RestClientException e) {
             throw new RuntimeException("Failed to fetch ticker aggregate from Massive API", e);
         }
-    }
-
-    /**
-     * Process all day-event mappings with status 'new': fetch aggregate data and log details.
-     */
-    public void fetchAggregatesForNewMappings() {
-        List<Map<String,Object>> mappings = mappingRepository.listMappingsByStatus("new");
-        if (mappings == null || mappings.isEmpty()) {
-            log.info("No day-event mappings with status 'new' found.");
-            return;
-        }
-        for (Map<String,Object> m : mappings) {
-            try {
-                String ticker = (String) m.get("ticker");
-                Object eo = m.get("date");
-                LocalDate eventDate = null;
-                if (eo instanceof java.sql.Date) eventDate = ((java.sql.Date) eo).toLocalDate();
-                else if (eo instanceof java.time.LocalDate) eventDate = (java.time.LocalDate) eo;
-                else if (eo != null) eventDate = MudDateUtil.parseIso(eo.toString());
-                if (ticker == null || eventDate == null) {
-                    log.warn("Skipping mapping with missing ticker or eventDate: {}", m);
-                    continue;
-                }
-                if (marketCalendarService.isMarketClosed(eventDate)) {
-                    Long mappingId = m.get("map_id") instanceof Number ? ((Number) m.get("map_id")).longValue() : null;
-                    if (mappingId != null) {
-                        mappingRepository.updateStatus(mappingId, "MARKET_CLOSED");
-                        log.info("Marked mapping id={} as MARKET_CLOSED for date={} (weekend or holiday)", mappingId, eventDate);
-                    }
-                    continue;
-                }
-                LocalDate start = previousMarketDay(eventDate.minusDays(0));
-                String resp = fetchTickerAggregate(ticker, start, eventDate);
-                // parse resultsCount
-                JsonNode root = objectMapper.readTree(resp);
-                int resultsCount = 0;
-                if (root.has("resultsCount")) resultsCount = root.get("resultsCount").asInt();
-                else if (root.has("results") && root.get("results").isArray()) resultsCount = root.get("results").size();
-                log.info("Ticker aggregate for {} from {} to {}: resultsCount={}, payload={}", ticker, start, eventDate, resultsCount, resp);
-                if (resultsCount == 1) {
-                    // try one more day earlier
-                    LocalDate earlier = previousMarketDay(start.minusDays(1));
-                    String resp2 = fetchTickerAggregate(ticker, earlier, eventDate);
-                    JsonNode root2 = objectMapper.readTree(resp2);
-                    int resultsCount2 = 0;
-                    if (root2.has("resultsCount")) resultsCount2 = root2.get("resultsCount").asInt();
-                    else if (root2.has("results") && root2.get("results").isArray()) resultsCount2 = root2.get("results").size();
-                    log.info("(Retry) Ticker aggregate for {} from {} to {}: resultsCount={}, payload={}", ticker, earlier, eventDate, resultsCount2, resp2);
-                    // if retry succeeded, prefer root2 as the data source
-                    if (resultsCount2 > 0) {
-                        root = root2;
-                    }
-                }
-                // extract data from results array: find entry for eventDate and previous market day
-                if (root.has("results") && root.get("results").isArray()) {
-                    JsonNode results = root.get("results");
-                    LocalDate prevDate = previousMarketDay(eventDate);
-                    JsonNode prevNode = null;
-                    JsonNode curNode = null;
-                    for (JsonNode n : results) {
-                        if (!n.has("t")) continue;
-                        long t = n.get("t").asLong();
-                        LocalDate d = java.time.Instant.ofEpochMilli(t).atZone(java.time.ZoneId.of("UTC")).toLocalDate();
-                        if (d.equals(eventDate)) curNode = n;
-                        else if (d.equals(prevDate)) prevNode = n;
-                    }
-                    if (curNode != null && prevNode != null) {
-                        double preDayClose = prevNode.has("c") ? prevNode.get("c").asDouble() : 0.0;
-                        double curDayOpen = curNode.has("o") ? curNode.get("o").asDouble() : 0.0;
-                        double curDayClose = curNode.has("c") ? curNode.get("c").asDouble() : 0.0;
-                        double curDayHigh = curNode.has("h") ? curNode.get("h").asDouble() : 0.0;
-                        double curDayLow = curNode.has("l") ? curNode.get("l").asDouble() : 0.0;
-                        double curDayVolWeight = curNode.has("vw") ? curNode.get("vw").asDouble() : 0.0;
-                        long curDayVolume = curNode.has("v") ? curNode.get("v").asLong() : 0L;
-                        Double changePercent = null;
-                        Double dayOpeningChangePercent = null;
-                        if (preDayClose != 0.0) {
-                            java.math.BigDecimal raw = java.math.BigDecimal.valueOf(curDayClose).subtract(java.math.BigDecimal.valueOf(preDayClose))
-                                    .divide(java.math.BigDecimal.valueOf(preDayClose), 8, java.math.RoundingMode.HALF_UP)
-                                    .multiply(java.math.BigDecimal.valueOf(100));
-                            changePercent = raw.setScale(2, java.math.RoundingMode.HALF_UP).doubleValue();
-
-                            // ((curDayOpen - preDayClose) / preDayClose) * 100
-                            java.math.BigDecimal rawOpening = java.math.BigDecimal.valueOf(curDayOpen).subtract(java.math.BigDecimal.valueOf(preDayClose))
-                                    .divide(java.math.BigDecimal.valueOf(preDayClose), 8, java.math.RoundingMode.HALF_UP)
-                                    .multiply(java.math.BigDecimal.valueOf(100));
-                            dayOpeningChangePercent = rawOpening.setScale(2, java.math.RoundingMode.HALF_UP).doubleValue();
-                        }
-                        // save to DB; mapping contains day_stock_movement_key_id, stock_id and map_id
-                        Long mappingId = m.get("map_id") instanceof Number ? ((Number) m.get("map_id")).longValue() : null;
-                        Long stockId = m.get("stock_id") instanceof Number ? ((Number) m.get("stock_id")).longValue() : null;
-                        Long movementKeyId = m.get("day_stock_movement_key_id") instanceof Number ? ((Number) m.get("day_stock_movement_key_id")).longValue() : null;
-                        if (mappingId != null) {
-                            dayStockMovementEntryRepository.upsertDayStockMovementEntry(mappingId, preDayClose, curDayOpen, curDayClose, curDayHigh, curDayLow, curDayVolWeight, curDayVolume, changePercent, dayOpeningChangePercent);
-                            log.info("Saved day_stock_movement_entry for mappingId={} eventDate={}", mappingId, eventDate);
-                            try {
-                                int updated = mappingRepository.updateStatus(mappingId, "processed");
-                                if (updated > 0) log.info("Marked day_stock_movement_map id={} as processed", mappingId);
-                                else log.warn("No day_stock_movement_map row updated for id={}", mappingId);
-                            } catch (Exception e) {
-                                log.error("Failed to update day_stock_movement_map status for id={}", mappingId, e);
-                            }
-                        } else {
-                            log.warn("Missing map_id to save day_stock_movement_entry for mapping {}", m);
-                        }
-                    } else {
-                        log.warn("Could not find both previous and current day bars in aggregate results for mapping {}", m);
-                    }
-                }
-            } catch (Exception ex) {
-                log.error("Failed to fetch aggregate for mapping {}", m, ex);
-            }
-        }
-    }
-
-    private LocalDate previousMarketDay(LocalDate d) {
-        LocalDate cur = d.minusDays(1);
-        while (marketCalendarService.isMarketClosed(cur)) {
-            cur = cur.minusDays(1);
-        }
-        return cur;
     }
 
     // convenience overload

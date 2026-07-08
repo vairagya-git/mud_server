@@ -114,8 +114,9 @@
                     <th>Close</th>
                     <th>High</th>
                     <th>Low</th>
-                    <th>Volume</th>
                     <th>Change %</th>
+                    <th>OPENCHANGE%</th>
+                    <th>Volume</th>
                 </tr>
             </thead>
             <tbody>
@@ -133,8 +134,9 @@
                     <td th:text="${e.cur_day_close}"></td>
                     <td th:text="${e.cur_day_high}"></td>
                     <td th:text="${e.cur_day_low}"></td>
-                    <td th:text="${e.cur_day_volume}"></td>
                     <td th:text="${e.change_percent}"></td>
+                    <td th:text="${e.day_opening_change_percent}"></td>
+                    <td th:text="${e.cur_day_volume}"></td>
                 </tr>
             </tbody>
         </table>

@@ -227,4 +227,40 @@ public enum SystemConfigEnum {
         }
     }
 
+    public enum DailyMysqlDBDump {
+        USEAGE("useage", "String", "Daily Mysql DB Dump > Usage"),
+        ENABLED("enabled", "Boolean", "Daily Mysql DB Dump > Enabled"),
+        LOCATION("location", "String", "Daily Mysql DB Dump > Output Location"),
+        CRON_EXPRESSION("cronExpression", "CronExpression", "Daily Mysql DB Dump > Cron Expression"),
+        LAST_UPDATED("lastUpdated", "DateTime", "Daily Mysql DB Dump > Last Updated");
+
+        private static final String PURPOSE = "DailyMysqlDBDump";
+
+        private final String code;
+        private final String type;
+        private final String description;
+
+        DailyMysqlDBDump(String code, String type, String description) {
+            this.code = code;
+            this.type = type;
+            this.description = description;
+        }
+
+        public String purpose() {
+            return PURPOSE;
+        }
+
+        public String code() {
+            return code;
+        }
+
+        public String type() {
+            return type;
+        }
+
+        public String description() {
+            return description;
+        }
+    }
+
 }

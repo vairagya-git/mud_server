@@ -202,7 +202,7 @@ INSERT INTO master_market_holidays (`year`, `country`, `holiday_date`) VALUES
 CREATE TABLE `system_config` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `code` varchar(64) NOT NULL,
-  `value` varchar(64) NOT NULL,
+  `value` varchar(256) NOT NULL,
   `type` varchar(64) NOT NULL,
   `purpose` varchar(64) NOT NULL,
   `description` varchar(1024) NOT NULL,
@@ -251,11 +251,17 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('enabled', 'false', 'boolean', 'DayStockMovementKeyMapEntry', 'Day Stock Movement Key Map Entry > cronjob Enabled'),
 ('watchlist-codes', 'MOVING_STOCK,SEMI_WATCHLIST', 'StringArray', 'DayStockMovementKeyMapEntry', 'Day Stock Movement Key Map Entry > Watchlist Codes'),
 ('cronExpression', '0 0 22 * * FRI', 'CronExpression', 'DayStockMovementKeyMapEntry', 'CronExpression for the cronjob'),
-('lastUpdated', '', 'DateTime', 'DayStockMovementKeyMapEntry', 'LastUpdated dateTime');
+('lastUpdated', '', 'DateTime', 'DayStockMovementKeyMapEntry', 'LastUpdated dateTime'),
+/*MYSQL DB Dump Settings*/
+('useage', 'useage', 'String', 'DailyMysqlDBDump', 'Dump the Mysql and write into the location'),
+('enabled', 'false', 'boolean', 'DailyMysqlDBDump', 'Day Stock Movement Key Map Entry > cronjob Enabled'),
+('location', '/Users/rama/Library/Mobile Documents/com~apple~CloudDocs/TechExamples/mysql', 'String', 'DailyMysqlDBDump', 'Day Stock Movement Key Map Entry > Watchlist Codes'),
+('cronExpression', '0 0 22 * * *', 'CronExpression', 'DailyMysqlDBDump', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'DailyMysqlDBDump', 'LastUpdated dateTime');
 
 select * from system_config where `code` = 'cutOffTime';
 
-delete from system_config;
+select * from day_stock_movement_entry; day_opening_change_percent
 
 
 /**** OPTION CONTRACT START ****/
