@@ -8,22 +8,22 @@ import org.springframework.stereotype.Component;
 
 import com.rama.mudstock.constant.SystemConfigEnum;
 import com.rama.mudstock.facade.DayStockMovementFacade;
-import com.rama.mudstock.service.CronJobConfigSupport;
+import com.rama.mudstock.scheduler.AbstractCronjob;
+import com.rama.mudstock.service.SystemConfigService;
 
 @Component
 @Profile("cronjob")
-public class DayStockMovementScheduler {
+public class DayStockMovementScheduler extends AbstractCronjob {
     private final DayStockMovementFacade dayStockMovementFacade;
-    private final CronJobConfigSupport cronJobConfigSupport;
     private final Logger log = LoggerFactory.getLogger(DayStockMovementScheduler.class);
 
     public DayStockMovementScheduler(DayStockMovementFacade dayStockMovementFacade,
-                                     CronJobConfigSupport cronJobConfigSupport) {
+                                     SystemConfigService systemConfigService) {
+        super(systemConfigService);
         this.dayStockMovementFacade = dayStockMovementFacade;
-        this.cronJobConfigSupport = cronJobConfigSupport;
     }
 
-    @Scheduled(cron = "${all-cronjob-schedule}", zone = "Europe/Lisbon")
+    @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
     public void pollDayStockMovementMappings() {
         var enabledCfg = SystemConfigEnum.DayStockMovementData.ENABLED;
         var cronCfg = SystemConfigEnum.DayStockMovementData.CRON_EXPRESSION;
@@ -31,7 +31,7 @@ public class DayStockMovementScheduler {
         var cutOffTimeCfg = SystemConfigEnum.DayStockMovementData.CUTOFF_TIME;
         String purpose = enabledCfg.purpose();
 
-        boolean enabled = cronJobConfigSupport.isEnabled(purpose, enabledCfg.code());
+        boolean enabled = isEnabled(purpose, enabledCfg.code());
 
         if (!enabled) {
             log.info("DayStockMovementScheduler: disabled by system_config (purpose={}, code={})",
@@ -39,20 +39,19 @@ public class DayStockMovementScheduler {
             return;
         }
 
-        if (!cronJobConfigSupport.shouldExecuteSinceLastUpdated(
+        if (!shouldExecuteSinceLastUpdated(
             purpose,
             cronCfg.code(),
             lastUpdatedCfg.code(),
-            cutOffTimeCfg.code(),
-            cutOffTimeCfg.format(),
-            java.time.ZoneId.of("Europe/Lisbon"))) {
+            LISBON)) {
             return;
         }
 
         log.info("DayStockMovementScheduler: polling for NEW day-stock-movement mappings and fetching aggregates");
         try {
-            dayStockMovementFacade.fetchAggregatesForNewMappings();
-            cronJobConfigSupport.updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
+            String cutOffTime = resolveStringValue(purpose, cutOffTimeCfg.code());
+            dayStockMovementFacade.fetchAggregatesForNewMappings(cutOffTime, cutOffTimeCfg.format(), LISBON);
+            updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
         } catch (Exception ex) {
             log.error("DayStockMovementScheduler: error while fetching aggregates", ex);
         }

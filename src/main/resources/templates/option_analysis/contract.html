@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Option Contracts — MudStock</title></head>
+<body>
+<div id="page-content" th:fragment="content">
+    <div class="page-header table-sticky-header">
+        <h1>Option Analysis</h1>
+        <div class="subtitle">Contracts. Total: <strong th:text="${contracts.size()}">0</strong></div>
+    </div>
+
+    <div class="filter-bar table-sticky-filter" style="margin-bottom:16px">
+        <span class="filter-bar-label">Filters</span>
+
+        <div class="table-filter-input">
+            <input id="contractTickerSearchInput" class="table-filter-input-uppercase" list="contractTickerOptions" type="text" placeholder="Search ticker" aria-label="Search ticker">
+            <button id="addContractTickerFilterBtn" type="button" class="btn btn-sm btn-secondary">Add ticker</button>
+            <datalist id="contractTickerOptions">
+                <option th:each="c : ${contracts}" th:value="${c.ticker}"></option>
+            </datalist>
+        </div>
+
+        <div class="table-filter-input">
+            <select id="contractTypeFilterSelect" aria-label="Filter contract type">
+                <option value="">Contract type</option>
+                <option value="CALL">CALL</option>
+                <option value="PUT">PUT</option>
+            </select>
+            <button id="addContractTypeFilterBtn" type="button" class="btn btn-sm btn-secondary">Add type</button>
+        </div>
+
+        <span id="contractActiveFilters"></span>
+
+        <span id="contractFilterHint" class="filter-bar-empty">Click + or use the filter controls, then sorting stays in the browser only.</span>
+
+        <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+            <button id="clearContractFiltersBtn" type="button" class="btn btn-sm btn-secondary">Clear all</button>
+        </div>
+    </div>
+
+    <div class="card table-wrap">
+        <div th:if="${contracts.isEmpty()}" class="table-empty">No option contracts found.</div>
+        <table id="optionContractTable" th:unless="${contracts.isEmpty()}">
+            <thead>
+                <tr>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="ticker">
+                            Ticker <span class="sort-indicator" data-for="ticker"></span>
+                        </button>
+                    </th>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="contractType">
+                            Contract Type <span class="sort-indicator" data-for="contractType"></span>
+                        </button>
+                    </th>
+                    <th>Exercise Style</th>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="expirationDate">
+                            Expiration Date <span class="sort-indicator" data-for="expirationDate"></span>
+                        </button>
+                    </th>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="strikePrice">
+                            Strike Price <span class="sort-indicator" data-for="strikePrice"></span>
+                        </button>
+                    </th>
+                    <th>Shares Per Contract</th>
+                    <th>Contract Ticker</th>
+                    <th>Updated At</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="c : ${contracts}">
+                    <td th:attr="data-sort-value=${c.ticker},data-filter-value=${c.ticker}">
+                        <span class="badge badge-grey" th:text="${c.ticker}"></span>
+                        <button type="button" class="filter-btn" data-field="ticker" th:data-value="${c.ticker}" title="Filter by ticker">&#x2295;</button>
+                    </td>
+                    <td th:attr="data-sort-value=${c.contract_type},data-filter-value=${c.contract_type}">
+                        <span th:text="${c.contract_type}"></span>
+                        <button type="button" class="filter-btn" data-field="contractType" th:data-value="${c.contract_type}" title="Filter by contract type">&#x2295;</button>
+                    </td>
+                    <td th:text="${c.exercise_style}"></td>
+                    <td th:attr="data-sort-value=${c.expiration_date}" th:text="${c.expiration_date}"></td>
+                    <td th:attr="data-sort-value=${c.strike_price}" th:text="${c.strike_price}"></td>
+                    <td th:text="${c.shares_per_contract}"></td>
+                    <td><code th:text="${c.contract_ticker}"></code></td>
+                    <td th:text="${c.updated_at}"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        (function () {
+            var table = document.getElementById('optionContractTable');
+            if (!table) return;
+
+            var tickerSearchInput = document.getElementById('contractTickerSearchInput');
+            var addTickerFilterBtn = document.getElementById('addContractTickerFilterBtn');
+            var contractTypeFilterSelect = document.getElementById('contractTypeFilterSelect');
+            var addContractTypeFilterBtn = document.getElementById('addContractTypeFilterBtn');
+            var activeFiltersWrap = document.getElementById('contractActiveFilters');
+            var filterHint = document.getElementById('contractFilterHint');
+            var clearFiltersBtn = document.getElementById('clearContractFiltersBtn');
+            var sortState = { key: null, dir: 'asc' };
+            var filters = { ticker: [], contractType: [] };
+
+            function normalizeValue(field, value) {
+                var normalized = (value || '').trim();
+                if (field === 'ticker' || field === 'contractType') {
+                    normalized = normalized.toUpperCase();
+                }
+                return normalized;
+            }
+
+            function renderFilterChips() {
+                activeFiltersWrap.innerHTML = '';
+                Object.keys(filters).forEach(function (field) {
+                    filters[field].forEach(function (value) {
+                        var chip = document.createElement('span');
+                        chip.className = 'chip';
+
+                        var typeSpan = document.createElement('span');
+                        typeSpan.className = 'chip-type';
+                        typeSpan.textContent = field;
+
+                        var strong = document.createElement('strong');
+                        strong.textContent = value;
+
+                        var rmBtn = document.createElement('button');
+                        rmBtn.type = 'button';
+                        rmBtn.className = 'chip-remove';
+                        rmBtn.title = 'Remove';
+                        rmBtn.dataset.field = field;
+                        rmBtn.dataset.value = value;
+                        rmBtn.textContent = '\u2715';
+
+                        chip.appendChild(typeSpan);
+                        chip.appendChild(document.createTextNode('\u00a0'));
+                        chip.appendChild(strong);
+                        chip.appendChild(document.createTextNode('\u00a0'));
+                        chip.appendChild(rmBtn);
+                        activeFiltersWrap.appendChild(chip);
+                    });
+                });
+
+                filterHint.style.display = activeFiltersWrap.children.length === 0 ? '' : 'none';
+            }
+
+            function applyFilters() {
+                var rows = Array.from(table.tBodies[0].rows);
+                rows.forEach(function (row) {
+                    var ticker = normalizeValue('ticker', row.children[0].dataset.filterValue || '');
+                    var contractType = normalizeValue('contractType', row.children[1].dataset.filterValue || '');
+                    var show = true;
+
+                    if (filters.ticker.length > 0 && !filters.ticker.includes(ticker)) {
+                        show = false;
+                    }
+                    if (show && filters.contractType.length > 0 && !filters.contractType.includes(contractType)) {
+                        show = false;
+                    }
+
+                    row.style.display = show ? '' : 'none';
+                });
+            }
+
+            function addFilter(field, value) {
+                var normalized = normalizeValue(field, value);
+                if (!normalized) return;
+                if (!filters[field].includes(normalized)) {
+                    filters[field].push(normalized);
+                    renderFilterChips();
+                    applyFilters();
+                }
+            }
+
+            function removeFilter(field, value) {
+                filters[field] = filters[field].filter(function (entry) { return entry !== value; });
+                renderFilterChips();
+                applyFilters();
+            }
+
+            function parseSortValue(row, key) {
+                if (key === 'ticker') {
+                    return (row.children[0].dataset.sortValue || '').toLowerCase();
+                }
+                if (key === 'contractType') {
+                    return (row.children[1].dataset.sortValue || '').toLowerCase();
+                }
+                if (key === 'expirationDate') {
+                    var dateText = row.children[3].dataset.sortValue || '';
+                    var timestamp = Date.parse(dateText);
+                    return Number.isNaN(timestamp) ? Number.NEGATIVE_INFINITY : timestamp;
+                }
+                if (key === 'strikePrice') {
+                    return Number(row.children[4].dataset.sortValue || 0);
+                }
+                return '';
+            }
+
+            function updateSortIndicators() {
+                document.querySelectorAll('.sort-indicator').forEach(function (el) {
+                    if (sortState.key !== el.dataset.for) {
+                        el.textContent = '';
+                        return;
+                    }
+                    el.textContent = sortState.dir === 'asc' ? '\u2191' : '\u2193';
+                });
+            }
+
+            function sortTable(key) {
+                var tbody = table.tBodies[0];
+                if (!tbody) return;
+
+                if (sortState.key === key) {
+                    sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortState.key = key;
+                    sortState.dir = 'asc';
+                }
+
+                var rows = Array.from(tbody.rows);
+                rows.sort(function (a, b) {
+                    var av = parseSortValue(a, key);
+                    var bv = parseSortValue(b, key);
+                    if (av < bv) return sortState.dir === 'asc' ? -1 : 1;
+                    if (av > bv) return sortState.dir === 'asc' ? 1 : -1;
+                    return 0;
+                });
+
+                rows.forEach(function (row) { tbody.appendChild(row); });
+                updateSortIndicators();
+                applyFilters();
+            }
+
+            addTickerFilterBtn.addEventListener('click', function () {
+                addFilter('ticker', tickerSearchInput.value);
+                tickerSearchInput.value = '';
+            });
+
+            tickerSearchInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addFilter('ticker', tickerSearchInput.value);
+                    tickerSearchInput.value = '';
+                }
+            });
+
+            addContractTypeFilterBtn.addEventListener('click', function () {
+                addFilter('contractType', contractTypeFilterSelect.value);
+                contractTypeFilterSelect.value = '';
+            });
+
+            clearFiltersBtn.addEventListener('click', function () {
+                filters = { ticker: [], contractType: [] };
+                renderFilterChips();
+                applyFilters();
+            });
+
+            document.addEventListener('click', function (e) {
+                var removeBtn = e.target.closest('.chip-remove[data-field]');
+                if (removeBtn) {
+                    removeFilter(removeBtn.dataset.field, removeBtn.dataset.value);
+                    return;
+                }
+
+                var filterBtn = e.target.closest('.filter-btn[data-field]');
+                if (filterBtn) {
+                    addFilter(filterBtn.dataset.field, filterBtn.dataset.value);
+                    return;
+                }
+            });
+
+            document.querySelectorAll('.table-sort-btn[data-sort-key]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    sortTable(btn.dataset.sortKey);
+                });
+            });
+
+            renderFilterChips();
+            applyFilters();
+        })();
+    </script>
+</div>
+</body>
+</html>

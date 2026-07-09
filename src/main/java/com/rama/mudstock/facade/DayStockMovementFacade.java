@@ -1,6 +1,10 @@
 package com.rama.mudstock.facade;
 
+import java.time.DateTimeException;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,7 +43,7 @@ public class DayStockMovementFacade {
         this.aggregateParser = aggregateParser;
     }
 
-    public void fetchAggregatesForNewMappings() {
+    public void fetchAggregatesForNewMappings(String rawCutOffTime, String rawCutOffTimeFormat, ZoneId zoneId) {
         List<Map<String, Object>> mappings = mappingRepository.listMappingsByStatus("new");
         if (mappings == null || mappings.isEmpty()) {
             log.info("No day-event mappings with status 'new' found.");
@@ -47,7 +51,55 @@ public class DayStockMovementFacade {
         }
 
         for (Map<String, Object> mapping : mappings) {
+            if (!shouldProcessMapping(mapping, rawCutOffTime, rawCutOffTimeFormat, zoneId)) {
+                continue;
+            }
             processMapping(mapping);
+        }
+    }
+
+    private boolean shouldProcessMapping(Map<String, Object> mapping,
+                                         String rawCutOffTime,
+                                         String rawCutOffTimeFormat,
+                                         ZoneId zoneId) {
+        LocalDate eventDate = toLocalDate(mapping.get("date"));
+        if (eventDate == null) {
+            log.warn("Skipping mapping with missing eventDate: {}", mapping);
+            return false;
+        }
+
+        LocalDate currentDate = LocalDate.now(zoneId);
+        if (!eventDate.isEqual(currentDate)) {
+            return true;
+        }
+
+        Optional<LocalTime> cutOffTime = parseCutOffTime(rawCutOffTime, rawCutOffTimeFormat);
+        if (cutOffTime.isEmpty()) {
+            return true;
+        }
+
+        LocalTime now = LocalTime.now(zoneId);
+        if (!now.isAfter(cutOffTime.get())) {
+            log.info("Skipping current-day mapping until after cutoff time (eventDate={}, cutoffTime={}, mapping={})",
+                eventDate, cutOffTime.get(), mapping);
+            return false;
+        }
+
+        return true;
+    }
+
+    private Optional<LocalTime> parseCutOffTime(String rawCutOffTime, String rawCutOffTimeFormat) {
+        if (rawCutOffTime == null || rawCutOffTime.isBlank()) {
+            return Optional.empty();
+        }
+
+        String format = rawCutOffTimeFormat == null || rawCutOffTimeFormat.isBlank() ? "HH:mm" : rawCutOffTimeFormat.trim();
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format);
+            return Optional.of(LocalTime.parse(rawCutOffTime.trim(), formatter));
+        } catch (DateTimeException | IllegalArgumentException ex) {
+            log.warn("Invalid cutoff time configuration (value={}, format={})", rawCutOffTime, rawCutOffTimeFormat, ex);
+            return Optional.empty();
         }
     }
 

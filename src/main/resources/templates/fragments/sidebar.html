@@ -153,6 +153,28 @@
         </div>
 
         <div class="nav-group">
+            <div class="nav-group-label">Option Analysis</div>
+            <div class="nav-group-items">
+                <a href="/option-analysis/analyse"
+                   hx-get="/option-analysis/analyse"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/option-analysis/analyse">
+                    <i class="nav-icon">🧮</i> Analyse
+                </a>
+                <a href="/option-analysis/contract"
+                   hx-get="/option-analysis/contract"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/option-analysis/contract">
+                    <i class="nav-icon">📄</i> Contract
+                </a>
+            </div>
+        </div>
+
+        <div class="nav-group">
             <div class="nav-group-label">Administration</div>
             <div class="nav-group-items">
                 <a href="/system-config"
@@ -162,6 +184,14 @@
                    hx-push-url="true"
                    data-path="/system-config">
                     <i class="nav-icon">⚙️</i> System Config
+                </a>
+                <a href="/market_holidays"
+                   hx-get="/market_holidays"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/market_holidays">
+                    <i class="nav-icon">🗓️</i> Market Holidays
                 </a>
             </div>
         </div>

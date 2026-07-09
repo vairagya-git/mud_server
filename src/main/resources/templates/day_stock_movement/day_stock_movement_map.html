@@ -185,14 +185,25 @@
         </div>
 
         <table id="mappingTable" th:unless="${mappings.isEmpty()}">
-            <thead><tr><th>Day Code</th><th>Date</th><th>Ticker</th><th>Status</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>Day Code</th>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="date" style="padding:2px 8px;line-height:1.2;background:#dff5df;border:1px solid #9dd59d;color:#1f5d1f;" title="Sort by date">
+                            Date <span class="sort-indicator" data-for="date"></span>
+                        </button>
+                    </th>
+                    <th>Ticker</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
             <tbody>
                 <tr th:each="m : ${mappings}" th:attr="data-day-code=${m.code},data-ticker=${m.ticker}">
                     <td>
                         <code th:text="${m.code}"></code>
                         <button type="button" class="filter-btn" data-field="dayCode" th:data-value="${m.code}" title="Filter by day code">&#x2295;</button>
                     </td>
-                    <td th:text="${m.date != null ? m.date : '&#8212;'}"></td>
+                    <td th:attr="data-sort-value=${m.date != null ? m.date : ''}" th:text="${m.date != null ? m.date : '&#8212;'}"></td>
                     <td>
                         <span class="badge badge-grey" th:text="${m.ticker}"></span>
                         <button type="button" class="filter-btn" data-field="ticker" th:data-value="${m.ticker}" title="Filter by ticker">&#x2295;</button>
@@ -232,6 +243,7 @@
             var hint = document.getElementById('mappingFilterHint');
             var clearBtn = document.getElementById('clearMappingFiltersBtn');
             var tickerOptions = document.getElementById('mappingTickerOptions');
+            var sortState = { key: null, dir: 'asc' };
 
             var filters = { ticker: [], dayCode: [] };
 
@@ -303,6 +315,49 @@
                 });
             }
 
+            function compareDates(leftValue, rightValue) {
+                var left = Date.parse((leftValue || '').trim());
+                var right = Date.parse((rightValue || '').trim());
+
+                if (Number.isNaN(left) && Number.isNaN(right)) return 0;
+                if (Number.isNaN(left)) return -1;
+                if (Number.isNaN(right)) return 1;
+                return left - right;
+            }
+
+            function updateSortIndicators() {
+                document.querySelectorAll('.sort-indicator').forEach(function (el) {
+                    if (sortState.key !== el.dataset.for) {
+                        el.textContent = '';
+                        return;
+                    }
+                    el.textContent = sortState.dir === 'asc' ? '\u2191' : '\u2193';
+                });
+            }
+
+            function sortByDate() {
+                var tbody = table.tBodies[0];
+                if (!tbody) return;
+
+                if (sortState.key === 'date') {
+                    sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortState.key = 'date';
+                    sortState.dir = 'asc';
+                }
+
+                var rows = Array.from(tbody.rows);
+                rows.sort(function (leftRow, rightRow) {
+                    var leftValue = (leftRow.cells[1] && (leftRow.cells[1].dataset.sortValue || leftRow.cells[1].textContent)) || '';
+                    var rightValue = (rightRow.cells[1] && (rightRow.cells[1].dataset.sortValue || rightRow.cells[1].textContent)) || '';
+                    var result = compareDates(leftValue, rightValue);
+                    return sortState.dir === 'asc' ? result : -result;
+                });
+
+                rows.forEach(function (row) { tbody.appendChild(row); });
+                updateSortIndicators();
+            }
+
             function addFilter(field, value) {
                 var normalized = normalize(field, value);
                 if (!normalized) return;
@@ -337,6 +392,13 @@
                 filters.dayCode = [];
                 renderChips();
                 applyFilters();
+            });
+
+            document.addEventListener('click', function (e) {
+                var sortBtn = e.target.closest('.table-sort-btn[data-sort-key="date"]');
+                if (sortBtn && table.contains(sortBtn)) {
+                    sortByDate();
+                }
             });
 
             document.addEventListener('click', function (e) {

@@ -7,8 +7,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.rama.mudstock.constant.SystemConfigEnum;
-import com.rama.mudstock.service.CronJobConfigSupport;
+import com.rama.mudstock.scheduler.AbstractCronjob;
 import com.rama.mudstock.service.DayStockMovementService;
+import com.rama.mudstock.service.SystemConfigService;
 
 /**
  * Periodically removes redundant auto-generated every-day day_stock_movement_key rows: when a date
@@ -17,25 +18,24 @@ import com.rama.mudstock.service.DayStockMovementService;
  */
 @Component
 @Profile("cronjob")
-public class DayStockMovementCleanupScheduler {
+public class DayStockMovementCleanupScheduler extends AbstractCronjob {
     private final DayStockMovementService dayStockMovementService;
-    private final CronJobConfigSupport cronJobConfigSupport;
     private final Logger log = LoggerFactory.getLogger(DayStockMovementCleanupScheduler.class);
 
     public DayStockMovementCleanupScheduler(DayStockMovementService dayStockMovementService,
-                                            CronJobConfigSupport cronJobConfigSupport) {
+                                            SystemConfigService systemConfigService) {
+        super(systemConfigService);
         this.dayStockMovementService = dayStockMovementService;
-        this.cronJobConfigSupport = cronJobConfigSupport;
     }
 
-    @Scheduled(cron = "${all-cronjob-schedule}", zone = "Europe/Lisbon")
+    @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
     public void cleanupRedundantKeys() {
         var enabledCfg = SystemConfigEnum.DayStockMovementCleanup.ENABLED;
         var cronCfg = SystemConfigEnum.DayStockMovementCleanup.CRON_EXPRESSION;
         var lastUpdatedCfg = SystemConfigEnum.DayStockMovementCleanup.LAST_UPDATED;
         String purpose = enabledCfg.purpose();
 
-        boolean enabled = cronJobConfigSupport.isEnabled(purpose, enabledCfg.code());
+        boolean enabled = isEnabled(purpose, enabledCfg.code());
 
         if (!enabled) {
             log.info("DayStockMovementCleanupScheduler: disabled by system_config (purpose={}, code={})",
@@ -43,18 +43,18 @@ public class DayStockMovementCleanupScheduler {
             return;
         }
 
-        if (!cronJobConfigSupport.shouldExecuteSinceLastUpdated(
+        if (!shouldExecuteSinceLastUpdated(
             purpose,
             cronCfg.code(),
             lastUpdatedCfg.code(),
-            java.time.ZoneId.of("Europe/Lisbon"))) {
+            LISBON)) {
             return;
         }
 
         log.info("DayStockMovementCleanupScheduler: scanning for redundant every-day movement keys");
         try {
             int removed = dayStockMovementService.cleanupRedundantMasters();
-            cronJobConfigSupport.updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
+            updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
             log.info("DayStockMovementCleanupScheduler: removed {} redundant key(s)", removed);
         } catch (Exception ex) {
             log.error("DayStockMovementCleanupScheduler: error during cleanup", ex);

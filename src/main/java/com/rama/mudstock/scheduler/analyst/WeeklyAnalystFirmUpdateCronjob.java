@@ -1,7 +1,5 @@
 package com.rama.mudstock.scheduler.analyst;
 
-import java.time.ZoneId;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
@@ -9,8 +7,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.rama.mudstock.constant.SystemConfigEnum;
+import com.rama.mudstock.scheduler.AbstractCronjob;
 import com.rama.mudstock.service.BenzingaFirmService;
-import com.rama.mudstock.service.CronJobConfigSupport;
+import com.rama.mudstock.service.SystemConfigService;
 
 /**
  * Weekly cronjob that fetches analyst firm data from the Benzinga endpoint
@@ -25,28 +24,26 @@ import com.rama.mudstock.service.CronJobConfigSupport;
  */
 @Component
 @Profile("cronjob")
-public class WeeklyAnalystFirmUpdateCronjob {
+public class WeeklyAnalystFirmUpdateCronjob extends AbstractCronjob {
 
     private static final Logger log = LoggerFactory.getLogger(WeeklyAnalystFirmUpdateCronjob.class);
-    private static final ZoneId LISBON = ZoneId.of("Europe/Lisbon");
 
     private final BenzingaFirmService benzingaFirmService;
-    private final CronJobConfigSupport cronJobConfigSupport;
 
     public WeeklyAnalystFirmUpdateCronjob(BenzingaFirmService benzingaFirmService,
-                                          CronJobConfigSupport cronJobConfigSupport) {
+                                          SystemConfigService systemConfigService) {
+        super(systemConfigService);
         this.benzingaFirmService = benzingaFirmService;
-        this.cronJobConfigSupport = cronJobConfigSupport;
     }
 
-    @Scheduled(cron = "${all-cronjob-schedule}", zone = "Europe/Lisbon")
+    @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
     public void run() {
         var enabledCfg = SystemConfigEnum.WeeklyAnalystFirmUpdateCronjob.ENABLED;
         var cronCfg = SystemConfigEnum.WeeklyAnalystFirmUpdateCronjob.CRON_EXPRESSION;
         var lastUpdatedCfg = SystemConfigEnum.WeeklyAnalystFirmUpdateCronjob.LAST_UPDATED;
         String purpose = enabledCfg.purpose();
 
-        boolean enabled = cronJobConfigSupport.isEnabled(purpose, enabledCfg.code());
+        boolean enabled = isEnabled(purpose, enabledCfg.code());
 
         if (!enabled) {
             log.info("WeeklyAnalystFirmUpdateCronjob: disabled by system_config (purpose={}, code={})",
@@ -55,7 +52,7 @@ public class WeeklyAnalystFirmUpdateCronjob {
             return;
         }
 
-        if (!cronJobConfigSupport.shouldExecuteSinceLastUpdated(
+        if (!shouldExecuteSinceLastUpdated(
             purpose,
             cronCfg.code(),
             lastUpdatedCfg.code(),
@@ -66,7 +63,7 @@ public class WeeklyAnalystFirmUpdateCronjob {
         log.info("WeeklyAnalystFirmUpdateCronjob: starting weekly analyst firm sync");
         try {
             int updated = benzingaFirmService.fetchAndSaveSmart();
-            cronJobConfigSupport.updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
+            updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
             log.info("WeeklyAnalystFirmUpdateCronjob: completed — {} firm(s) inserted/updated", updated);
         } catch (Exception ex) {
             log.error("WeeklyAnalystFirmUpdateCronjob: error during firm sync", ex);

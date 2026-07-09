@@ -1,0 +1,88 @@
+package com.rama.mudstock.controller;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Comparator;
+
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import com.rama.mudstock.repository.option.OptionContractRepository;
+import com.rama.mudstock.repository.option.OptionToAnalyseRepository;
+import com.rama.mudstock.repository.stockwatchlist.StockRepository;
+
+@Controller
+@RequestMapping("/option-analysis")
+public class OptionAnalysisController {
+
+    private final StockRepository stockRepository;
+    private final OptionToAnalyseRepository optionToAnalyseRepository;
+    private final OptionContractRepository optionContractRepository;
+
+    public OptionAnalysisController(StockRepository stockRepository,
+                                    OptionToAnalyseRepository optionToAnalyseRepository,
+                                    OptionContractRepository optionContractRepository) {
+        this.stockRepository = stockRepository;
+        this.optionToAnalyseRepository = optionToAnalyseRepository;
+        this.optionContractRepository = optionContractRepository;
+    }
+
+    @GetMapping("/analyse")
+    public String analyseForm(Model model,
+                              @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
+        var stocks = stockRepository.findAll();
+        stocks.sort(Comparator.comparing(s -> s.getTicker() == null ? "" : s.getTicker(), String.CASE_INSENSITIVE_ORDER));
+
+        model.addAttribute("stocks", stocks);
+        model.addAttribute("entries", optionToAnalyseRepository.listAllWithTicker());
+
+        return hxRequest != null ? "option_analysis/analyse :: content" : "option_analysis/analyse";
+    }
+
+    @PostMapping("/analyse")
+    public String create(@RequestParam Long stockId,
+                         @RequestParam String contractType,
+                         @RequestParam String status,
+                         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate expirationDate,
+                         @RequestParam BigDecimal strikeFrom,
+                         @RequestParam BigDecimal strikeTo,
+                         @RequestParam BigDecimal interval,
+                         RedirectAttributes redirectAttributes) {
+        try {
+            String normalizedContractType = contractType == null ? "" : contractType.trim().toUpperCase();
+            String normalizedStatus = status == null ? "FALSE" : status.trim().toUpperCase();
+
+            optionToAnalyseRepository.insert(
+                stockId,
+                normalizedContractType,
+                normalizedStatus,
+                expirationDate,
+                strikeFrom,
+                strikeTo,
+                interval);
+
+            redirectAttributes.addFlashAttribute("message", "Option analysis entry saved.");
+        } catch (DataIntegrityViolationException ex) {
+            redirectAttributes.addFlashAttribute("error", "Entry already exists for stock/contract/expiry/strike range or violates table constraints.");
+        } catch (Exception ex) {
+            redirectAttributes.addFlashAttribute("error", "Failed to save option analysis entry: " + ex.getMessage());
+        }
+
+        return "redirect:/option-analysis/analyse";
+    }
+
+    @GetMapping("/contract")
+    public String contractList(Model model,
+                               @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
+        model.addAttribute("contracts", optionContractRepository.listAllWithTicker());
+        return hxRequest != null ? "option_analysis/contract :: content" : "option_analysis/contract";
+    }
+}

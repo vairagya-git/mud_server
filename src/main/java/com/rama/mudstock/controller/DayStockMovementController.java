@@ -207,33 +207,12 @@ public class DayStockMovementController {
     // Day stock movement entries listing
     @GetMapping("/entries")
     public String listEntries(Model model,
-            @RequestParam(required = false) List<String> ticker,
-            @RequestParam(required = false) List<String> dayCode,
             @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
-        List<String> selectedTickers = normalizeFilterValues(ticker, true, 10);
-        List<String> selectedDayCodes = normalizeFilterValues(dayCode, false, 10);
-
-        model.addAttribute("entries", entryRepo.listEntriesWithMeta(selectedTickers, selectedDayCodes));
+        model.addAttribute("entries", entryRepo.listAllEntriesWithMeta());
         model.addAttribute("tickers", entryRepo.listDistinctEntryTickers());
         model.addAttribute("dayCodes", entryRepo.listDistinctEntryCodes());
-        model.addAttribute("selectedTickers", selectedTickers);
-        model.addAttribute("selectedDayCodes", selectedDayCodes);
+        model.addAttribute("dates", entryRepo.listDistinctEntryDates());
         return hxRequest != null ? "day_stock_movement/day_stock_movement_entries :: content" : "day_stock_movement/day_stock_movement_entries";
-    }
-
-    private List<String> normalizeFilterValues(List<String> values, boolean upperCase, int maxItems) {
-        if (values == null || values.isEmpty()) {
-            return java.util.Collections.emptyList();
-        }
-        java.util.LinkedHashSet<String> unique = new java.util.LinkedHashSet<>();
-        for (String value : values) {
-            if (value == null) continue;
-            String trimmed = value.trim();
-            if (trimmed.isEmpty()) continue;
-            unique.add(upperCase ? trimmed.toUpperCase() : trimmed);
-            if (unique.size() >= maxItems) break;
-        }
-        return new java.util.ArrayList<>(unique);
     }
 
     @GetMapping("/populate-watchlist")

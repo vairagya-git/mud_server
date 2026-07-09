@@ -3,7 +3,6 @@ package com.rama.mudstock.scheduler.analyst;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
@@ -18,33 +17,30 @@ import com.rama.mudstock.constant.SystemConfigEnum;
 import com.rama.mudstock.facade.AnalystRatingFacade;
 import com.rama.mudstock.model.stockwatchlist.Stock;
 import com.rama.mudstock.repository.stockwatchlist.WatchlistRepository;
-import com.rama.mudstock.service.CronJobConfigSupport;
+import com.rama.mudstock.scheduler.AbstractCronjob;
 import com.rama.mudstock.service.SystemConfigService;
 import com.rama.mudstock.util.WatchlistUtil;
 
 @Component
 @Profile("cronjob")
-public class DailyAnalystRatingUpdateCronjob {
+public class DailyAnalystRatingUpdateCronjob extends AbstractCronjob {
 
     private static final Logger log = LoggerFactory.getLogger(DailyAnalystRatingUpdateCronjob.class);
-    private static final ZoneId LISBON = ZoneId.of("Europe/Lisbon");
 
     private final AnalystRatingFacade analystRatingFacade;
     private final WatchlistRepository watchlistRepository;
     private final SystemConfigService systemConfigService;
-    private final CronJobConfigSupport cronJobConfigSupport;
 
     public DailyAnalystRatingUpdateCronjob(AnalystRatingFacade analystRatingFacade,
                                            WatchlistRepository watchlistRepository,
-                                           SystemConfigService systemConfigService,
-                                           CronJobConfigSupport cronJobConfigSupport) {
+                                           SystemConfigService systemConfigService) {
+        super(systemConfigService);
         this.analystRatingFacade = analystRatingFacade;
         this.watchlistRepository = watchlistRepository;
         this.systemConfigService = systemConfigService;
-        this.cronJobConfigSupport = cronJobConfigSupport;
     }
 
-    @Scheduled(cron = "${all-cronjob-schedule}", zone = "Europe/Lisbon")
+    @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
     public void run() {
         var enabledCfg = SystemConfigEnum.DailyAnalystRatingCronjob.ENABLED;
         var cronCfg = SystemConfigEnum.DailyAnalystRatingCronjob.CRON_EXPRESSION;
@@ -52,7 +48,7 @@ public class DailyAnalystRatingUpdateCronjob {
         var watchlistCfg = SystemConfigEnum.DailyAnalystRatingCronjob.WATCHLIST_CODES;
         String purpose = enabledCfg.purpose();
 
-        boolean enabled = cronJobConfigSupport.isEnabled(purpose, enabledCfg.code());
+        boolean enabled = isEnabled(purpose, enabledCfg.code());
 
         if (!enabled) {
             log.info("DailyAnalystRatingUpdateCronjob: disabled by system_config (purpose={}, code={})",
@@ -61,11 +57,11 @@ public class DailyAnalystRatingUpdateCronjob {
             return;
         }
 
-        if (!cronJobConfigSupport.shouldExecuteSinceLastUpdated(
+        if (!shouldExecuteSinceLastUpdated(
             purpose,
             cronCfg.code(),
             lastUpdatedCfg.code(),
-            java.time.ZoneId.of("Europe/Lisbon"))) {
+            LISBON)) {
             return;
         }
 
@@ -83,7 +79,7 @@ public class DailyAnalystRatingUpdateCronjob {
         String watchlistCodes = String.join(",", watchlistCodeList);
         log.info("DailyAnalystRatingUpdateCronjob: starting for watchlist-codes=[{}]", watchlistCodes);
 
-        String lastUpdatedRaw = cronJobConfigSupport.resolveLastUpdated(purpose, lastUpdatedCfg.code());
+        String lastUpdatedRaw = resolveLastUpdated(purpose, lastUpdatedCfg.code());
         LocalDate ratingDate = resolveRatingDateFromLastUpdated(lastUpdatedRaw);
         String ratingDateStr = ratingDate.toString();
         log.info("DailyAnalystRatingUpdateCronjob: using rating date={}", ratingDateStr);
@@ -110,7 +106,7 @@ public class DailyAnalystRatingUpdateCronjob {
         }
 
         log.info("DailyAnalystRatingUpdateCronjob: done — total ratings saved={}", totalSaved);
-        cronJobConfigSupport.updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
+        updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
     }
 
     private LocalDate resolveRatingDateFromLastUpdated(String rawLastUpdated) {

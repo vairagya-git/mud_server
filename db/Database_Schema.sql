@@ -254,10 +254,17 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('lastUpdated', '', 'DateTime', 'DayStockMovementKeyMapEntry', 'LastUpdated dateTime'),
 /*MYSQL DB Dump Settings*/
 ('useage', 'useage', 'String', 'DailyMysqlDBDump', 'Dump the Mysql and write into the location'),
-('enabled', 'false', 'boolean', 'DailyMysqlDBDump', 'Day Stock Movement Key Map Entry > cronjob Enabled'),
+('enabled', 'false', 'boolean', 'DailyMysqlDBDump', 'Mysql Stock Dump Enable property'),
 ('location', '/Users/rama/Library/Mobile Documents/com~apple~CloudDocs/TechExamples/mysql', 'String', 'DailyMysqlDBDump', 'Day Stock Movement Key Map Entry > Watchlist Codes'),
 ('cronExpression', '0 0 22 * * *', 'CronExpression', 'DailyMysqlDBDump', 'CronExpression for the cronjob'),
-('lastUpdated', '', 'DateTime', 'DailyMysqlDBDump', 'LastUpdated dateTime');
+('lastUpdated', '', 'DateTime', 'DailyMysqlDBDump', 'LastUpdated dateTime'),
+/*OptionContractAnalyserDailyJob Settings*/
+('useage', 'useage', 'String', 'OptionContractAnalyserDailyJob', 'Dump the Mysql and write into the location'),
+('enabled', 'false', 'boolean', 'OptionContractAnalyserDailyJob', 'OptionContractAnalyserDailyJob Enable property'),
+('cronExpression', '0 0/1 * * * *', 'CronExpression', 'OptionContractAnalyserDailyJob', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'OptionContractAnalyserDailyJob', 'LastUpdated dateTime');
+
+
 
 select * from system_config where `code` = 'cutOffTime';
 
@@ -265,27 +272,46 @@ select * from day_stock_movement_entry; day_opening_change_percent
 
 
 /**** OPTION CONTRACT START ****/
+CREATE TABLE option_to_analyse (
+    id  bigint unsigned NOT NULL AUTO_INCREMENT,
+    stock_id bigint unsigned NOT NULL,
+    contract_type ENUM('CALL', 'PUT', 'BOTH') NOT NULL,
+    status ENUM('TRUE', 'FALSE') NOT NULL,
+    expiration_date DATE NOT NULL,
+    strike_from DECIMAL(12,4) NOT NULL,
+    strike_to DECIMAL(12,4) NOT NULL,
+    `interval` DECIMAL(12,2) NOT NULL,
+    call_option_contract_id bigint unsigned DEFAULT NULL,
+    put_option_contract_id bigint unsigned DEFAULT NULL,
+    created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+	KEY `fk_ota_stock` (`stock_id`),
+    KEY `fk_ota_call_optcon` (`call_option_contract_id`),
+    KEY `fk_ota_put_optcon` (`put_option_contract_id`),
+	CONSTRAINT `fk_ota_stock` FOREIGN KEY (`stock_id`) REFERENCES `stock` (`id`),
+    CONSTRAINT `fk_ota_call_optcon` FOREIGN KEY (`call_option_contract_id`) REFERENCES `option_contract` (`id`),
+    CONSTRAINT `fk_ota_put_optcon` FOREIGN KEY (`call_option_contract_id`) REFERENCES `option_contract` (`id`),
+	CONSTRAINT `unique_ota_option_to_analyse` UNIQUE (`stock_id`, contract_type,`expiration_date`,strike_from,strike_to)
+);
 
+drop table option_to_analyse;
+    
 CREATE TABLE option_contract (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-
-    option_ticker VARCHAR(64) NOT NULL UNIQUE,
-    underlying_ticker VARCHAR(16) NOT NULL,
-
+    id  bigint unsigned NOT NULL AUTO_INCREMENT,
+    stock_id bigint unsigned NOT NULL,
     contract_type ENUM('CALL', 'PUT') NOT NULL,
     exercise_style VARCHAR(32),
     expiration_date DATE NOT NULL,
     strike_price DECIMAL(12,4) NOT NULL,
     shares_per_contract INT NOT NULL DEFAULT 100,
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    INDEX idx_contract_lookup (
-        underlying_ticker,
-        expiration_date,
-        strike_price,
-        contract_type
-    )
+	contract_ticker VARCHAR(128),
+    created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	PRIMARY KEY (`id`),
+    KEY `fk_optcon_stock` (`stock_id`),
+    CONSTRAINT `fk_optcon_stock` FOREIGN KEY (`stock_id`) REFERENCES `stock` (`id`),
+	CONSTRAINT `unique_optcon_option_contract` UNIQUE (`stock_id`, contract_type,`expiration_date`,contract_ticker)
 );
 
 CREATE TABLE option_snapshot (

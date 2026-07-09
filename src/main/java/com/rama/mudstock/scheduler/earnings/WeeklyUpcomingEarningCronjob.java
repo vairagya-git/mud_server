@@ -5,24 +5,23 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import com.rama.mudstock.util.MudDateUtil;
-import com.rama.mudstock.util.WatchlistUtil;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.rama.mudstock.model.earnings.EarningsDate;
-import com.rama.mudstock.model.yfinance.YFinanceTickerResponse;
-import com.rama.mudstock.model.stockwatchlist.Stock;
 import com.rama.mudstock.constant.SystemConfigEnum;
+import com.rama.mudstock.model.earnings.EarningsDate;
+import com.rama.mudstock.model.stockwatchlist.Stock;
+import com.rama.mudstock.model.yfinance.YFinanceTickerResponse;
 import com.rama.mudstock.repository.earnings.EarningsDateRepository;
 import com.rama.mudstock.repository.stockwatchlist.WatchlistRepository;
-import com.rama.mudstock.service.CronJobConfigSupport;
+import com.rama.mudstock.scheduler.AbstractCronjob;
 import com.rama.mudstock.service.SystemConfigService;
 import com.rama.mudstock.service.YFinanceService;
+import com.rama.mudstock.util.MudDateUtil;
+import com.rama.mudstock.util.WatchlistUtil;
 
 /**
  * Weekly cronjob that, for each stock in the configured watchlists, calls the
@@ -30,7 +29,7 @@ import com.rama.mudstock.service.YFinanceService;
  */
 @Component
 @Profile("cronjob")
-public class WeeklyUpcomingEarningCronjob {
+public class WeeklyUpcomingEarningCronjob extends AbstractCronjob {
 
     private static final Logger log = LoggerFactory.getLogger(WeeklyUpcomingEarningCronjob.class);
 
@@ -38,21 +37,19 @@ public class WeeklyUpcomingEarningCronjob {
     private final EarningsDateRepository earningsDateRepository;
     private final YFinanceService yFinanceService;
     private final SystemConfigService systemConfigService;
-    private final CronJobConfigSupport cronJobConfigSupport;
 
     public WeeklyUpcomingEarningCronjob(WatchlistRepository watchlistRepository,
                                  EarningsDateRepository earningsDateRepository,
                                  YFinanceService yFinanceService,
-                                 SystemConfigService systemConfigService,
-                                 CronJobConfigSupport cronJobConfigSupport) {
+                                 SystemConfigService systemConfigService) {
+        super(systemConfigService);
         this.watchlistRepository = watchlistRepository;
         this.earningsDateRepository = earningsDateRepository;
         this.yFinanceService = yFinanceService;
         this.systemConfigService = systemConfigService;
-        this.cronJobConfigSupport = cronJobConfigSupport;
     }
 
-    @Scheduled(cron = "${all-cronjob-schedule}", zone = "Europe/Lisbon")
+    @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
     public void run() {
         var enabledCfg = SystemConfigEnum.WeeklyUpcomingEarningCronjob.ENABLED;
         var cronCfg = SystemConfigEnum.WeeklyUpcomingEarningCronjob.CRON_EXPRESSION;
@@ -60,7 +57,7 @@ public class WeeklyUpcomingEarningCronjob {
         var watchlistCfg = SystemConfigEnum.WeeklyUpcomingEarningCronjob.WATCHLIST_CODES;
         String purpose = enabledCfg.purpose();
 
-        boolean enabled = cronJobConfigSupport.isEnabled(purpose, enabledCfg.code());
+        boolean enabled = isEnabled(purpose, enabledCfg.code());
 
         if (!enabled) {
             log.info("WeeklyUpcomingEarningCronjob: disabled by system_config (purpose={}, code={})",
@@ -69,11 +66,11 @@ public class WeeklyUpcomingEarningCronjob {
             return;
         }
 
-        if (!cronJobConfigSupport.shouldExecuteSinceLastUpdated(
+        if (!shouldExecuteSinceLastUpdated(
             purpose,
             cronCfg.code(),
             lastUpdatedCfg.code(),
-            java.time.ZoneId.of("Europe/Lisbon"))) {
+            LISBON)) {
             return;
         }
 
@@ -105,7 +102,7 @@ public class WeeklyUpcomingEarningCronjob {
                 log.error("WeeklyUpcomingEarningCronjob: error processing stock {}", stock.getTicker(), ex);
             }
         }
-        cronJobConfigSupport.updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
+        updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
         log.info("WeeklyUpcomingEarningCronjob: finished");
     }
 

@@ -10,6 +10,7 @@
   --brand-light: #5a0808;
   --accent:      #0366d6;
   --accent-hover:#024ea4;
+  --table-row-alt:#FCE7CA;
   --bg:          #f0f2f5;
   --sidebar-bg:  #1e1e2e;
   --sidebar-w:   240px;
@@ -192,6 +193,46 @@ a:hover { text-decoration: underline; }
   background: var(--bg-alt, #f7f7f7); border: 1px solid var(--border); border-radius: var(--radius);
   min-height: 42px;
 }
+.table-sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--bg);
+  padding-top: 6px;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+}
+.table-sticky-filter {
+  position: sticky;
+  top: 56px;
+  z-index: 25;
+  background: #f7f7f7;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+.table-filter-input {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin-left: 6px;
+}
+.table-filter-input input,
+.table-filter-input select {
+  width: 130px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.82rem;
+}
+.table-filter-input input.table-filter-input-uppercase {
+  text-transform: uppercase;
+}
+.table-sort-btn {
+  padding: 2px 8px;
+  line-height: 1.2;
+  background: #dff5df;
+  border: 1px solid #9dd59d;
+  color: #1f5d1f;
+}
 .filter-bar-label { font-size: .75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
 .filter-bar-empty { font-size: .82rem; color: var(--text-muted); font-style: italic; }
 .chip {
@@ -258,6 +299,7 @@ th {
   letter-spacing: .4px;
   border-top: 1px solid var(--border);
 }
+tbody tr:nth-child(even) { background: var(--table-row-alt); }
 tbody tr:hover { background: #f0f6ff; }
 .table-empty { text-align: center; color: var(--text-muted); font-style: italic; padding: 24px 0; }
 

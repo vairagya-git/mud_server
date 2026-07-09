@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Edit Market Holiday — MudStock</title></head>
+<body>
+<div id="page-content" th:fragment="content">
+    <div class="page-header">
+        <h1>Edit Market Holiday</h1>
+        <div class="subtitle">Update the holiday entry below.</div>
+    </div>
+
+    <div class="card" style="max-width:560px;">
+        <form th:action="@{/market_holidays/{id}/edit(id=${holiday.id})}" method="post">
+            <div class="form-group">
+                <label for="holidayDate">Holiday Date</label>
+                <input type="date" id="holidayDate" name="holidayDate" th:value="${holiday.holidayDate}" required />
+            </div>
+            <div class="form-group">
+                <label for="year">Year</label>
+                <input type="text" id="year" name="year" th:value="${holiday.year}" required />
+            </div>
+            <div class="form-group">
+                <label for="country">Country</label>
+                <input type="text" id="country" name="country" th:value="${holiday.country}" required />
+            </div>
+            <div class="actions-bar" style="margin-top:20px;">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <a href="/market_holidays" hx-get="/market_holidays" hx-target="#page-content" hx-swap="outerHTML" hx-push-url="true" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>

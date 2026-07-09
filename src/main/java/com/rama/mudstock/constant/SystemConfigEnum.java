@@ -263,4 +263,39 @@ public enum SystemConfigEnum {
         }
     }
 
+    public enum OptionContractAnalyserDailyJob {
+        USEAGE("useage", "String", "Option Contract Analyser Daily Job > Usage"),
+        ENABLED("enabled", "Boolean", "Option Contract Analyser Daily Job > Enabled"),
+        CRON_EXPRESSION("cronExpression", "CronExpression", "Option Contract Analyser Daily Job > Cron Expression"),
+        LAST_UPDATED("lastUpdated", "DateTime", "Option Contract Analyser Daily Job > Last Updated");
+
+        private static final String PURPOSE = "OptionContractAnalyserDailyJob";
+
+        private final String code;
+        private final String type;
+        private final String description;
+
+        OptionContractAnalyserDailyJob(String code, String type, String description) {
+            this.code = code;
+            this.type = type;
+            this.description = description;
+        }
+
+        public String purpose() {
+            return PURPOSE;
+        }
+
+        public String code() {
+            return code;
+        }
+
+        public String type() {
+            return type;
+        }
+
+        public String description() {
+            return description;
+        }
+    }
+
 }

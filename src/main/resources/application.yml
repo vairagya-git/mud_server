@@ -27,6 +27,7 @@ massive:
   base-url: https://api.massive.com/
   open-close: v1/open-close/%s/%s/%s?adjusted=true&apiKey=%s
   ticker-aggregate: v2/aggs/ticker/%s/range/1/day/%s/%s?adjusted=true&apiKey=%s
+  option-snapshot: v3/snapshot/options/%s?strike_price=%s&expiration_date=%s&apiKey=%s
   benzinga-firm: benzinga/v1/firms?limit=1000&sort=name.asc&apiKey=%s
   benzinga-firm-id: benzinga/v1/firms?benzinga_id=%s&limit=1000&sort=name.asc&apiKey=%s
   benzinga-analyst: benzinga/v1/analysts?benzinga_id=%s&apiKey=%s

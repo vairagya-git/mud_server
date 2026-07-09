@@ -12,35 +12,34 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.rama.mudstock.constant.SystemConfigEnum;
-import com.rama.mudstock.service.CronJobConfigSupport;
+import com.rama.mudstock.scheduler.AbstractCronjob;
 import com.rama.mudstock.service.DayStockMovementService;
+import com.rama.mudstock.service.SystemConfigService;
 
 @Component
 @Profile("cronjob")
-public class DayStockMovementKeyMapEntryScheduler {
-    private static final java.time.ZoneId LISBON = java.time.ZoneId.of("Europe/Lisbon");
+public class DayStockMovementKeyMapEntryScheduler extends AbstractCronjob {
 
     private final DayStockMovementService dayStockMovementService;
-    private final CronJobConfigSupport cronJobConfigSupport;
     private final Logger log = LoggerFactory.getLogger(DayStockMovementKeyMapEntryScheduler.class);
 
     @Value("${dayStockMovementKeyMapEntry.cron:}")
     private String dayStockMovementKeyMapEntryCron;
 
     public DayStockMovementKeyMapEntryScheduler(DayStockMovementService dayStockMovementService,
-                                                CronJobConfigSupport cronJobConfigSupport) {
+                                                SystemConfigService systemConfigService) {
+        super(systemConfigService);
         this.dayStockMovementService = dayStockMovementService;
-        this.cronJobConfigSupport = cronJobConfigSupport;
     }
 
-    @Scheduled(cron = "${all-cronjob-schedule}", zone = "Europe/Lisbon")
+    @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
     public void runDayStockMovementKeyMapEntry() {
         var enabledCfg = SystemConfigEnum.DayStockMovementKeyMapEntry.ENABLED;
         var cronCfg = SystemConfigEnum.DayStockMovementKeyMapEntry.CRON_EXPRESSION;
         var lastUpdatedCfg = SystemConfigEnum.DayStockMovementKeyMapEntry.LAST_UPDATED;
         String purpose = enabledCfg.purpose();
 
-        boolean enabled = cronJobConfigSupport.isEnabled(purpose, enabledCfg.code());
+        boolean enabled = isEnabled(purpose, enabledCfg.code());
 
         if (!enabled) {
             log.info("DayStockMovementKeyMapEntryScheduler: disabled by system_config (purpose={}, code={})",
@@ -48,7 +47,7 @@ public class DayStockMovementKeyMapEntryScheduler {
             return;
         }
 
-        if (!cronJobConfigSupport.shouldExecuteSinceLastUpdated(
+        if (!shouldExecuteSinceLastUpdated(
             purpose,
             cronCfg.code(),
             lastUpdatedCfg.code(),
@@ -73,7 +72,7 @@ public class DayStockMovementKeyMapEntryScheduler {
             return;
         }
 
-        cronJobConfigSupport.updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
+        updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
     }
 
     @EventListener(ApplicationReadyEvent.class)

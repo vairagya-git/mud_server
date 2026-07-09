@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Market Holidays — MudStock</title></head>
+<body>
+<div id="page-content" th:fragment="content">
+    <div class="page-header">
+        <h1>Market Holidays</h1>
+        <div class="subtitle">All configured market holiday dates. Total: <strong th:text="${holidays.size()}">0</strong>.</div>
+    </div>
+
+    <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
+    <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+    <div class="card table-wrap">
+        <div th:if="${holidays == null or holidays.isEmpty()}" class="table-empty">No market holidays found.</div>
+
+        <table th:unless="${holidays == null or holidays.isEmpty()}">
+            <thead>
+            <tr>
+                <th>#</th>
+                <th>Holiday Date</th>
+                <th>Year</th>
+                <th>Country</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="holiday, stat : ${holidays}">
+                <td th:text="${stat.count}"></td>
+                <td><strong th:text="${holiday.holidayDate}"></strong></td>
+                <td th:text="${holiday.year}"></td>
+                <td th:text="${holiday.country}"></td>
+                <td>
+                    <a th:href="@{/market_holidays/{id}/edit(id=${holiday.id})}" class="btn btn-sm btn-primary">Edit</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card" style="max-width:560px;margin-top:16px;">
+        <div style="font-weight:700;margin-bottom:10px;">Add New Holiday</div>
+        <form th:action="@{/market_holidays/add}" method="post">
+            <div class="form-group">
+                <label for="holidayDate">Holiday Date</label>
+                <input type="date" id="holidayDate" name="holidayDate" required />
+            </div>
+            <div class="form-group">
+                <label for="year">Year</label>
+                <input type="text" id="year" name="year" placeholder="2026" required />
+            </div>
+            <div class="form-group">
+                <label for="country">Country</label>
+                <input type="text" id="country" name="country" placeholder="USA" required />
+            </div>
+            <div class="actions-bar" style="margin-top:16px;">
+                <button type="submit" class="btn btn-primary">Add Holiday</button>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>

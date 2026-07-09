@@ -45,11 +45,6 @@
         <div class="subtitle">Total: <strong th:text="${entries.size()}">0</strong></div>
     </div>
 
-    <form id="entryFilterForm" method="get" th:action="@{/day-stock-movement/entries}">
-        <input th:each="t : ${selectedTickers}" type="hidden" name="ticker" th:value="${t}">
-        <input th:each="c : ${selectedDayCodes}" type="hidden" name="dayCode" th:value="${c}">
-    </form>
-
     <div class="filter-bar dsm-sticky-filter" style="margin-bottom:16px">
         <span class="filter-bar-label">Filters</span>
 
@@ -61,32 +56,29 @@
             </datalist>
         </div>
 
-        <th:block th:each="t : ${selectedTickers}">
-            <span class="chip">
-                <span class="chip-type">ticker</span>
-                <strong th:text="${t}"></strong>
-                <button type="button" class="chip-remove" data-active="1" data-field="ticker" th:data-value="${t}" title="Remove">&#x2715;</button>
-            </span>
-        </th:block>
+        <div class="dsm-filter-input">
+            <input id="dateSearchInput" list="dateOptions" type="text" placeholder="YYYY-MM-DD" aria-label="Search date">
+            <button id="addDateFilterBtn" type="button" class="btn btn-sm btn-secondary">Add date</button>
+            <datalist id="dateOptions">
+                <option th:each="d : ${dates}" th:value="${d}"></option>
+            </datalist>
+        </div>
 
-        <th:block th:each="c : ${selectedDayCodes}">
-            <span class="chip">
-                <span class="chip-type">dayCode</span>
-                <strong th:text="${c}"></strong>
-                <button type="button" class="chip-remove" data-active="1" data-field="dayCode" th:data-value="${c}" title="Remove">&#x2715;</button>
-            </span>
-        </th:block>
+        <div class="dsm-filter-input">
+            <input id="dayCodeSearchInput" list="dayCodeOptions" type="text" placeholder="Search day code" aria-label="Search day code">
+            <button id="addDayCodeFilterBtn" type="button" class="btn btn-sm btn-secondary">Add day code</button>
+            <datalist id="dayCodeOptions">
+                <option th:each="c : ${dayCodes}" th:value="${c}"></option>
+            </datalist>
+        </div>
 
-        <span id="pendingChips"></span>
+        <span id="entryActiveFilters"></span>
 
         <span id="filterHint"
-              th:if="${selectedTickers.isEmpty() and selectedDayCodes.isEmpty()}"
-              class="filter-bar-empty">Click &#x2295; next to a ticker or day code to stage filters, then click Apply (max 10 each)</span>
+              class="filter-bar-empty">Use search boxes or &#x2295; in rows to filter in browser (max 10 each)</span>
 
         <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
-            <button id="applyFilterBtn" type="button" class="btn btn-sm btn-secondary">Apply</button>
-            <a th:if="${!selectedTickers.isEmpty() or !selectedDayCodes.isEmpty()}"
-               href="/day-stock-movement/entries" class="btn btn-sm btn-secondary">Clear all</a>
+            <button id="clearEntryFiltersBtn" type="button" class="btn btn-sm btn-secondary">Clear all</button>
         </div>
     </div>
 
@@ -114,8 +106,16 @@
                     <th>Close</th>
                     <th>High</th>
                     <th>Low</th>
-                    <th>Change %</th>
-                    <th>OPENCHANGE%</th>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="changePercent" style="padding:2px 8px;line-height:1.2;background:#dff5df;border:1px solid #9dd59d;color:#1f5d1f;">
+                            Change % <span class="sort-indicator" data-for="changePercent"></span>
+                        </button>
+                    </th>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="openChangePercent" style="padding:2px 8px;line-height:1.2;background:#dff5df;border:1px solid #9dd59d;color:#1f5d1f;">
+                            OPENCHANGE% <span class="sort-indicator" data-for="openChangePercent"></span>
+                        </button>
+                    </th>
                     <th>Volume</th>
                 </tr>
             </thead>
@@ -129,13 +129,16 @@
                         <code th:text="${e.day_code}"></code>
                         <button type="button" class="filter-btn" data-field="dayCode" th:data-value="${e.day_code}" title="Filter by day code">&#x2295;</button>
                     </td>
-                    <td th:attr="data-sort-value=${e.master_event_date}" th:text="${e.master_event_date}"></td>
+                    <td th:attr="data-sort-value=${e.master_event_date}">
+                        <span th:text="${e.master_event_date}"></span>
+                        <button type="button" class="filter-btn" data-field="date" th:data-value="${e.master_event_date}" title="Filter by date">&#x2295;</button>
+                    </td>
                     <td th:text="${e.cur_day_open}"></td>
                     <td th:text="${e.cur_day_close}"></td>
                     <td th:text="${e.cur_day_high}"></td>
                     <td th:text="${e.cur_day_low}"></td>
-                    <td th:text="${e.change_percent}"></td>
-                    <td th:text="${e.day_opening_change_percent}"></td>
+                    <td th:attr="data-sort-value=${e.change_percent}" th:text="${e.change_percent}"></td>
+                    <td th:attr="data-sort-value=${e.day_opening_change_percent}" th:text="${e.day_opening_change_percent}"></td>
                     <td th:text="${e.cur_day_volume}"></td>
                 </tr>
             </tbody>
@@ -144,64 +147,101 @@
 
     <script>
         (function () {
-            var BASE = '/day-stock-movement/entries';
-            var form = document.getElementById('entryFilterForm');
-            var pendingChips = document.getElementById('pendingChips');
+            var activeFiltersWrap = document.getElementById('entryActiveFilters');
             var filterHint = document.getElementById('filterHint');
             var table = document.getElementById('dsmEntriesTable');
+            var clearBtn = document.getElementById('clearEntryFiltersBtn');
             var tickerSearchInput = document.getElementById('tickerSearchInput');
             var addTickerFilterBtn = document.getElementById('addTickerFilterBtn');
+            var dateSearchInput = document.getElementById('dateSearchInput');
+            var addDateFilterBtn = document.getElementById('addDateFilterBtn');
+            var dayCodeSearchInput = document.getElementById('dayCodeSearchInput');
+            var addDayCodeFilterBtn = document.getElementById('addDayCodeFilterBtn');
             var sortState = { key: null, dir: 'asc' };
+            var filters = { ticker: [], dayCode: [], date: [] };
 
-            function countExisting(field) {
-                return form.querySelectorAll('input[name="' + field + '"]').length;
+            if (!table) {
+                return;
             }
 
-            document.getElementById('applyFilterBtn').addEventListener('click', function () {
-                form.submit();
-            });
+            function renderActiveFilters() {
+                activeFiltersWrap.innerHTML = '';
+                ['ticker', 'dayCode', 'date'].forEach(function (field) {
+                    filters[field].forEach(function (value) {
+                        var chip = document.createElement('span');
+                        chip.className = 'chip';
 
-            function stageFilter(field, value) {
+                        var typeSpan = document.createElement('span');
+                        typeSpan.className = 'chip-type';
+                        typeSpan.textContent = field;
+
+                        var strong = document.createElement('strong');
+                        strong.textContent = value;
+
+                        var rmBtn = document.createElement('button');
+                        rmBtn.type = 'button';
+                        rmBtn.className = 'chip-remove';
+                        rmBtn.title = 'Remove';
+                        rmBtn.dataset.field = field;
+                        rmBtn.dataset.value = value;
+                        rmBtn.textContent = '\u2715';
+
+                        chip.appendChild(typeSpan);
+                        chip.appendChild(document.createTextNode('\u00a0'));
+                        chip.appendChild(strong);
+                        chip.appendChild(document.createTextNode('\u00a0'));
+                        chip.appendChild(rmBtn);
+
+                        activeFiltersWrap.appendChild(chip);
+                    });
+                });
+
+                var hasAny = filters.ticker.length > 0 || filters.dayCode.length > 0 || filters.date.length > 0;
+                filterHint.style.display = hasAny ? 'none' : '';
+            }
+
+            function applyFilters() {
+                var rows = Array.from(table.querySelectorAll('tbody tr'));
+                rows.forEach(function (row) {
+                    var rowTicker = ((row.cells[0] && (row.cells[0].dataset.sortValue || row.cells[0].textContent)) || '').trim().toUpperCase();
+                    var rowDayCode = ((row.cells[1] && (row.cells[1].dataset.sortValue || row.cells[1].textContent)) || '').trim().toUpperCase();
+                    var rowDate = ((row.cells[2] && (row.cells[2].dataset.sortValue || row.cells[2].textContent)) || '').trim();
+
+                    var tickerMatch = filters.ticker.length === 0 || filters.ticker.includes(rowTicker);
+                    var dayCodeMatch = filters.dayCode.length === 0 || filters.dayCode.includes(rowDayCode);
+                    var dateMatch = filters.date.length === 0 || filters.date.includes(rowDate);
+
+                    row.style.display = tickerMatch && dayCodeMatch && dateMatch ? '' : 'none';
+                });
+            }
+
+            function addFilter(field, value) {
                 var normalized = (value || '').trim();
                 if (!normalized) return;
-                if (field === 'ticker') {
+
+                if (field === 'ticker' || field === 'dayCode') {
                     normalized = normalized.toUpperCase();
                 }
-
-                var already = Array.from(form.querySelectorAll('input[name="' + field + '"]')).map(function (i) { return i.value; });
-                if (already.includes(normalized)) return;
-
-                if (countExisting(field) >= 10) {
+                if (field === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
                     return;
                 }
+                if (filters[field].includes(normalized)) return;
+                if (filters[field].length >= 10) return;
 
-                if (filterHint) filterHint.style.display = 'none';
+                filters[field].push(normalized);
+                renderActiveFilters();
+                applyFilters();
+            }
 
-                var inp = document.createElement('input');
-                inp.type = 'hidden'; inp.name = field; inp.value = normalized; inp.dataset.pending = '1';
-                form.appendChild(inp);
-
-                var chip = document.createElement('span');
-                chip.className = 'chip chip-pending';
-                var typeSpan = document.createElement('span');
-                typeSpan.className = 'chip-type'; typeSpan.textContent = field;
-                var strong = document.createElement('strong');
-                strong.textContent = normalized;
-                var rmBtn = document.createElement('button');
-                rmBtn.type = 'button'; rmBtn.className = 'chip-remove'; rmBtn.title = 'Remove';
-                rmBtn.dataset.pending = '1'; rmBtn.dataset.field = field; rmBtn.dataset.value = normalized;
-                rmBtn.textContent = '\u2715';
-                chip.appendChild(typeSpan);
-                chip.appendChild(document.createTextNode('\u00a0'));
-                chip.appendChild(strong);
-                chip.appendChild(document.createTextNode('\u00a0'));
-                chip.appendChild(rmBtn);
-                pendingChips.appendChild(chip);
+            function removeFilter(field, value) {
+                filters[field] = filters[field].filter(function (v) { return v !== value; });
+                renderActiveFilters();
+                applyFilters();
             }
 
             if (addTickerFilterBtn) {
                 addTickerFilterBtn.addEventListener('click', function () {
-                    stageFilter('ticker', tickerSearchInput ? tickerSearchInput.value : '');
+                    addFilter('ticker', tickerSearchInput ? tickerSearchInput.value : '');
                     if (tickerSearchInput) tickerSearchInput.value = '';
                 });
             }
@@ -210,8 +250,42 @@
                 tickerSearchInput.addEventListener('keydown', function (e) {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        stageFilter('ticker', tickerSearchInput.value);
+                        addFilter('ticker', tickerSearchInput.value);
                         tickerSearchInput.value = '';
+                    }
+                });
+            }
+
+            if (addDateFilterBtn) {
+                addDateFilterBtn.addEventListener('click', function () {
+                    addFilter('date', dateSearchInput ? dateSearchInput.value : '');
+                    if (dateSearchInput) dateSearchInput.value = '';
+                });
+            }
+
+            if (dateSearchInput) {
+                dateSearchInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addFilter('date', dateSearchInput.value);
+                        dateSearchInput.value = '';
+                    }
+                });
+            }
+
+            if (addDayCodeFilterBtn) {
+                addDayCodeFilterBtn.addEventListener('click', function () {
+                    addFilter('dayCode', dayCodeSearchInput ? dayCodeSearchInput.value : '');
+                    if (dayCodeSearchInput) dayCodeSearchInput.value = '';
+                });
+            }
+
+            if (dayCodeSearchInput) {
+                dayCodeSearchInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addFilter('dayCode', dayCodeSearchInput.value);
+                        dayCodeSearchInput.value = '';
                     }
                 });
             }
@@ -224,6 +298,14 @@
                     if (isNaN(da)) return -1;
                     if (isNaN(db)) return 1;
                     return da - db;
+                }
+                if (sortKey === 'changePercent' || sortKey === 'openChangePercent') {
+                    var na = parseFloat(a);
+                    var nb = parseFloat(b);
+                    if (isNaN(na) && isNaN(nb)) return 0;
+                    if (isNaN(na)) return -1;
+                    if (isNaN(nb)) return 1;
+                    return na - nb;
                 }
                 return String(a || '').localeCompare(String(b || ''), undefined, { sensitivity: 'base' });
             }
@@ -251,7 +333,7 @@
                     sortState.dir = 'asc';
                 }
 
-                var indexByKey = { ticker: 0, dayCode: 1, date: 2 };
+                var indexByKey = { ticker: 0, dayCode: 1, date: 2, changePercent: 7, openChangePercent: 8 };
                 var colIndex = indexByKey[sortKey];
                 var rows = Array.from(tbody.querySelectorAll('tr'));
 
@@ -273,33 +355,30 @@
             });
 
             document.addEventListener('click', function (e) {
-                var rmActive = e.target.closest('.chip-remove[data-active]');
-                if (rmActive) {
-                    var p = new URLSearchParams(window.location.search);
-                    var remaining = p.getAll(rmActive.dataset.field).filter(function (v) { return v !== rmActive.dataset.value; });
-                    p.delete(rmActive.dataset.field);
-                    remaining.forEach(function (v) { p.append(rmActive.dataset.field, v); });
-                    window.location.href = BASE + (p.toString() ? '?' + p.toString() : '');
-                    return;
-                }
-
-                var rmPending = e.target.closest('.chip-remove[data-pending]');
-                if (rmPending) {
-                    var match = Array.from(form.querySelectorAll('input[data-pending][name="' + rmPending.dataset.field + '"]'))
-                        .find(function (inp) { return inp.value === rmPending.dataset.value; });
-                    if (match) match.remove();
-                    rmPending.closest('.chip').remove();
-                    if (filterHint && pendingChips.children.length === 0) filterHint.style.display = '';
+                var rm = e.target.closest('.chip-remove[data-field]');
+                if (rm && rm.closest('#entryActiveFilters')) {
+                    removeFilter(rm.dataset.field, rm.dataset.value);
                     return;
                 }
 
                 var add = e.target.closest('.filter-btn[data-field]');
                 if (add) {
-                    var field = add.dataset.field;
-                    var value = add.dataset.value;
-                    stageFilter(field, value);
+                    addFilter(add.dataset.field, add.dataset.value);
                 }
             });
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function () {
+                    filters.ticker = [];
+                    filters.dayCode = [];
+                    filters.date = [];
+                    renderActiveFilters();
+                    applyFilters();
+                });
+            }
+
+            renderActiveFilters();
+            applyFilters();
         })();
     </script>
 </div>
