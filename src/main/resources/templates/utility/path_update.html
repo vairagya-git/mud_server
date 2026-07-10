@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Utility Path Update — MudStock</title></head>
+<body>
+<div id="page-content" th:fragment="content">
+    <div class="page-header">
+        <h1>Utility</h1>
+        <div class="subtitle">Path Update</div>
+    </div>
+
+    <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
+    <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+    <div class="card" style="max-width:860px;">
+        <form th:action="@{/utility/path-update}" method="post">
+            <div class="form-group">
+                <label for="folderPath">1. Folder location (absolute path)</label>
+                <input id="folderPath" name="folderPath" type="text" th:value="${folderPath}" placeholder="/Users/rama/dev-mud-stock/ms/src/main/resources" required />
+            </div>
+
+            <div class="form-group">
+                <label for="findString">2. Find String</label>
+                <input id="findString" name="findString" type="text" th:value="${findString}" placeholder="v3_snapshot_options_intc*" required />
+            </div>
+
+            <div class="form-group">
+                <label for="replaceString">3. Replace String</label>
+                <input id="replaceString" name="replaceString" type="text" th:value="${replaceString}" placeholder="/sndk/v3_snapshot_options_intc*" required />
+            </div>
+
+            <div class="actions-bar" style="margin-top:20px;">
+                <button type="submit" class="btn btn-primary">Run Path Update</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card" th:if="${result != null}" style="max-width:860px;">
+        <div style="font-weight:700;margin-bottom:10px;">Result Summary</div>
+        <table>
+            <tbody>
+            <tr><td>Files scanned</td><td th:text="${result.filesScanned}"></td></tr>
+            <tr><td>Files updated</td><td th:text="${result.filesUpdated}"></td></tr>
+            <tr><td>Replacements made</td><td th:text="${result.replacementsMade}"></td></tr>
+            <tr><td>Files skipped</td><td th:text="${#lists.size(result.skippedFiles)}"></td></tr>
+            </tbody>
+        </table>
+
+        <div th:if="${!#lists.isEmpty(result.updatedFiles)}" style="margin-top:14px;">
+            <div style="font-weight:700;margin-bottom:6px;">Updated Files</div>
+            <div class="table-wrap" style="max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:6px;">
+                <table>
+                    <tbody>
+                    <tr th:each="f : ${result.updatedFiles}"><td th:text="${f}"></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

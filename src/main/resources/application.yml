@@ -24,7 +24,8 @@ alphavantage:
   apikey: ${ALPHA_VANTAGE_API_KEY:ISIX6TNS4RRINGGI}
 
 massive:
-  base-url: https://api.massive.com/
+  #base-url: https://api.massive.com/
+  base-url: http://localhost:9003/
   open-close: v1/open-close/%s/%s/%s?adjusted=true&apiKey=%s
   ticker-aggregate: v2/aggs/ticker/%s/range/1/day/%s/%s?adjusted=true&apiKey=%s
   option-snapshot: v3/snapshot/options/%s?strike_price=%s&expiration_date=%s&apiKey=%s

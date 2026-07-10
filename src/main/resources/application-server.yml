@@ -7,3 +7,4 @@ spring:
 
 massive:
   base-url: https://api.massive.com/
+  #base-url: http://localhost:9003/

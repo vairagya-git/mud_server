@@ -48,4 +48,28 @@ public class OptionToAnalyseRepository {
             + "ORDER BY s.ticker, o.expiration_date, o.strike_from";
         return jdbc.queryForList(sql);
     }
+
+    public Map<String, Object> findByIdWithTicker(Long id) {
+        String sql = "SELECT o.id, o.stock_id, s.ticker, o.contract_type, o.status, o.expiration_date, "
+            + "o.strike_from, o.strike_to, o.`interval`, o.created_at, o.updated_at "
+            + "FROM option_to_analyse o "
+            + "JOIN stock s ON s.id = o.stock_id "
+            + "WHERE o.id = ?";
+        List<Map<String, Object>> rows = jdbc.queryForList(sql, id);
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    public int updateById(Long id,
+                          Long stockId,
+                          String contractType,
+                          String status,
+                          LocalDate expirationDate,
+                          BigDecimal strikeFrom,
+                          BigDecimal strikeTo,
+                          BigDecimal interval) {
+        String sql = "UPDATE option_to_analyse "
+            + "SET stock_id = ?, contract_type = ?, status = ?, expiration_date = ?, strike_from = ?, strike_to = ?, `interval` = ? "
+            + "WHERE id = ?";
+        return jdbc.update(sql, stockId, contractType, status, expirationDate, strikeFrom, strikeTo, interval, id);
+    }
 }

@@ -9,6 +9,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -74,6 +75,63 @@ public class OptionAnalysisController {
             redirectAttributes.addFlashAttribute("error", "Entry already exists for stock/contract/expiry/strike range or violates table constraints.");
         } catch (Exception ex) {
             redirectAttributes.addFlashAttribute("error", "Failed to save option analysis entry: " + ex.getMessage());
+        }
+
+        return "redirect:/option-analysis/analyse";
+    }
+
+    @GetMapping("/analyse/{id}/edit")
+    public String editAnalyseForm(@PathVariable Long id,
+                                  Model model,
+                                  RedirectAttributes redirectAttributes,
+                                  @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
+        var stocks = stockRepository.findAll();
+        stocks.sort(Comparator.comparing(s -> s.getTicker() == null ? "" : s.getTicker(), String.CASE_INSENSITIVE_ORDER));
+        model.addAttribute("stocks", stocks);
+
+        var entry = optionToAnalyseRepository.findByIdWithTicker(id);
+        if (entry == null) {
+            redirectAttributes.addFlashAttribute("error", "Option analysis entry not found: " + id);
+            return "redirect:/option-analysis/analyse";
+        }
+
+        model.addAttribute("entry", entry);
+        return hxRequest != null ? "option_analysis/analyse_edit :: content" : "option_analysis/analyse_edit";
+    }
+
+    @PostMapping("/analyse/{id}/edit")
+    public String updateAnalyse(@PathVariable Long id,
+                                @RequestParam Long stockId,
+                                @RequestParam String contractType,
+                                @RequestParam String status,
+                                @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate expirationDate,
+                                @RequestParam BigDecimal strikeFrom,
+                                @RequestParam BigDecimal strikeTo,
+                                @RequestParam BigDecimal interval,
+                                RedirectAttributes redirectAttributes) {
+        try {
+            String normalizedContractType = contractType == null ? "" : contractType.trim().toUpperCase();
+            String normalizedStatus = status == null ? "FALSE" : status.trim().toUpperCase();
+
+            int updated = optionToAnalyseRepository.updateById(
+                id,
+                stockId,
+                normalizedContractType,
+                normalizedStatus,
+                expirationDate,
+                strikeFrom,
+                strikeTo,
+                interval);
+
+            if (updated == 0) {
+                redirectAttributes.addFlashAttribute("error", "Option analysis entry not found: " + id);
+            } else {
+                redirectAttributes.addFlashAttribute("message", "Option analysis entry updated.");
+            }
+        } catch (DataIntegrityViolationException ex) {
+            redirectAttributes.addFlashAttribute("error", "Update violates unique/constraint rules for this entry.");
+        } catch (Exception ex) {
+            redirectAttributes.addFlashAttribute("error", "Failed to update option analysis entry: " + ex.getMessage());
         }
 
         return "redirect:/option-analysis/analyse";

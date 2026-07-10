@@ -88,10 +88,10 @@ public class DayStockMovementEntryRepository {
     }
 
     public java.util.List<String> listDistinctEntryDates() {
-        String sql = "SELECT DISTINCT DATE_FORMAT(d.date, '%Y-%m-%d') FROM day_stock_movement_entry e "
+        String sql = "SELECT DISTINCT DATE_FORMAT(d.date, '%Y-%m-%d') AS event_date FROM day_stock_movement_entry e "
             + "JOIN day_stock_movement_map m ON e.day_stock_movement_map_id = m.id "
             + "JOIN day_stock_movement_key d ON m.day_stock_movement_key_id = d.id "
-            + "WHERE d.date IS NOT NULL ORDER BY d.date DESC";
+            + "WHERE d.date IS NOT NULL ORDER BY event_date DESC";
         return jdbc.queryForList(sql, String.class);
     }
 }
