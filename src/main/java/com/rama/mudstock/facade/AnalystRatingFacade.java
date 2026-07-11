@@ -10,8 +10,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.rama.mudstock.model.analyst.BenzingaAnalystRatingResponse;
-import com.rama.mudstock.model.analyst.FirmAnalyst;
 import com.rama.mudstock.model.analyst.Firm;
+import com.rama.mudstock.model.analyst.FirmAnalyst;
 import com.rama.mudstock.model.stockwatchlist.Stock;
 import com.rama.mudstock.repository.analyst.FirmAnalystRepository;
 import com.rama.mudstock.repository.analyst.FirmAnalystStockRatingRepository;
@@ -115,23 +115,23 @@ public class AnalystRatingFacade {
         }
 
         ratingRepository.upsert(
-                firmAnalystId,
-                firmId,
-                stockId,
-                rating.getRatingAction(),
-                rating.getPriceTargetAction(),
-                rating.getRating(),
-                rating.getPreviousRating(),
-                toBigDecimal(rating.getPriceTarget()),
-                toBigDecimal(rating.getPreviousPriceTarget()),
-                toBigDecimal(rating.getPricePercentChange()),
-                toBigDecimal(rating.getAdjustedPriceTarget()),
-                toBigDecimal(rating.getPreviousAdjustedPriceTarget()),
-                rating.getImportance(),
-                lastUpdated,
-                date,
-                rating.getBenzingaCalendarUrl(),
-                rating.getBenzingaNewsUrl());
+            firmAnalystId,
+            firmId,
+            stockId,
+            rating.getRatingAction(),
+            normalizePriceTargetAction(rating.getPriceTargetAction()),
+            rating.getRating(),
+            normalizePreviousRating(rating.getPreviousRating()),
+            toBigDecimal(rating.getPriceTarget()),
+            toBigDecimal(rating.getPreviousPriceTarget()),
+            toBigDecimal(rating.getPricePercentChange()),
+            toBigDecimal(rating.getAdjustedPriceTarget()),
+            toBigDecimal(rating.getPreviousAdjustedPriceTarget()),
+            rating.getImportance(),
+            lastUpdated,
+            date,
+            rating.getBenzingaCalendarUrl(),
+            rating.getBenzingaNewsUrl());
 
         log.info("AnalystRatingFacade: upserted rating ticker={} analyst={} date={}",
                 rating.getTicker(), rating.getBenzingaAnalystId(), date);
@@ -188,5 +188,19 @@ public class AnalystRatingFacade {
 
     private BigDecimal toBigDecimal(Double value) {
         return value == null ? null : BigDecimal.valueOf(value);
+    }
+
+    private String normalizePreviousRating(String previousRating) {
+        if (previousRating == null || previousRating.isBlank()) {
+            return "none";
+        }
+        return previousRating.trim().toLowerCase();
+    }
+
+    private String normalizePriceTargetAction(String priceTargetAction) {
+        if (priceTargetAction == null || priceTargetAction.isBlank()) {
+            return "none";
+        }
+        return priceTargetAction.trim().toLowerCase();
     }
 }

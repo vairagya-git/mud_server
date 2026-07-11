@@ -31,7 +31,7 @@ public class FirmAnalystStockRating {
     @Column(name = "rating_action", nullable = false, columnDefinition = "ENUM('maintains','downgrades','upgrades','initiates_coverage_on','reiterates','resumes_coverage','suspends_coverage')")
     private String ratingAction;
 
-    @Column(name = "price_target_action", nullable = false, columnDefinition = "ENUM('maintains','lowers','raises','announces','removes','resumes')")
+    @Column(name = "price_target_action", nullable = false, columnDefinition = "ENUM('maintains','lowers','raises','announces','removes','resumes','none')")
     private String priceTargetAction;
 
     @Column(name = "rating", nullable = false, columnDefinition = "ENUM('buy','outperform','overweight','positive','equal-weight','sector perform','sector outperform','market outperform','neutral','hold','sell','perform')")

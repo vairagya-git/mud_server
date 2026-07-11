@@ -65,4 +65,5 @@ public interface FirmAnalystStockRatingRepository extends JpaRepository<FirmAnal
                 @Param("date") java.time.LocalDate date,
                 @Param("benzingaCalendarUrl") String benzingaCalendarUrl,
                 @Param("benzingaNewsUrl") String benzingaNewsUrl);
+
 }

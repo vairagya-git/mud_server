@@ -6,5 +6,6 @@ spring:
     password: password
 
 massive:
-  base-url: https://api.massive.com/
+  #base-url: https://api.massive.com/
   #base-url: http://localhost:9003/
+  base-url: http://localhost:9001/

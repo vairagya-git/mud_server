@@ -38,6 +38,11 @@
             font-size: 0.82rem;
             text-transform: uppercase;
         }
+
+        .dsm-filter-input input.dsm-filter-input-lower {
+            text-transform: none;
+            width: 150px;
+        }
     </style>
 
     <div class="page-header dsm-sticky-header">
@@ -72,10 +77,20 @@
             </datalist>
         </div>
 
+        <div class="dsm-filter-input">
+            <input id="changePercentSearchInput" class="dsm-filter-input-lower" type="text" placeholder="> 5 or less than 1" aria-label="Search change percent">
+            <button id="addChangePercentFilterBtn" type="button" class="btn btn-sm btn-secondary">Add change %</button>
+        </div>
+
+        <div class="dsm-filter-input">
+            <input id="openChangePercentSearchInput" class="dsm-filter-input-lower" type="text" placeholder=">= 1 or greater than 2" aria-label="Search open change percent">
+            <button id="addOpenChangePercentFilterBtn" type="button" class="btn btn-sm btn-secondary">Add open change %</button>
+        </div>
+
         <span id="entryActiveFilters"></span>
 
         <span id="filterHint"
-              class="filter-bar-empty">Use search boxes or &#x2295; in rows to filter in browser (max 10 each)</span>
+              class="filter-bar-empty">Use search boxes or &#x2295; in rows to filter in browser (max 10 each). Numeric filters accept &gt;, &lt;, &gt;=, &lt;=, or phrases like "greater than 5".</span>
 
         <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
             <button id="clearEntryFiltersBtn" type="button" class="btn btn-sm btn-secondary">Clear all</button>
@@ -157,8 +172,12 @@
             var addDateFilterBtn = document.getElementById('addDateFilterBtn');
             var dayCodeSearchInput = document.getElementById('dayCodeSearchInput');
             var addDayCodeFilterBtn = document.getElementById('addDayCodeFilterBtn');
+            var changePercentSearchInput = document.getElementById('changePercentSearchInput');
+            var addChangePercentFilterBtn = document.getElementById('addChangePercentFilterBtn');
+            var openChangePercentSearchInput = document.getElementById('openChangePercentSearchInput');
+            var addOpenChangePercentFilterBtn = document.getElementById('addOpenChangePercentFilterBtn');
             var sortState = { key: null, dir: 'asc' };
-            var filters = { ticker: [], dayCode: [], date: [] };
+            var filters = { ticker: [], dayCode: [], date: [], changePercent: [], openChangePercent: [] };
 
             if (!table) {
                 return;
@@ -166,7 +185,7 @@
 
             function renderActiveFilters() {
                 activeFiltersWrap.innerHTML = '';
-                ['ticker', 'dayCode', 'date'].forEach(function (field) {
+                ['ticker', 'dayCode', 'date', 'changePercent', 'openChangePercent'].forEach(function (field) {
                     filters[field].forEach(function (value) {
                         var chip = document.createElement('span');
                         chip.className = 'chip';
@@ -196,8 +215,55 @@
                     });
                 });
 
-                var hasAny = filters.ticker.length > 0 || filters.dayCode.length > 0 || filters.date.length > 0;
+                var hasAny = filters.ticker.length > 0 || filters.dayCode.length > 0 || filters.date.length > 0 || filters.changePercent.length > 0 || filters.openChangePercent.length > 0;
                 filterHint.style.display = hasAny ? 'none' : '';
+            }
+
+            function parseNumericFilter(raw) {
+                var value = (raw || '').trim().toLowerCase();
+                if (!value) return null;
+
+                var symbolMatch = value.match(/^(>=|<=|>|<|=)\s*(-?\d+(?:\.\d+)?)$/);
+                if (symbolMatch) {
+                    return { operator: symbolMatch[1], number: parseFloat(symbolMatch[2]) };
+                }
+
+                var phraseMatch = value.match(/^(greater|less)\s+(?:than|then)\s+(?:or\s+equal\s+to\s+)?(-?\d+(?:\.\d+)?)$/);
+                if (phraseMatch) {
+                    return {
+                        operator: phraseMatch[1] === 'greater' ? '>' : '<',
+                        number: parseFloat(phraseMatch[2])
+                    };
+                }
+
+                var phraseEqMatch = value.match(/^(greater|less)\s+(?:than|then)\s+or\s+equal\s+to\s+(-?\d+(?:\.\d+)?)$/);
+                if (phraseEqMatch) {
+                    return {
+                        operator: phraseEqMatch[1] === 'greater' ? '>=' : '<=',
+                        number: parseFloat(phraseEqMatch[2])
+                    };
+                }
+
+                var bareNumber = value.match(/^(-?\d+(?:\.\d+)?)$/);
+                if (bareNumber) {
+                    return { operator: '=', number: parseFloat(bareNumber[1]) };
+                }
+
+                return null;
+            }
+
+            function numericMatches(rawValue, filterExpression) {
+                var parsed = parseNumericFilter(filterExpression);
+                if (!parsed) return true;
+
+                var num = parseFloat(String(rawValue == null ? '' : rawValue).replace(/[^0-9.\-]/g, ''));
+                if (isNaN(num)) return false;
+
+                if (parsed.operator === '>') return num > parsed.number;
+                if (parsed.operator === '>=') return num >= parsed.number;
+                if (parsed.operator === '<') return num < parsed.number;
+                if (parsed.operator === '<=') return num <= parsed.number;
+                return num === parsed.number;
             }
 
             function applyFilters() {
@@ -207,11 +273,20 @@
                     var rowDayCode = ((row.cells[1] && (row.cells[1].dataset.sortValue || row.cells[1].textContent)) || '').trim().toUpperCase();
                     var rowDate = ((row.cells[2] && (row.cells[2].dataset.sortValue || row.cells[2].textContent)) || '').trim();
 
+                    var changePercentRaw = row.children[7] ? row.children[7].dataset.sortValue : '';
+                    var openChangePercentRaw = row.children[8] ? row.children[8].dataset.sortValue : '';
+
                     var tickerMatch = filters.ticker.length === 0 || filters.ticker.includes(rowTicker);
                     var dayCodeMatch = filters.dayCode.length === 0 || filters.dayCode.includes(rowDayCode);
                     var dateMatch = filters.date.length === 0 || filters.date.includes(rowDate);
+                    var changePercentMatch = filters.changePercent.length === 0 || filters.changePercent.every(function (expr) {
+                        return numericMatches(changePercentRaw, expr);
+                    });
+                    var openChangePercentMatch = filters.openChangePercent.length === 0 || filters.openChangePercent.every(function (expr) {
+                        return numericMatches(openChangePercentRaw, expr);
+                    });
 
-                    row.style.display = tickerMatch && dayCodeMatch && dateMatch ? '' : 'none';
+                    row.style.display = tickerMatch && dayCodeMatch && dateMatch && changePercentMatch && openChangePercentMatch ? '' : 'none';
                 });
             }
 
@@ -224,6 +299,12 @@
                 }
                 if (field === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
                     return;
+                }
+                if (field === 'changePercent' || field === 'openChangePercent') {
+                    if (!parseNumericFilter(normalized)) {
+                        return;
+                    }
+                    normalized = normalized.replace(/\s+/g, ' ');
                 }
                 if (filters[field].includes(normalized)) return;
                 if (filters[field].length >= 10) return;
@@ -286,6 +367,40 @@
                         e.preventDefault();
                         addFilter('dayCode', dayCodeSearchInput.value);
                         dayCodeSearchInput.value = '';
+                    }
+                });
+            }
+
+            if (addChangePercentFilterBtn) {
+                addChangePercentFilterBtn.addEventListener('click', function () {
+                    addFilter('changePercent', changePercentSearchInput ? changePercentSearchInput.value : '');
+                    if (changePercentSearchInput) changePercentSearchInput.value = '';
+                });
+            }
+
+            if (changePercentSearchInput) {
+                changePercentSearchInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addFilter('changePercent', changePercentSearchInput.value);
+                        changePercentSearchInput.value = '';
+                    }
+                });
+            }
+
+            if (addOpenChangePercentFilterBtn) {
+                addOpenChangePercentFilterBtn.addEventListener('click', function () {
+                    addFilter('openChangePercent', openChangePercentSearchInput ? openChangePercentSearchInput.value : '');
+                    if (openChangePercentSearchInput) openChangePercentSearchInput.value = '';
+                });
+            }
+
+            if (openChangePercentSearchInput) {
+                openChangePercentSearchInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addFilter('openChangePercent', openChangePercentSearchInput.value);
+                        openChangePercentSearchInput.value = '';
                     }
                 });
             }
@@ -372,6 +487,8 @@
                     filters.ticker = [];
                     filters.dayCode = [];
                     filters.date = [];
+                    filters.changePercent = [];
+                    filters.openChangePercent = [];
                     renderActiveFilters();
                     applyFilters();
                 });

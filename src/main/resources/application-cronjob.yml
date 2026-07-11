@@ -18,5 +18,6 @@ logging:
       dayStockMovementCleanup: logs/day-stock-movement-cleanup.log
       dayStockMovementKeyMapEntry: logs/day-stock-movement-key-map-entry.log
       weeklyUpcomingEarning: logs/weekly-upcoming-earnings.log
+      dailyAnalystRating: logs/daily-analyst-rating.log
 
 
