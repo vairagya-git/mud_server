@@ -13,7 +13,7 @@ Document core tables and relationships relevant to current MudStock features.
 ## Important Tables
 - `firm`, `firm_analyst`, `firm_analyst_stock_rating`
 - `day_stock_movement_key`, `day_stock_movement_map`, `day_stock_movement_entry`
-- `option_to_analyse`, `option_contract`
+- `options_interval_analyse`, `option_contract`
 - `system_config`
 - `master_market_holidays`
 

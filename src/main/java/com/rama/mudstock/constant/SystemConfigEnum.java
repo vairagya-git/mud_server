@@ -263,19 +263,19 @@ public enum SystemConfigEnum {
         }
     }
 
-    public enum OptionContractAnalyserDailyJob {
-        USEAGE("useage", "String", "Option Contract Analyser Daily Job > Usage"),
-        ENABLED("enabled", "Boolean", "Option Contract Analyser Daily Job > Enabled"),
-        CRON_EXPRESSION("cronExpression", "CronExpression", "Option Contract Analyser Daily Job > Cron Expression"),
-        LAST_UPDATED("lastUpdated", "DateTime", "Option Contract Analyser Daily Job > Last Updated");
+    public enum OptionsIntervalAnalyseDailyJob {
+        USEAGE("useage", "String", "Options Interval Analyse Daily Job > Usage"),
+        ENABLED("enabled", "Boolean", "Options Interval Analyse Daily Job > Enabled"),
+        CRON_EXPRESSION("cronExpression", "CronExpression", "Options Interval Analyse Daily Job > Cron Expression"),
+        LAST_UPDATED("lastUpdated", "DateTime", "Options Interval Analyse Daily Job > Last Updated");
 
-        private static final String PURPOSE = "OptionContractAnalyserDailyJob";
+        private static final String PURPOSE = "OptionsIntervalAnalyseDailyJob";
 
         private final String code;
         private final String type;
         private final String description;
 
-        OptionContractAnalyserDailyJob(String code, String type, String description) {
+        OptionsIntervalAnalyseDailyJob(String code, String type, String description) {
             this.code = code;
             this.type = type;
             this.description = description;

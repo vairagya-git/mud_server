@@ -14,17 +14,22 @@ import com.rama.mudstock.repository.option.OptionToAnalyseRepository;
 import com.rama.mudstock.service.MassiveRestOptionSnapshotService;
 import com.rama.mudstock.service.OptionSnapshotParser;
 
+/**
+ * Processes options_interval_analyse entries in CREATE_CONTRACT state,
+ * creates contracts from Massive snapshots, marks interval entry ACTIVE once created,
+ * and marks matching option contracts COMPLETED when interval status is CLOSE.
+ */
 @Service
-public class OptionContractAnalyserFacade {
+public class OptionsIntervalAnalyseFacade {
 
-    private static final Logger log = LoggerFactory.getLogger(OptionContractAnalyserFacade.class);
+    private static final Logger log = LoggerFactory.getLogger(OptionsIntervalAnalyseFacade.class);
 
     private final OptionToAnalyseRepository optionToAnalyseRepository;
     private final MassiveRestOptionSnapshotService massiveOptionSnapshotService;
     private final OptionSnapshotParser optionSnapshotParser;
     private final OptionContractRepository optionContractRepository;
 
-    public OptionContractAnalyserFacade(OptionToAnalyseRepository optionToAnalyseRepository,
+    public OptionsIntervalAnalyseFacade(OptionToAnalyseRepository optionToAnalyseRepository,
                                         MassiveRestOptionSnapshotService massiveOptionSnapshotService,
                                         OptionSnapshotParser optionSnapshotParser,
                                         OptionContractRepository optionContractRepository) {
@@ -35,21 +40,38 @@ public class OptionContractAnalyserFacade {
     }
 
     public int analyseDaily() {
-        List<Map<String, Object>> entries = optionToAnalyseRepository.listActiveWithTicker();
+        List<Map<String, Object>> entries = optionToAnalyseRepository.listCreateContractWithTicker();
         int processedContracts = 0;
 
         for (Map<String, Object> entry : entries) {
             try {
-                processedContracts += processEntry(entry);
+                EntryProcessingResult result = processEntry(entry);
+                processedContracts += result.processedContracts();
+
+                if (result.createdContracts()) {
+                    Long entryId = toLong(entry.get("id"));
+                    if (entryId != null) {
+                        optionToAnalyseRepository.updateStatusById(entryId, OptionToAnalyseRepository.STATUS_ACTIVE);
+                    }
+                }
             } catch (Exception ex) {
-                log.error("OptionContractAnalyserFacade: failed processing option_to_analyse entry {}", entry, ex);
+                log.error("OptionsIntervalAnalyseFacade: failed processing options_interval_analyse entry {}", entry, ex);
+            }
+        }
+
+        List<Map<String, Object>> closeEntries = optionToAnalyseRepository.listCloseWithTicker();
+        for (Map<String, Object> entry : closeEntries) {
+            try {
+                completeContractsForClosedInterval(entry);
+            } catch (Exception ex) {
+                log.error("OptionsIntervalAnalyseFacade: failed completing contracts for CLOSE entry {}", entry, ex);
             }
         }
 
         return processedContracts;
     }
 
-    private int processEntry(Map<String, Object> entry) throws Exception {
+    private EntryProcessingResult processEntry(Map<String, Object> entry) throws Exception {
         Long stockId = toLong(entry.get("stock_id"));
         String ticker = toString(entry.get("ticker"));
         String requestedContractType = toString(entry.get("contract_type"));
@@ -60,13 +82,13 @@ public class OptionContractAnalyserFacade {
 
         if (stockId == null || ticker == null || requestedContractType == null || expirationDate == null
             || strikeFrom == null || strikeTo == null || interval == null) {
-            log.warn("OptionContractAnalyserFacade: skipping incomplete option_to_analyse entry {}", entry);
-            return 0;
+            log.warn("OptionsIntervalAnalyseFacade: skipping incomplete options_interval_analyse entry {}", entry);
+            return new EntryProcessingResult(0, false);
         }
 
         if (interval.compareTo(BigDecimal.ZERO) <= 0) {
-            log.warn("OptionContractAnalyserFacade: skipping entry with non-positive interval {}", entry);
-            return 0;
+            log.warn("OptionsIntervalAnalyseFacade: skipping entry with non-positive interval {}", entry);
+            return new EntryProcessingResult(0, false);
         }
 
         int processed = 0;
@@ -104,7 +126,33 @@ public class OptionContractAnalyserFacade {
             }
         }
 
-        return processed;
+        return new EntryProcessingResult(processed, processed > 0);
+    }
+
+    private void completeContractsForClosedInterval(Map<String, Object> entry) {
+        Long stockId = toLong(entry.get("stock_id"));
+        String contractType = toString(entry.get("contract_type"));
+        LocalDate expirationDate = toLocalDate(entry.get("expiration_date"));
+        BigDecimal strikeFrom = toBigDecimal(entry.get("strike_from"));
+        BigDecimal strikeTo = toBigDecimal(entry.get("strike_to"));
+
+        if (stockId == null || contractType == null || expirationDate == null || strikeFrom == null || strikeTo == null) {
+            log.warn("OptionsIntervalAnalyseFacade: skipping CLOSE entry with missing interval fields {}", entry);
+            return;
+        }
+
+        int completed = optionContractRepository.markContractsCompletedForInterval(
+            stockId,
+            contractType,
+            expirationDate,
+            strikeFrom,
+            strikeTo);
+
+        if (completed > 0) {
+            log.info("OptionsIntervalAnalyseFacade: marked {} option_contract row(s) COMPLETED for close interval id={}",
+                completed,
+                entry.get("id"));
+        }
     }
 
     private boolean shouldPersist(String requestedContractType, String contractType) {
@@ -148,5 +196,8 @@ public class OptionContractAnalyserFacade {
             return sqlDate.toLocalDate();
         }
         return LocalDate.parse(value.toString());
+    }
+
+    private record EntryProcessingResult(int processedContracts, boolean createdContracts) {
     }
 }

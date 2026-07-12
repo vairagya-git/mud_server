@@ -4,6 +4,67 @@
 <head><title>Option Analysis — MudStock</title></head>
 <body>
 <div id="page-content" th:fragment="content">
+    <style>
+        .mapping-tab-shell { margin-bottom: 24px; }
+
+        .mapping-tabs {
+            display:flex;
+            gap:0;
+            flex-wrap:wrap;
+            margin: 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .mapping-tab-btn {
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text);
+            border-radius: 8px 8px 0 0;
+            padding: 8px 12px;
+            margin: 0 6px -1px 0;
+            cursor: pointer;
+            font-size: .84rem;
+            font-weight: 600;
+            border-bottom-color: var(--border);
+        }
+        .mapping-tab-btn.active {
+            background: #fff;
+            border-color: #9dd59d;
+            border-bottom-color: #fff;
+            color: #1f5d1f;
+            box-shadow: inset 0 3px 0 #63b663;
+        }
+
+        .mapping-tab-panel {
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 var(--radius) var(--radius);
+            background: #fff;
+            box-shadow: var(--shadow);
+        }
+
+        .mapping-tab-pane { display: none; }
+        .mapping-tab-pane.active { display: block; }
+
+        .mapping-form-section {
+            max-width: 760px;
+            padding: 16px 18px 14px;
+        }
+
+        .mapping-form-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--brand);
+            margin-bottom: 10px;
+        }
+
+        .mapping-form-subtitle {
+            margin-bottom: 10px;
+            color: var(--text-muted);
+            font-size: .84rem;
+        }
+    </style>
+
     <div class="page-header">
         <h1>Option Analysis</h1>
         <div class="subtitle">Analyse</div>
@@ -12,111 +73,160 @@
     <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
     <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
 
-    <div class="card" style="max-width:760px">
-        <form id="optionAnalyseForm" th:action="@{/option-analysis/analyse}" method="post">
-            <input type="hidden" id="stockIdField" name="stockId" required>
-            <input type="hidden" id="statusValue" name="status" value="FALSE">
+    <div class="mapping-tab-shell">
+        <div class="mapping-tabs" role="tablist" aria-label="Option analysis modes">
+            <button type="button" class="mapping-tab-btn" data-tab-target="pane-first-snapshot">First Option Snapshot</button>
+            <button type="button" class="mapping-tab-btn" data-tab-target="pane-entries">Entries</button>
+            <button type="button" class="mapping-tab-btn" data-tab-target="pane-new-entry">New Entry</button>
+        </div>
 
-            <div class="form-group">
-                <label>Stock (Ticker)</label>
-                <input id="stockTickerInput" list="stockTickerOptions" type="text" placeholder="Search ticker" autocomplete="off" required>
-                <datalist id="stockTickerOptions">
-                    <option th:each="s : ${stocks}" th:value="${s.ticker}" th:data-stock-id="${s.id}"></option>
-                </datalist>
-                <small id="stockHint" style="color:var(--text-muted)">Type a ticker and select from suggestions.</small>
-            </div>
-
-            <div class="form-group">
-                <label>Contract Type</label>
-                <select name="contractType" required>
-                    <option value="CALL">CALL</option>
-                    <option value="PUT">PUT</option>
-                    <option value="BOTH">BOTH</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>Status</label>
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <label style="display:flex;align-items:center;gap:8px;margin:0;">
-                        <input id="statusToggle" type="checkbox">
-                        <span>TRUE</span>
-                    </label>
-                    <span style="font-size:.84rem;color:var(--text-muted)">Current value: <strong id="statusLabel">FALSE</strong></span>
+        <div class="mapping-tab-panel">
+            <div id="pane-first-snapshot" class="mapping-tab-pane">
+                <div class="mapping-form-section">
+                    <h3 class="mapping-form-title">First Option Snapshot</h3>
+                    <div class="mapping-form-subtitle">Open the snapshot contracts listing to review first-level option snapshot contract data.</div>
+                    <a href="/option-analysis/contract"
+                       hx-get="/option-analysis/contract"
+                       hx-target="#page-content"
+                       hx-swap="outerHTML"
+                       hx-push-url="true"
+                       class="btn btn-primary">Open Snapshot Contracts</a>
                 </div>
             </div>
 
-            <div class="form-group">
-                <label>Expiration Date</label>
-                <input type="date" name="expirationDate" required>
+            <div id="pane-entries" class="mapping-tab-pane">
+                <div class="card table-wrap" style="margin:16px">
+                    <h3 style="margin-bottom:12px">Current Entries</h3>
+                    <div th:if="${entries.isEmpty()}" class="table-empty">No option analysis entries yet.</div>
+                    <table th:unless="${entries.isEmpty()}">
+                        <thead>
+                            <tr>
+                                <th>Ticker</th>
+                                <th>Contract</th>
+                                <th>Status</th>
+                                <th>Expiration</th>
+                                <th>Strike From</th>
+                                <th>Strike To</th>
+                                <th>Interval</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="e : ${entries}">
+                                <td><span class="badge badge-grey" th:text="${e.ticker}"></span></td>
+                                <td th:text="${e.contract_type}"></td>
+                                <td>
+                                    <form th:if="${e.status == 'ACTIVE'}"
+                                          th:action="@{/option-analysis/analyse/{id}/status(id=${e.id})}"
+                                          method="post"
+                                          class="inline-status-form"
+                                          style="display:flex;align-items:center;gap:8px;">
+                                        <select name="status" class="inline-status-select" style="min-width:130px;">
+                                            <option value="ACTIVE" selected>ACTIVE</option>
+                                            <option value="CLOSE">CLOSE</option>
+                                        </select>
+                                        <button type="submit" class="btn btn-sm btn-primary inline-status-save" style="display:none;">Save</button>
+                                    </form>
+                                    <span th:unless="${e.status == 'ACTIVE'}"
+                                          class="badge badge-blue"
+                                          th:text="${e.status != null ? e.status : '-'}"></span>
+                                </td>
+                                <td th:text="${e.expiration_date}"></td>
+                                <td th:text="${e.strike_from}"></td>
+                                <td th:text="${e.strike_to}"></td>
+                                <td th:text="${e.interval}"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label>Strike From</label>
-                <input type="number" name="strikeFrom" step="0.0001" min="0" required>
-            </div>
+            <div id="pane-new-entry" class="mapping-tab-pane">
+                <div class="mapping-form-section">
+                    <h3 class="mapping-form-title">New Entry</h3>
+                    <form id="optionAnalyseForm" th:action="@{/option-analysis/analyse}" method="post">
+                        <input type="hidden" id="stockIdField" name="stockId" required>
+                        <input type="hidden" id="statusValue" name="status" value="CREATE_CONTRACT">
 
-            <div class="form-group">
-                <label>Strike To</label>
-                <input type="number" name="strikeTo" step="0.0001" min="0" required>
-            </div>
+                        <div class="form-group">
+                            <label>Stock (Ticker)</label>
+                            <input id="stockTickerInput" list="stockTickerOptions" type="text" placeholder="Search ticker" autocomplete="off" required>
+                            <datalist id="stockTickerOptions">
+                                <option th:each="s : ${stocks}" th:value="${s.ticker}" th:data-stock-id="${s.id}"></option>
+                            </datalist>
+                            <small id="stockHint" style="color:var(--text-muted)">Type a ticker and select from suggestions.</small>
+                        </div>
 
-            <div class="form-group">
-                <label>Interval</label>
-                <input type="number" name="interval" step="0.01" min="0" required>
-            </div>
+                        <div class="form-group">
+                            <label>Contract Type</label>
+                            <select name="contractType" required>
+                                <option value="CALL">CALL</option>
+                                <option value="PUT">PUT</option>
+                                <option value="BOTH">BOTH</option>
+                            </select>
+                        </div>
 
-            <div class="actions-bar" style="margin-top:20px">
-                <button type="submit" class="btn btn-primary">Save</button>
-            </div>
-        </form>
-    </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <div style="font-size:.84rem;color:var(--text-muted)">New entries are created with status: <strong id="statusLabel">CREATE_CONTRACT</strong></div>
+                        </div>
 
-    <div class="card table-wrap" style="margin-top:24px">
-        <h3 style="margin-bottom:12px">Current Entries</h3>
-        <div th:if="${entries.isEmpty()}" class="table-empty">No option analysis entries yet.</div>
-        <table th:unless="${entries.isEmpty()}">
-            <thead>
-                <tr>
-                    <th>Ticker</th>
-                    <th>Contract</th>
-                    <th>Status</th>
-                    <th>Expiration</th>
-                    <th>Strike From</th>
-                    <th>Strike To</th>
-                    <th>Interval</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr th:each="e : ${entries}">
-                    <td><span class="badge badge-grey" th:text="${e.ticker}"></span></td>
-                    <td th:text="${e.contract_type}"></td>
-                    <td th:text="${e.status}"></td>
-                    <td th:text="${e.expiration_date}"></td>
-                    <td th:text="${e.strike_from}"></td>
-                    <td th:text="${e.strike_to}"></td>
-                    <td th:text="${e.interval}"></td>
-                    <td>
-                        <a th:href="@{/option-analysis/analyse/{id}/edit(id=${e.id})}" class="btn btn-sm btn-primary">Edit</a>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+                        <div class="form-group">
+                            <label>Expiration Date</label>
+                            <input type="date" name="expirationDate" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Strike From</label>
+                            <input type="number" name="strikeFrom" step="0.0001" min="0" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Strike To</label>
+                            <input type="number" name="strikeTo" step="0.0001" min="0" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Interval</label>
+                            <input type="number" name="interval" step="0.01" min="0" required>
+                        </div>
+
+                        <div class="actions-bar" style="margin-top:20px">
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
         (function () {
+            var tabButtons = Array.from(document.querySelectorAll('.mapping-tab-btn[data-tab-target]'));
+            var tabPanes = Array.from(document.querySelectorAll('.mapping-tab-pane'));
             var form = document.getElementById('optionAnalyseForm');
             var tickerInput = document.getElementById('stockTickerInput');
             var stockIdField = document.getElementById('stockIdField');
             var stockHint = document.getElementById('stockHint');
-            var statusToggle = document.getElementById('statusToggle');
             var statusValue = document.getElementById('statusValue');
             var statusLabel = document.getElementById('statusLabel');
 
+            function setActiveTab(tabName) {
+                tabPanes.forEach(function (pane) { pane.classList.remove('active'); });
+                tabButtons.forEach(function (btn) { btn.classList.remove('active'); });
+
+                var activeButton = tabButtons.find(function (btn) { return btn.dataset.tabTarget === tabName; });
+                if (activeButton) activeButton.classList.add('active');
+
+                var activePane = document.getElementById(tabName);
+                if (activePane) activePane.classList.add('active');
+
+                if (window.location.hash !== '#' + tabName) {
+                    history.replaceState(null, '', '#' + tabName);
+                }
+            }
+
             function syncStatus() {
-                var value = statusToggle.checked ? 'TRUE' : 'FALSE';
+                var value = 'CREATE_CONTRACT';
                 statusValue.value = value;
                 statusLabel.textContent = value;
             }
@@ -140,7 +250,26 @@
                 stockHint.textContent = stockIdField.value ? 'Selected stock_id: ' + stockIdField.value : 'Ticker selected.';
             }
 
-            statusToggle.addEventListener('change', syncStatus);
+            tabButtons.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    setActiveTab(btn.dataset.tabTarget);
+                });
+            });
+
+            document.querySelectorAll('.inline-status-form').forEach(function (statusForm) {
+                var statusSelect = statusForm.querySelector('.inline-status-select');
+                var saveButton = statusForm.querySelector('.inline-status-save');
+                if (!statusSelect || !saveButton) return;
+
+                function syncInlineSave() {
+                    var shouldShow = statusSelect.value === 'CLOSE';
+                    saveButton.style.display = shouldShow ? '' : 'none';
+                }
+
+                statusSelect.addEventListener('change', syncInlineSave);
+                syncInlineSave();
+            });
+
             tickerInput.addEventListener('input', syncStockId);
             tickerInput.addEventListener('change', syncStockId);
 
@@ -153,6 +282,9 @@
                 }
             });
 
+            var hashTab = (window.location.hash || '').replace('#', '').trim();
+            var initialTab = tabPanes.some(function (pane) { return pane.id === hashTab; }) ? hashTab : 'pane-entries';
+            setActiveTab(initialTab);
             syncStatus();
         })();
     </script>

@@ -11,7 +11,7 @@ Capture market-data sources, URL patterns, and parsing rules used for option wor
 - `/v3/snapshot/options/{TICKER}?strike_price={STRIKE}&expiration_date={DATE}&apiKey={API_KEY}`
 
 ## Data Flow
-1. Read option_to_analyse entries.
+1. Read options_interval_analyse entries.
 2. Build strike ladder from range + interval.
 3. Request snapshots per strike and expiration.
 4. Persist contract details.

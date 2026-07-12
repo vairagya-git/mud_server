@@ -53,6 +53,7 @@
                             Contract Type <span class="sort-indicator" data-for="contractType"></span>
                         </button>
                     </th>
+                    <th>Status</th>
                     <th>Exercise Style</th>
                     <th>
                         <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="expirationDate">
@@ -79,6 +80,7 @@
                         <span th:text="${c.contract_type}"></span>
                         <button type="button" class="filter-btn" data-field="contractType" th:data-value="${c.contract_type}" title="Filter by contract type">&#x2295;</button>
                     </td>
+                    <td><span class="badge badge-blue" th:text="${c.status}"></span></td>
                     <td th:text="${c.exercise_style}"></td>
                     <td th:attr="data-sort-value=${c.expiration_date}" th:text="${c.expiration_date}"></td>
                     <td th:attr="data-sort-value=${c.strike_price}" th:text="${c.strike_price}"></td>
@@ -189,12 +191,12 @@
                     return (row.children[1].dataset.sortValue || '').toLowerCase();
                 }
                 if (key === 'expirationDate') {
-                    var dateText = row.children[3].dataset.sortValue || '';
+                    var dateText = row.children[4].dataset.sortValue || '';
                     var timestamp = Date.parse(dateText);
                     return Number.isNaN(timestamp) ? Number.NEGATIVE_INFINITY : timestamp;
                 }
                 if (key === 'strikePrice') {
-                    return Number(row.children[4].dataset.sortValue || 0);
+                    return Number(row.children[5].dataset.sortValue || 0);
                 }
                 return '';
             }

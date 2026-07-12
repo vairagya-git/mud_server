@@ -37,13 +37,18 @@
 
             <div class="form-group">
                 <label>Status</label>
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <label style="display:flex;align-items:center;gap:8px;margin:0;">
-                        <input id="statusToggle" type="checkbox" th:checked="${entry.status == 'TRUE'}">
-                        <span>TRUE</span>
-                    </label>
-                    <span style="font-size:.84rem;color:var(--text-muted)">Current value: <strong id="statusLabel">FALSE</strong></span>
-                </div>
+                <select id="statusSelect" name="status" required>
+                    <th:block th:if="${entry.status == 'ACTIVE'}">
+                        <option value="CLOSE" selected>CLOSE</option>
+                    </th:block>
+                    <th:block th:unless="${entry.status == 'ACTIVE'}">
+                        <option value="CREATE_CONTRACT" th:selected="${entry.status == 'CREATE_CONTRACT'}">CREATE_CONTRACT</option>
+                        <option value="ACTIVE" th:selected="${entry.status == 'ACTIVE'}">ACTIVE</option>
+                        <option value="CLOSE" th:selected="${entry.status == 'CLOSE'}">CLOSE</option>
+                        <option value="COMPLETED" th:selected="${entry.status == 'COMPLETED'}">COMPLETED</option>
+                    </th:block>
+                </select>
+                <small style="color:var(--text-muted)">When current status is ACTIVE, the only allowed next status is CLOSE.</small>
             </div>
 
             <div class="form-group">
@@ -79,14 +84,12 @@
             var tickerInput = document.getElementById('stockTickerInput');
             var stockIdField = document.getElementById('stockIdField');
             var stockHint = document.getElementById('stockHint');
-            var statusToggle = document.getElementById('statusToggle');
+            var statusSelect = document.getElementById('statusSelect');
             var statusValue = document.getElementById('statusValue');
-            var statusLabel = document.getElementById('statusLabel');
 
             function syncStatus() {
-                var value = statusToggle.checked ? 'TRUE' : 'FALSE';
+                var value = (statusSelect.value || 'CREATE_CONTRACT').trim().toUpperCase();
                 statusValue.value = value;
-                statusLabel.textContent = value;
             }
 
             function syncStockId() {
@@ -108,7 +111,7 @@
                 stockHint.textContent = stockIdField.value ? 'Selected stock_id: ' + stockIdField.value : 'Ticker selected.';
             }
 
-            statusToggle.addEventListener('change', syncStatus);
+            statusSelect.addEventListener('change', syncStatus);
             tickerInput.addEventListener('input', syncStockId);
             tickerInput.addEventListener('change', syncStockId);
 

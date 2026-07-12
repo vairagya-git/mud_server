@@ -3,6 +3,7 @@ package com.rama.mudstock.controller;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Comparator;
+import java.util.Map;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -51,7 +52,6 @@ public class OptionAnalysisController {
     @PostMapping("/analyse")
     public String create(@RequestParam Long stockId,
                          @RequestParam String contractType,
-                         @RequestParam String status,
                          @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate expirationDate,
                          @RequestParam BigDecimal strikeFrom,
                          @RequestParam BigDecimal strikeTo,
@@ -59,7 +59,7 @@ public class OptionAnalysisController {
                          RedirectAttributes redirectAttributes) {
         try {
             String normalizedContractType = contractType == null ? "" : contractType.trim().toUpperCase();
-            String normalizedStatus = status == null ? "FALSE" : status.trim().toUpperCase();
+            String normalizedStatus = OptionToAnalyseRepository.STATUS_CREATE_CONTRACT;
 
             optionToAnalyseRepository.insert(
                 stockId,
@@ -111,7 +111,7 @@ public class OptionAnalysisController {
                                 RedirectAttributes redirectAttributes) {
         try {
             String normalizedContractType = contractType == null ? "" : contractType.trim().toUpperCase();
-            String normalizedStatus = status == null ? "FALSE" : status.trim().toUpperCase();
+            String normalizedStatus = normalizeAnalyseStatus(status);
 
             int updated = optionToAnalyseRepository.updateById(
                 id,
@@ -135,6 +135,49 @@ public class OptionAnalysisController {
         }
 
         return "redirect:/option-analysis/analyse";
+    }
+
+    @PostMapping("/analyse/{id}/status")
+    public String updateAnalyseStatus(@PathVariable Long id,
+                                      @RequestParam String status,
+                                      RedirectAttributes redirectAttributes) {
+        try {
+            Map<String, Object> entry = optionToAnalyseRepository.findByIdWithTicker(id);
+            if (entry == null) {
+                redirectAttributes.addFlashAttribute("error", "Option analysis entry not found: " + id);
+                return "redirect:/option-analysis/analyse#pane-entries";
+            }
+
+            String currentStatus = entry.get("status") == null ? "" : entry.get("status").toString().trim().toUpperCase();
+            String requestedStatus = normalizeAnalyseStatus(status);
+
+            if (OptionToAnalyseRepository.STATUS_ACTIVE.equals(currentStatus)
+                && OptionToAnalyseRepository.STATUS_CLOSE.equals(requestedStatus)) {
+                optionToAnalyseRepository.updateStatusById(id, requestedStatus);
+                redirectAttributes.addFlashAttribute("message", "Status updated to CLOSE.");
+            } else {
+                redirectAttributes.addFlashAttribute("error", "Only ACTIVE entries can be changed to CLOSE from this screen.");
+            }
+        } catch (Exception ex) {
+            redirectAttributes.addFlashAttribute("error", "Failed to update status: " + ex.getMessage());
+        }
+
+        return "redirect:/option-analysis/analyse#pane-entries";
+    }
+
+    private String normalizeAnalyseStatus(String status) {
+        String normalized = status == null
+            ? OptionToAnalyseRepository.STATUS_CREATE_CONTRACT
+            : status.trim().toUpperCase();
+
+        if (OptionToAnalyseRepository.STATUS_CREATE_CONTRACT.equals(normalized)
+            || OptionToAnalyseRepository.STATUS_ACTIVE.equals(normalized)
+            || OptionToAnalyseRepository.STATUS_CLOSE.equals(normalized)
+            || OptionToAnalyseRepository.STATUS_COMPLETED.equals(normalized)) {
+            return normalized;
+        }
+
+        return OptionToAnalyseRepository.STATUS_CREATE_CONTRACT;
     }
 
     @GetMapping("/contract")

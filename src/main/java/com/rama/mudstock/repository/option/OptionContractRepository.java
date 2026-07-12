@@ -11,6 +11,9 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class OptionContractRepository {
 
+    public static final String STATUS_ACTIVE = "ACTIVE";
+    public static final String STATUS_COMPLETED = "COMPLETED";
+
     private final JdbcTemplate jdbc;
 
     public OptionContractRepository(JdbcTemplate jdbc) {
@@ -49,11 +52,53 @@ public class OptionContractRepository {
     }
 
     public List<Map<String, Object>> listAllWithTicker() {
-        String sql = "SELECT o.id, o.stock_id, s.ticker, o.contract_type, o.exercise_style, o.expiration_date, "
+        String sql = "SELECT o.id, o.stock_id, s.ticker, o.contract_type, o.status, o.exercise_style, o.expiration_date, "
             + "o.strike_price, o.shares_per_contract, o.contract_ticker, o.created_at, o.updated_at "
             + "FROM option_contract o "
             + "JOIN stock s ON s.id = o.stock_id "
             + "ORDER BY o.updated_at DESC, s.ticker, o.expiration_date, o.strike_price";
         return jdbc.queryForList(sql);
+    }
+
+    public int markContractsCompletedForInterval(Long stockId,
+                                                 String contractType,
+                                                 LocalDate expirationDate,
+                                                 BigDecimal strikeFrom,
+                                                 BigDecimal strikeTo) {
+        String normalizedContractType = contractType == null ? "" : contractType.trim().toUpperCase();
+
+        if ("BOTH".equals(normalizedContractType)) {
+            String sql = "UPDATE option_contract "
+                + "SET status = ?, updated_at = CURRENT_TIMESTAMP "
+                + "WHERE stock_id = ? "
+                + "AND expiration_date = ? "
+                + "AND strike_price >= ? "
+                + "AND strike_price <= ? "
+                + "AND status <> ?";
+            return jdbc.update(sql,
+                STATUS_COMPLETED,
+                stockId,
+                expirationDate,
+                strikeFrom,
+                strikeTo,
+                STATUS_COMPLETED);
+        }
+
+        String sql = "UPDATE option_contract "
+            + "SET status = ?, updated_at = CURRENT_TIMESTAMP "
+            + "WHERE stock_id = ? "
+            + "AND contract_type = ? "
+            + "AND expiration_date = ? "
+            + "AND strike_price >= ? "
+            + "AND strike_price <= ? "
+            + "AND status <> ?";
+        return jdbc.update(sql,
+            STATUS_COMPLETED,
+            stockId,
+            normalizedContractType,
+            expirationDate,
+            strikeFrom,
+            strikeTo,
+            STATUS_COMPLETED);
     }
 }
