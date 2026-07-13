@@ -153,8 +153,16 @@
         </div>
 
         <div class="nav-group">
-            <div class="nav-group-label">Option Analysis</div>
+            <div class="nav-group-label">Option</div>
             <div class="nav-group-items">
+                <a href="/option-strategy"
+                   hx-get="/option-strategy"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/option-strategy">
+                    <i class="nav-icon">🧩</i> Strategy
+                </a>
                 <a href="/option-analysis/analyse"
                    hx-get="/option-analysis/analyse"
                    hx-target="#page-content"
@@ -170,6 +178,14 @@
                    hx-push-url="true"
                    data-path="/option-analysis/contract">
                     <i class="nav-icon">📄</i> Contract
+                </a>
+                <a href="/option-analysis/snapshot"
+                   hx-get="/option-analysis/snapshot"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/option-analysis/snapshot">
+                    <i class="nav-icon">📷</i> Snapshot
                 </a>
             </div>
         </div>

@@ -287,4 +287,39 @@ public enum SystemConfigEnum {
         }
     }
 
+    public enum OptionSnapshotFetcherJob {
+        USEAGE("useage", "String", "Option Snapshot Fetcher Job > Usage"),
+        ENABLED("enabled", "Boolean", "Option Snapshot Fetcher Job > Enabled"),
+        CRON_EXPRESSION("cronExpression", "CronExpression", "Option Snapshot Fetcher Job > Cron Expression"),
+        LAST_UPDATED("lastUpdated", "DateTime", "Option Snapshot Fetcher Job > Last Updated");
+
+        private static final String PURPOSE = "OptionSnapshotFetcherJob";
+
+        private final String code;
+        private final String type;
+        private final String description;
+
+        OptionSnapshotFetcherJob(String code, String type, String description) {
+            this.code = code;
+            this.type = type;
+            this.description = description;
+        }
+
+        public String purpose() {
+            return PURPOSE;
+        }
+
+        public String code() {
+            return code;
+        }
+
+        public String type() {
+            return type;
+        }
+
+        public String description() {
+            return description;
+        }
+    }
+
 }

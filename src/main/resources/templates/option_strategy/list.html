@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Option Strategy — MudStock</title></head>
+<body>
+<div id="page-content" th:fragment="content">
+    <style>
+        .mapping-tab-shell { margin-bottom: 24px; }
+
+        .mapping-tabs {
+            display:flex;
+            gap:0;
+            flex-wrap:wrap;
+            margin: 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .mapping-tab-btn {
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text);
+            border-radius: 8px 8px 0 0;
+            padding: 8px 12px;
+            margin: 0 6px -1px 0;
+            cursor: pointer;
+            font-size: .84rem;
+            font-weight: 600;
+            border-bottom-color: var(--border);
+        }
+        .mapping-tab-btn.active {
+            background: #fff;
+            border-color: #9dd59d;
+            border-bottom-color: #fff;
+            color: #1f5d1f;
+            box-shadow: inset 0 3px 0 #63b663;
+        }
+
+        .mapping-tab-panel {
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 var(--radius) var(--radius);
+            background: #fff;
+            box-shadow: var(--shadow);
+        }
+
+        .mapping-tab-pane { display: none; }
+        .mapping-tab-pane.active { display: block; }
+
+        .mapping-form-section {
+            max-width: 760px;
+            padding: 16px 18px 14px;
+        }
+
+        .mapping-form-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--brand);
+            margin-bottom: 10px;
+        }
+
+        .mapping-form-subtitle {
+            margin-bottom: 10px;
+            color: var(--text-muted);
+            font-size: .84rem;
+        }
+    </style>
+
+    <div class="page-header">
+        <h1>Option Strategy</h1>
+        <div class="subtitle">Create and review option strategies</div>
+    </div>
+
+    <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
+    <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+    <div class="mapping-tab-shell">
+        <div class="mapping-tabs" role="tablist" aria-label="Option strategy modes">
+            <button type="button" class="mapping-tab-btn" data-tab-target="pane-list">Existing Strategies</button>
+            <button type="button" class="mapping-tab-btn" data-tab-target="pane-create">Create Strategy</button>
+        </div>
+
+        <div class="mapping-tab-panel">
+            <div id="pane-list" class="mapping-tab-pane">
+                <div class="card table-wrap" style="margin:16px">
+                    <h3 style="margin-bottom:12px">Existing Strategies</h3>
+                    <div th:if="${strategies.isEmpty()}" class="table-empty">No option strategies found.</div>
+                    <table th:unless="${strategies.isEmpty()}">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Stock</th>
+                                <th>Previous Strategy</th>
+                                <th>Type</th>
+                                <th>Mode</th>
+                                <th>Action</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="s : ${strategies}">
+                                <td th:text="${s.strategy_name}"></td>
+                                <td><span class="badge badge-grey" th:text="${s.ticker}"></span></td>
+                                <td th:text="${s.previous_strategy_name != null ? s.previous_strategy_name : '-'}"></td>
+                                <td th:text="${s.strategy_type}"></td>
+                                <td th:text="${s.strategy_mode}"></td>
+                                <td th:text="${s.strategy_action}"></td>
+                                <td><span class="badge badge-blue" th:text="${s.status}"></span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="pane-create" class="mapping-tab-pane">
+                <div class="mapping-form-section">
+                    <h3 class="mapping-form-title">Create Strategy</h3>
+                    <form id="optionStrategyForm" th:action="@{/option-strategy}" method="post">
+                        <input type="hidden" id="stockIdField" name="stockId" required>
+                        <input type="hidden" id="previousStrategyIdField" name="previousStrategyId">
+
+                        <div class="form-group">
+                            <label>Strategy Name</label>
+                            <input name="strategyName" type="text" placeholder="e.g. MU 2026 Jul Iron Condor" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Stock (Ticker)</label>
+                            <input id="stockTickerInput" list="stockTickerOptions" type="text" placeholder="Search ticker" autocomplete="off" required>
+                            <datalist id="stockTickerOptions">
+                                <option th:each="s : ${stocks}" th:value="${s.ticker}" th:data-stock-id="${s.id}"></option>
+                            </datalist>
+                            <small id="stockHint" style="color:var(--text-muted)">Type a ticker and select from suggestions.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Previous Strategy</label>
+                            <input id="previousStrategyInput" list="previousStrategyOptions" type="text" placeholder="Search strategy name" autocomplete="off">
+                            <datalist id="previousStrategyOptions">
+                                <option th:each="p : ${strategyNames}" th:value="${p.strategy_name}" th:data-strategy-id="${p.id}"></option>
+                            </datalist>
+                            <small id="previousStrategyHint" style="color:var(--text-muted)">Leave blank if this is a root strategy.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Strategy Type</label>
+                            <select name="strategyType" required>
+                                <option value="" selected>-- select --</option>
+                                <option th:each="type : ${strategyTypes}" th:value="${type}" th:text="${type}"></option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Strategy Mode</label>
+                            <select name="strategyMode" required>
+                                <option value="" selected>-- select --</option>
+                                <option th:each="mode : ${strategyModes}" th:value="${mode}" th:text="${mode}"></option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Strategy Action</label>
+                            <select name="strategyAction" required>
+                                <option value="" selected>-- select --</option>
+                                <option th:each="action : ${strategyActions}" th:value="${action}" th:text="${action}"></option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select name="status" required>
+                                <option value="" selected>-- select --</option>
+                                <option th:each="status : ${strategyStatuses}" th:value="${status}" th:text="${status}"></option>
+                            </select>
+                        </div>
+
+                        <div class="actions-bar" style="margin-top:20px">
+                            <button type="submit" class="btn btn-primary">Save Strategy</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var tabButtons = Array.from(document.querySelectorAll('.mapping-tab-btn[data-tab-target]'));
+            var tabPanes = Array.from(document.querySelectorAll('.mapping-tab-pane'));
+            var form = document.getElementById('optionStrategyForm');
+            var tickerInput = document.getElementById('stockTickerInput');
+            var stockIdField = document.getElementById('stockIdField');
+            var stockHint = document.getElementById('stockHint');
+            var previousStrategyInput = document.getElementById('previousStrategyInput');
+            var previousStrategyIdField = document.getElementById('previousStrategyIdField');
+            var previousStrategyHint = document.getElementById('previousStrategyHint');
+
+            function setActiveTab(tabName) {
+                tabPanes.forEach(function (pane) { pane.classList.remove('active'); });
+                tabButtons.forEach(function (btn) { btn.classList.remove('active'); });
+
+                var activeButton = tabButtons.find(function (btn) { return btn.dataset.tabTarget === tabName; });
+                if (activeButton) activeButton.classList.add('active');
+
+                var activePane = document.getElementById(tabName);
+                if (activePane) activePane.classList.add('active');
+
+                if (window.location.hash !== '#' + tabName) {
+                    history.replaceState(null, '', '#' + tabName);
+                }
+            }
+
+            function syncStockId() {
+                var ticker = (tickerInput.value || '').trim();
+                if (!ticker) {
+                    stockIdField.value = '';
+                    stockHint.textContent = 'Type a ticker and select from suggestions.';
+                    return;
+                }
+
+                var option = document.querySelector('#stockTickerOptions option[value="' + CSS.escape(ticker) + '"]');
+                if (!option) {
+                    stockIdField.value = '';
+                    stockHint.textContent = 'Ticker not found. Please select a valid ticker from suggestions.';
+                    return;
+                }
+
+                stockIdField.value = option.dataset.stockId || '';
+                stockHint.textContent = stockIdField.value ? 'Selected stock_id: ' + stockIdField.value : 'Ticker selected.';
+            }
+
+            function syncPreviousStrategyId() {
+                var name = (previousStrategyInput.value || '').trim();
+                if (!name) {
+                    previousStrategyIdField.value = '';
+                    previousStrategyHint.textContent = 'Leave blank if this is a root strategy.';
+                    return;
+                }
+
+                var option = document.querySelector('#previousStrategyOptions option[value="' + CSS.escape(name) + '"]');
+                if (!option) {
+                    previousStrategyIdField.value = '';
+                    previousStrategyHint.textContent = 'Strategy name not found. Please select from suggestions or leave blank.';
+                    return;
+                }
+
+                previousStrategyIdField.value = option.dataset.strategyId || '';
+                previousStrategyHint.textContent = previousStrategyIdField.value ? 'Selected previous_strategy_id: ' + previousStrategyIdField.value : 'Strategy selected.';
+            }
+
+            tabButtons.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    setActiveTab(btn.dataset.tabTarget);
+                });
+            });
+
+            tickerInput.addEventListener('input', syncStockId);
+            tickerInput.addEventListener('change', syncStockId);
+            previousStrategyInput.addEventListener('input', syncPreviousStrategyId);
+            previousStrategyInput.addEventListener('change', syncPreviousStrategyId);
+
+            form.addEventListener('submit', function (e) {
+                syncStockId();
+                syncPreviousStrategyId();
+                if (!stockIdField.value) {
+                    e.preventDefault();
+                    stockHint.textContent = 'Please select a valid ticker from suggestions before saving.';
+                    return;
+                }
+                if (previousStrategyInput.value && !previousStrategyIdField.value) {
+                    e.preventDefault();
+                    previousStrategyHint.textContent = 'Please select a valid previous strategy from suggestions or leave blank.';
+                }
+            });
+
+            var hashTab = (window.location.hash || '').replace('#', '').trim();
+            var initialTab = tabPanes.some(function (pane) { return pane.id === hashTab; }) ? hashTab : 'pane-list';
+            setActiveTab(initialTab);
+        })();
+    </script>
+</div>
+</body>
+</html>

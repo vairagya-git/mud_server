@@ -13,6 +13,7 @@ import com.rama.mudstock.repository.option.OptionContractRepository;
 import com.rama.mudstock.repository.option.OptionToAnalyseRepository;
 import com.rama.mudstock.service.MassiveRestOptionSnapshotService;
 import com.rama.mudstock.service.OptionSnapshotParser;
+import com.rama.mudstock.util.DataConversionUtil;
 
 /**
  * Processes options_interval_analyse entries in CREATE_CONTRACT state,
@@ -49,7 +50,7 @@ public class OptionsIntervalAnalyseFacade {
                 processedContracts += result.processedContracts();
 
                 if (result.createdContracts()) {
-                    Long entryId = toLong(entry.get("id"));
+                    Long entryId = DataConversionUtil.toLong(entry.get("id"));
                     if (entryId != null) {
                         optionToAnalyseRepository.updateStatusById(entryId, OptionToAnalyseRepository.STATUS_ACTIVE);
                     }
@@ -72,13 +73,13 @@ public class OptionsIntervalAnalyseFacade {
     }
 
     private EntryProcessingResult processEntry(Map<String, Object> entry) throws Exception {
-        Long stockId = toLong(entry.get("stock_id"));
+        Long stockId = DataConversionUtil.toLong(entry.get("stock_id"));
         String ticker = toString(entry.get("ticker"));
         String requestedContractType = toString(entry.get("contract_type"));
-        LocalDate expirationDate = toLocalDate(entry.get("expiration_date"));
-        BigDecimal strikeFrom = toBigDecimal(entry.get("strike_from"));
-        BigDecimal strikeTo = toBigDecimal(entry.get("strike_to"));
-        BigDecimal interval = toBigDecimal(entry.get("interval"));
+        LocalDate expirationDate = DataConversionUtil.toLocalDate(entry.get("expiration_date"));
+        BigDecimal strikeFrom = DataConversionUtil.toBigDecimal(entry.get("strike_from"));
+        BigDecimal strikeTo = DataConversionUtil.toBigDecimal(entry.get("strike_to"));
+        BigDecimal interval = DataConversionUtil.toBigDecimal(entry.get("interval"));
 
         if (stockId == null || ticker == null || requestedContractType == null || expirationDate == null
             || strikeFrom == null || strikeTo == null || interval == null) {
@@ -130,11 +131,11 @@ public class OptionsIntervalAnalyseFacade {
     }
 
     private void completeContractsForClosedInterval(Map<String, Object> entry) {
-        Long stockId = toLong(entry.get("stock_id"));
+        Long stockId = DataConversionUtil.toLong(entry.get("stock_id"));
         String contractType = toString(entry.get("contract_type"));
-        LocalDate expirationDate = toLocalDate(entry.get("expiration_date"));
-        BigDecimal strikeFrom = toBigDecimal(entry.get("strike_from"));
-        BigDecimal strikeTo = toBigDecimal(entry.get("strike_to"));
+        LocalDate expirationDate = DataConversionUtil.toLocalDate(entry.get("expiration_date"));
+        BigDecimal strikeFrom = DataConversionUtil.toBigDecimal(entry.get("strike_from"));
+        BigDecimal strikeTo = DataConversionUtil.toBigDecimal(entry.get("strike_to"));
 
         if (stockId == null || contractType == null || expirationDate == null || strikeFrom == null || strikeTo == null) {
             log.warn("OptionsIntervalAnalyseFacade: skipping CLOSE entry with missing interval fields {}", entry);
@@ -164,38 +165,8 @@ public class OptionsIntervalAnalyseFacade {
         return normalizedRequested.equals(normalizedActual);
     }
 
-    private Long toLong(Object value) {
-        return value instanceof Number number ? number.longValue() : null;
-    }
-
     private String toString(Object value) {
         return value == null ? null : value.toString();
-    }
-
-    private BigDecimal toBigDecimal(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof BigDecimal decimal) {
-            return decimal;
-        }
-        if (value instanceof Number number) {
-            return new BigDecimal(number.toString());
-        }
-        return new BigDecimal(value.toString());
-    }
-
-    private LocalDate toLocalDate(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof LocalDate localDate) {
-            return localDate;
-        }
-        if (value instanceof java.sql.Date sqlDate) {
-            return sqlDate.toLocalDate();
-        }
-        return LocalDate.parse(value.toString());
     }
 
     private record EntryProcessingResult(int processedContracts, boolean createdContracts) {

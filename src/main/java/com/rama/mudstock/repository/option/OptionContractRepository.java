@@ -60,6 +60,27 @@ public class OptionContractRepository {
         return jdbc.queryForList(sql);
     }
 
+    public List<Map<String, Object>> listActiveWithTicker() {
+        String sql = "SELECT o.id, o.stock_id, s.ticker, o.contract_type, o.status, o.exercise_style, o.expiration_date, "
+            + "o.strike_price, o.shares_per_contract, o.contract_ticker, o.created_at, o.updated_at "
+            + "FROM option_contract o "
+            + "JOIN stock s ON s.id = o.stock_id "
+            + "WHERE UPPER(o.status) = UPPER(?) "
+            + "ORDER BY s.ticker, o.expiration_date, o.strike_price, o.contract_type";
+        return jdbc.queryForList(sql, STATUS_ACTIVE);
+    }
+
+    public List<Map<String, Object>> listActiveContractsForSnapshotFetch() {
+        String sql = "SELECT o.id, o.stock_id, s.ticker, o.contract_ticker, o.strike_price, o.expiration_date "
+            + "FROM option_contract o "
+            + "JOIN stock s ON s.id = o.stock_id "
+            + "WHERE UPPER(o.status) = UPPER(?) "
+            + "AND s.ticker IS NOT NULL "
+            + "AND s.ticker <> '' "
+            + "ORDER BY o.updated_at DESC";
+        return jdbc.queryForList(sql, STATUS_ACTIVE);
+    }
+
     public int markContractsCompletedForInterval(Long stockId,
                                                  String contractType,
                                                  LocalDate expirationDate,

@@ -1,6 +1,5 @@
 package com.rama.mudstock.facade;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -14,6 +13,7 @@ import com.rama.mudstock.model.analyst.Firm;
 import com.rama.mudstock.repository.analyst.FirmAnalystRepository;
 import com.rama.mudstock.repository.analyst.FirmRepository;
 import com.rama.mudstock.service.BenzingaFirmService;
+import com.rama.mudstock.util.DataConversionUtil;
 import com.rama.mudstock.util.MudDateUtil;
 
 /**
@@ -83,12 +83,12 @@ public class FirmAnalystFacade {
                 analyst.getBenzingaFirmId(),
                 analyst.getFullName(),
                 lastUpdated,
-                toBigDecimal(analyst.getOverallAvgReturn()),
-                toBigDecimal(analyst.getOverallAvgReturnPercentile()),
-                toBigDecimal(analyst.getOverallSuccessRate()),
-                toBigDecimal(analyst.getSmartScore()),
-                toBigDecimal(analyst.getTotalRatings()),
-                toBigDecimal(analyst.getTotalRatingsPercentile()));
+                DataConversionUtil.toBigDecimal(analyst.getOverallAvgReturn()),
+                DataConversionUtil.toBigDecimal(analyst.getOverallAvgReturnPercentile()),
+                DataConversionUtil.toBigDecimal(analyst.getOverallSuccessRate()),
+                DataConversionUtil.toBigDecimal(analyst.getSmartScore()),
+                DataConversionUtil.toBigDecimal(analyst.getTotalRatings()),
+                DataConversionUtil.toBigDecimal(analyst.getTotalRatingsPercentile()));
 
         log.info("FirmAnalystFacade: upserted firm_analyst benzingaAnalystId={} firmId={}",
                 analyst.getBenzingaId(), firmId);
@@ -137,7 +137,4 @@ public class FirmAnalystFacade {
         }
     }
 
-    private BigDecimal toBigDecimal(Double value) {
-        return value == null ? null : BigDecimal.valueOf(value);
-    }
 }

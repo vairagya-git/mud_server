@@ -3,6 +3,7 @@ package com.rama.mudstock.controller;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -15,9 +16,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.rama.mudstock.config.ApplicationProperties;
 import com.rama.mudstock.repository.option.OptionContractRepository;
+import com.rama.mudstock.repository.option.OptionSnapshotRepository;
 import com.rama.mudstock.repository.option.OptionToAnalyseRepository;
 import com.rama.mudstock.repository.stockwatchlist.StockRepository;
 
@@ -28,13 +32,19 @@ public class OptionAnalysisController {
     private final StockRepository stockRepository;
     private final OptionToAnalyseRepository optionToAnalyseRepository;
     private final OptionContractRepository optionContractRepository;
+    private final OptionSnapshotRepository optionSnapshotRepository;
+    private final ApplicationProperties applicationProperties;
 
     public OptionAnalysisController(StockRepository stockRepository,
                                     OptionToAnalyseRepository optionToAnalyseRepository,
-                                    OptionContractRepository optionContractRepository) {
+                                    OptionContractRepository optionContractRepository,
+                                    OptionSnapshotRepository optionSnapshotRepository,
+                                    ApplicationProperties applicationProperties) {
         this.stockRepository = stockRepository;
         this.optionToAnalyseRepository = optionToAnalyseRepository;
         this.optionContractRepository = optionContractRepository;
+        this.optionSnapshotRepository = optionSnapshotRepository;
+        this.applicationProperties = applicationProperties;
     }
 
     @GetMapping("/analyse")
@@ -185,5 +195,19 @@ public class OptionAnalysisController {
                                @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         model.addAttribute("contracts", optionContractRepository.listAllWithTicker());
         return hxRequest != null ? "option_analysis/contract :: content" : "option_analysis/contract";
+    }
+
+    @GetMapping("/snapshot")
+    public String snapshotList(Model model,
+                               @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
+        model.addAttribute("activeContracts", optionContractRepository.listActiveWithTicker());
+        model.addAttribute("snapshotRefreshIntervalMs", applicationProperties.getSnapshotRefreshMs());
+        return hxRequest != null ? "option_analysis/snapshot :: content" : "option_analysis/snapshot";
+    }
+
+    @GetMapping("/snapshot/contracts/{contractId}")
+    @ResponseBody
+    public List<Map<String, Object>> snapshotByContract(@PathVariable Long contractId) {
+        return optionSnapshotRepository.listByContractId(contractId);
     }
 }

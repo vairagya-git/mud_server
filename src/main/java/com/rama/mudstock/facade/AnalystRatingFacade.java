@@ -1,6 +1,5 @@
 package com.rama.mudstock.facade;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -18,6 +17,7 @@ import com.rama.mudstock.repository.analyst.FirmAnalystStockRatingRepository;
 import com.rama.mudstock.repository.analyst.FirmRepository;
 import com.rama.mudstock.repository.stockwatchlist.StockRepository;
 import com.rama.mudstock.service.BenzingaFirmService;
+import com.rama.mudstock.util.DataConversionUtil;
 import com.rama.mudstock.util.MudDateUtil;
 
 /**
@@ -122,11 +122,11 @@ public class AnalystRatingFacade {
             normalizePriceTargetAction(rating.getPriceTargetAction()),
             rating.getRating(),
             normalizePreviousRating(rating.getPreviousRating()),
-            toBigDecimal(rating.getPriceTarget()),
-            toBigDecimal(rating.getPreviousPriceTarget()),
-            toBigDecimal(rating.getPricePercentChange()),
-            toBigDecimal(rating.getAdjustedPriceTarget()),
-            toBigDecimal(rating.getPreviousAdjustedPriceTarget()),
+            DataConversionUtil.toBigDecimal(rating.getPriceTarget()),
+            DataConversionUtil.toBigDecimal(rating.getPreviousPriceTarget()),
+            DataConversionUtil.toBigDecimal(rating.getPricePercentChange()),
+            DataConversionUtil.toBigDecimal(rating.getAdjustedPriceTarget()),
+            DataConversionUtil.toBigDecimal(rating.getPreviousAdjustedPriceTarget()),
             rating.getImportance(),
             lastUpdated,
             date,
@@ -184,10 +184,6 @@ public class AnalystRatingFacade {
             log.warn("AnalystRatingFacade: could not parse date='{}', storing null", raw);
             return null;
         }
-    }
-
-    private BigDecimal toBigDecimal(Double value) {
-        return value == null ? null : BigDecimal.valueOf(value);
     }
 
     private String normalizePreviousRating(String previousRating) {

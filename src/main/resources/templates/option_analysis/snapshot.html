@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Option Snapshots — MudStock</title></head>
+<body>
+<div id="page-content" th:fragment="content" th:attr="data-snapshot-refresh-ms=${snapshotRefreshIntervalMs}">
+    <style>
+        .mapping-tab-shell { margin-bottom: 24px; }
+
+        .mapping-tabs {
+            display:flex;
+            gap:0;
+            flex-wrap:wrap;
+            margin: 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .mapping-tab-btn {
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text);
+            border-radius: 8px 8px 0 0;
+            padding: 8px 12px;
+            margin: 0 6px -1px 0;
+            cursor: pointer;
+            font-size: .84rem;
+            font-weight: 600;
+            border-bottom-color: var(--border);
+        }
+        .mapping-tab-btn.active {
+            background: #fff;
+            border-color: #9dd59d;
+            border-bottom-color: #fff;
+            color: #1f5d1f;
+            box-shadow: inset 0 3px 0 #63b663;
+        }
+
+        .mapping-tab-panel {
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 var(--radius) var(--radius);
+            background: #fff;
+            box-shadow: var(--shadow);
+        }
+
+        .mapping-tab-pane { display: none; }
+        .mapping-tab-pane.active { display: block; }
+
+        .contract-toggle-btn {
+            min-width: 28px;
+            padding: 2px 8px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .contract-snapshot-detail {
+            padding: 10px 12px;
+            background: #fcfcfd;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
+
+        .contract-snapshot-detail h4 {
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: var(--brand);
+        }
+
+        .strangle-selection-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(140px, 1fr));
+            gap: 8px;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .strangle-two-line-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+
+        .strangle-two-line-cell .line {
+            display: block;
+        }
+
+        @media (max-width: 980px) {
+            .strangle-selection-grid {
+                grid-template-columns: repeat(2, minmax(140px, 1fr));
+            }
+        }
+
+        @media (max-width: 640px) {
+            .strangle-selection-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .snapshot-contract-action {
+            min-width: 92px;
+            justify-content: center;
+        }
+    </style>
+
+    <div class="page-header table-sticky-header">
+        <h1>Option Analysis</h1>
+        <div class="subtitle">Active Contracts. Total: <strong th:text="${activeContracts.size()}">0</strong></div>
+    </div>
+
+    <div class="mapping-tab-shell">
+        <div class="mapping-tabs" role="tablist" aria-label="Snapshot views">
+            <button type="button" class="mapping-tab-btn" data-tab-target="pane-contract">Contract</button>
+            <button type="button" class="mapping-tab-btn" data-tab-target="pane-strangle">Strangle</button>
+        </div>
+
+        <div class="mapping-tab-panel">
+            <div id="pane-contract" class="mapping-tab-pane">
+                <div class="card table-wrap" style="margin:16px">
+                    <div class="filter-bar" style="margin-bottom:16px">
+                        <span class="filter-bar-label">Contract Filters</span>
+
+                        <div class="table-filter-input">
+                            <input id="contractTabTickerInput" class="table-filter-input-uppercase" list="contractTabTickerOptions" type="text" placeholder="Ticker" aria-label="Filter contracts by ticker">
+                            <datalist id="contractTabTickerOptions">
+                                <option th:each="c : ${activeContracts}" th:value="${c.ticker}"></option>
+                            </datalist>
+                        </div>
+
+                        <div class="table-filter-input">
+                            <input id="contractTabExpirationInput" list="contractTabExpirationOptions" type="text" placeholder="Expiration" aria-label="Filter contracts by expiration">
+                            <datalist id="contractTabExpirationOptions">
+                                <option th:each="c : ${activeContracts}" th:value="${c.expiration_date}"></option>
+                            </datalist>
+                        </div>
+
+                        <div class="table-filter-input">
+                            <input id="contractTabStrikeInput" type="text" placeholder="Strike" aria-label="Filter contracts by strike">
+                        </div>
+
+                        <div class="table-filter-input">
+                            <select id="contractTabTypeSelect" aria-label="Filter contracts by type">
+                                <option value="BOTH">Both (Put &amp; Call)</option>
+                                <option value="CALL">Call</option>
+                                <option value="PUT">Put</option>
+                            </select>
+                        </div>
+
+                        <button id="applyContractTabSelectionBtn" type="button" class="btn btn-sm btn-secondary snapshot-contract-action">Add</button>
+
+                        <span id="contractTabActiveFilters"></span>
+
+                        <span id="contractTabFilterHint" class="filter-bar-empty">Add contract filters by ticker, expiration, and strike.</span>
+
+                        <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+                            <button id="clearContractTabFiltersBtn" type="button" class="btn btn-sm btn-secondary">Clear all</button>
+                        </div>
+                    </div>
+
+                    <div th:if="${activeContracts.isEmpty()}" class="table-empty">No ACTIVE contracts found.</div>
+                    <table id="activeContractTable" th:unless="${activeContracts.isEmpty()}">
+                        <thead>
+                            <tr>
+                                <th style="width:52px">+</th>
+                                <th>Ticker</th>
+                                <th>Contract Ticker</th>
+                                <th>Type</th>
+                                <th>Expiration</th>
+                                <th>Strike</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <th:block th:each="c : ${activeContracts}">
+                                <tr th:attr="data-contract-id=${c.id},data-ticker=${c.ticker},data-expiration=${c.expiration_date},data-strike=${c.strike_price}">
+                                    <td>
+                                        <button type="button"
+                                                class="btn btn-sm btn-secondary contract-toggle-btn"
+                                                th:attr="data-contract-id=${c.id}"
+                                                aria-expanded="false"
+                                                title="Show snapshots">+</button>
+                                    </td>
+                                    <td><span class="badge badge-grey" th:text="${c.ticker}"></span></td>
+                                    <td><code th:text="${c.contract_ticker}"></code></td>
+                                    <td th:text="${c.contract_type}"></td>
+                                    <td th:text="${c.expiration_date}"></td>
+                                    <td th:text="${c.strike_price}"></td>
+                                </tr>
+                                <tr th:attr="id=${'contract-snapshots-' + c.id}" style="display:none">
+                                    <td colspan="6">
+                                        <div class="contract-snapshot-detail" th:attr="data-contract-id=${c.id}">
+                                            <h4 th:text="${'Snapshots: ' + c.contract_ticker}">Snapshots</h4>
+                                            <div class="table-wrap">
+                                                <table>
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Option Quote Time</th>
+                                                            <th>Underlying Price</th>
+                                                            <th>Bid</th>
+                                                            <th>Ask</th>
+                                                            <th>Midpoint</th>
+                                                            <th>IV</th>
+                                                            <th>Delta</th>
+                                                            <th>Gamma</th>
+                                                            <th>Theta</th>
+                                                            <th>Vega</th>
+                                                            <th>Open Interest</th>
+                                                            <th>Day Volume</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody class="contract-snapshot-tbody"></tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </th:block>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="pane-strangle" class="mapping-tab-pane">
+                <div class="card table-wrap" style="margin:16px">
+                    <div class="filter-bar" style="margin-bottom:16px">
+                        <span class="filter-bar-label">Strangle Filters</span>
+
+                        <div class="table-filter-input">
+                            <input id="strangleTickerInput" class="table-filter-input-uppercase" list="contractTabTickerOptions" type="text" placeholder="Ticker" aria-label="Strangle ticker">
+                        </div>
+
+                        <div class="table-filter-input">
+                            <input id="strangleExpirationInput" list="contractTabExpirationOptions" type="text" placeholder="Expiration" aria-label="Strangle expiration">
+                        </div>
+
+                        <div class="table-filter-input">
+                            <input id="stranglePutStrikeInput" type="text" placeholder="Put strike" aria-label="Strangle put strike">
+                        </div>
+
+                        <div class="table-filter-input">
+                            <input id="strangleCallStrikeInput" type="text" placeholder="Call strike" aria-label="Strangle call strike">
+                        </div>
+
+                        <button id="applyStrangleSelectionBtn" type="button" class="btn btn-sm btn-secondary snapshot-contract-action">Add</button>
+
+                        <span id="strangleActiveFilters"></span>
+
+                        <span id="strangleFilterHint" class="filter-bar-empty">Add ticker, expiration, put strike, and call strike.</span>
+
+                        <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+                            <button id="clearStrangleFiltersBtn" type="button" class="btn btn-sm btn-secondary">Clear all</button>
+                        </div>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table id="strangleTable">
+                            <thead>
+                                <tr>
+                                    <th>Option Quote Time</th>
+                                    <th>Ticker</th>
+                                    <th>Expiration</th>
+                                    <th>Strikes</th>
+                                    <th>Underlying Price</th>
+                                    <th>Bid</th>
+                                    <th>Ask</th>
+                                    <th>Midpoint</th>
+                                    <th>IV</th>
+                                    <th>Delta</th>
+                                    <th>Gamma</th>
+                                    <th>Theta</th>
+                                    <th>Vega</th>
+                                    <th>Open Interest</th>
+                                    <th>Day Volume</th>
+                                </tr>
+                            </thead>
+                            <tbody id="strangleTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var tabButtons = Array.from(document.querySelectorAll('.mapping-tab-btn[data-tab-target]'));
+            var tabPanes = Array.from(document.querySelectorAll('.mapping-tab-pane'));
+            var contractTabTable = document.getElementById('activeContractTable');
+            var contractTabTickerInput = document.getElementById('contractTabTickerInput');
+            var contractTabExpirationInput = document.getElementById('contractTabExpirationInput');
+            var contractTabStrikeInput = document.getElementById('contractTabStrikeInput');
+            var contractTabTypeSelect = document.getElementById('contractTabTypeSelect');
+            var applyContractTabSelectionBtn = document.getElementById('applyContractTabSelectionBtn');
+            var contractTabActiveFilters = document.getElementById('contractTabActiveFilters');
+            var contractTabFilterHint = document.getElementById('contractTabFilterHint');
+            var clearContractTabFiltersBtn = document.getElementById('clearContractTabFiltersBtn');
+            var contractTabSelectionLabels = [];
+            var contractTabSelectedIds = [];
+            var pageContent = document.getElementById('page-content');
+            var contractTabFilterStorageKey = 'option-analysis-snapshot#pane-contract-contract-tab-filters';
+            var strangleTickerInput = document.getElementById('strangleTickerInput');
+            var strangleExpirationInput = document.getElementById('strangleExpirationInput');
+            var stranglePutStrikeInput = document.getElementById('stranglePutStrikeInput');
+            var strangleCallStrikeInput = document.getElementById('strangleCallStrikeInput');
+            var applyStrangleSelectionBtn = document.getElementById('applyStrangleSelectionBtn');
+            var clearStrangleFiltersBtn = document.getElementById('clearStrangleFiltersBtn');
+            var strangleActiveFilters = document.getElementById('strangleActiveFilters');
+            var strangleFilterHint = document.getElementById('strangleFilterHint');
+            var strangleTableBody = document.getElementById('strangleTableBody');
+            var strangleSelectionLabels = [];
+            var strangleFilterStorageKey = 'option-analysis-snapshot#pane-strangle-filters';
+
+            function setActiveTab(tabName) {
+                tabPanes.forEach(function (pane) { pane.classList.remove('active'); });
+                tabButtons.forEach(function (btn) { btn.classList.remove('active'); });
+
+                var activeButton = tabButtons.find(function (btn) { return btn.dataset.tabTarget === tabName; });
+                if (activeButton) activeButton.classList.add('active');
+
+                var activePane = document.getElementById(tabName);
+                if (activePane) activePane.classList.add('active');
+
+                if (window.location.hash !== '#' + tabName) {
+                    history.replaceState(null, '', '#' + tabName);
+                }
+            }
+
+            function normalizeContractTabValue(field, value) {
+                var normalized = (value || '').trim();
+                if (field === 'ticker') {
+                    return normalized.toUpperCase();
+                }
+                if (field === 'strike') {
+                    var numeric = Number(normalized);
+                    return Number.isFinite(numeric) ? numeric.toString() : normalized;
+                }
+                return normalized;
+            }
+
+            function applyContractTabFilters() {
+                if (!contractTabTable) {
+                    return;
+                }
+
+                Array.from(contractTabTable.tBodies[0].rows).forEach(function (row) {
+                    if (!row.dataset.contractId || row.id) {
+                        return;
+                    }
+
+                    var matches = contractTabSelectedIds.length === 0 || contractTabSelectedIds.includes(row.dataset.contractId);
+
+                    row.style.display = matches ? '' : 'none';
+
+                    var detailRow = document.getElementById('contract-snapshots-' + row.dataset.contractId);
+                    if (detailRow && !matches) {
+                        detailRow.style.display = 'none';
+                        var toggleBtn = row.querySelector('.contract-toggle-btn[data-contract-id]');
+                        if (toggleBtn) {
+                            toggleBtn.textContent = '+';
+                            toggleBtn.setAttribute('aria-expanded', 'false');
+                        }
+                    }
+                });
+            }
+
+            function persistContractTabSelections() {
+                try {
+                    window.sessionStorage.setItem(contractTabFilterStorageKey, JSON.stringify(contractTabSelectionLabels));
+                } catch (err) {
+                    console.warn('Failed to persist snapshot contract tab selections', err);
+                }
+            }
+
+            function rebuildContractTabSelectedIds() {
+                contractTabSelectedIds = [];
+                if (!contractTabTable) {
+                    return;
+                }
+
+                contractTabSelectionLabels.forEach(function (label) {
+                    var parts = label.split(' | ');
+                    if (parts.length !== 4) {
+                        return;
+                    }
+
+                    var ticker = normalizeContractTabValue('ticker', parts[0]);
+                    var expiration = normalizeContractTabValue('expiration', parts[1]);
+                    var strike = normalizeContractTabValue('strike', parts[2]);
+                    var contractType = normalizeContractTabValue('contractType', parts[3]);
+
+                    Array.from(contractTabTable.tBodies[0].rows).forEach(function (row) {
+                        if (!row.dataset.contractId || row.id) {
+                            return;
+                        }
+
+                        var rowTicker = normalizeContractTabValue('ticker', row.dataset.ticker || '');
+                        var rowExpiration = normalizeContractTabValue('expiration', row.dataset.expiration || '');
+                        var rowStrike = normalizeContractTabValue('strike', row.dataset.strike || '');
+                        var rowType = normalizeContractTabValue('contractType', row.children[3] ? row.children[3].textContent : '');
+
+                        if (rowTicker === ticker
+                            && rowExpiration === expiration
+                            && rowStrike === strike
+                            && (contractType === 'BOTH' || rowType === contractType)) {
+                            if (!contractTabSelectedIds.includes(row.dataset.contractId)) {
+                                contractTabSelectedIds.push(row.dataset.contractId);
+                            }
+                        }
+                    });
+                });
+            }
+
+            function renderContractTabChips() {
+                if (!contractTabActiveFilters || !contractTabFilterHint) {
+                    return;
+                }
+
+                contractTabActiveFilters.innerHTML = '';
+                contractTabSelectionLabels.forEach(function (label) {
+                    var chip = document.createElement('span');
+                    chip.className = 'chip';
+
+                    var typeSpan = document.createElement('span');
+                    typeSpan.className = 'chip-type';
+                    typeSpan.textContent = 'contract';
+
+                    var strong = document.createElement('strong');
+                    strong.textContent = label;
+
+                    var rmBtn = document.createElement('button');
+                    rmBtn.type = 'button';
+                    rmBtn.className = 'chip-remove';
+                    rmBtn.title = 'Remove';
+                    rmBtn.dataset.field = 'contractTabSelection';
+                    rmBtn.dataset.value = label;
+                    rmBtn.textContent = '\u2715';
+
+                    chip.appendChild(typeSpan);
+                    chip.appendChild(document.createTextNode('\u00a0'));
+                    chip.appendChild(strong);
+                    chip.appendChild(document.createTextNode('\u00a0'));
+                    chip.appendChild(rmBtn);
+                    contractTabActiveFilters.appendChild(chip);
+                });
+
+                contractTabFilterHint.style.display = contractTabSelectionLabels.length === 0 ? '' : 'none';
+            }
+
+            function addContractTabSelection() {
+                var ticker = normalizeContractTabValue('ticker', contractTabTickerInput ? contractTabTickerInput.value : '');
+                var expiration = normalizeContractTabValue('expiration', contractTabExpirationInput ? contractTabExpirationInput.value : '');
+                var strike = normalizeContractTabValue('strike', contractTabStrikeInput ? contractTabStrikeInput.value : '');
+                var contractType = normalizeContractTabValue('contractType', contractTabTypeSelect ? contractTabTypeSelect.value : 'BOTH');
+
+                if (!ticker || !expiration || !strike) {
+                    return;
+                }
+
+                var label = ticker + ' | ' + expiration + ' | ' + strike + ' | ' + contractType;
+                if (!contractTabSelectionLabels.includes(label)) {
+                    contractTabSelectionLabels.push(label);
+                }
+
+                rebuildContractTabSelectedIds();
+                persistContractTabSelections();
+                renderContractTabChips();
+                applyContractTabFilters();
+            }
+
+            function restoreContractTabSelections() {
+                try {
+                    var raw = window.sessionStorage.getItem(contractTabFilterStorageKey);
+                    if (!raw) {
+                        return;
+                    }
+
+                    var saved = JSON.parse(raw);
+                    if (!Array.isArray(saved)) {
+                        return;
+                    }
+
+                    contractTabSelectionLabels = saved.filter(function (entry) {
+                        return typeof entry === 'string' && entry.trim() !== '';
+                    });
+                    rebuildContractTabSelectedIds();
+                } catch (err) {
+                    console.warn('Failed to restore snapshot contract tab selections', err);
+                }
+            }
+
+            function normalizeStrangleStrike(value) {
+                var normalized = normalizeValue('strikePrice', value);
+                return normalized;
+            }
+
+            function buildStrangleKey(ticker, expiration, putStrike, callStrike) {
+                return [
+                    normalizeValue('ticker', ticker),
+                    normalizeValue('expirationDate', expiration),
+                    normalizeStrangleStrike(putStrike),
+                    normalizeStrangleStrike(callStrike)
+                ].join(' | ');
+            }
+
+            function parseStrangleKey(label) {
+                var parts = (label || '').split(' | ');
+                if (parts.length !== 4) {
+                    return null;
+                }
+                return {
+                    ticker: normalizeValue('ticker', parts[0]),
+                    expirationDate: normalizeValue('expirationDate', parts[1]),
+                    putStrike: normalizeStrangleStrike(parts[2]),
+                    callStrike: normalizeStrangleStrike(parts[3])
+                };
+            }
+
+            function persistStrangleSelections() {
+                try {
+                    window.sessionStorage.setItem(strangleFilterStorageKey, JSON.stringify(strangleSelectionLabels));
+                } catch (err) {
+                    console.warn('Failed to persist strangle selections', err);
+                }
+            }
+
+            function restoreStrangleSelections() {
+                try {
+                    var raw = window.sessionStorage.getItem(strangleFilterStorageKey);
+                    if (!raw) {
+                        return;
+                    }
+
+                    var saved = JSON.parse(raw);
+                    if (!Array.isArray(saved)) {
+                        return;
+                    }
+
+                    strangleSelectionLabels = saved.filter(function (entry) {
+                        return typeof entry === 'string' && entry.trim() !== '';
+                    });
+                } catch (err) {
+                    console.warn('Failed to restore strangle selections', err);
+                }
+            }
+
+            function renderStrangleChips() {
+                if (!strangleActiveFilters || !strangleFilterHint) {
+                    return;
+                }
+
+                strangleActiveFilters.innerHTML = '';
+                strangleSelectionLabels.forEach(function (label) {
+                    var chip = document.createElement('span');
+                    chip.className = 'chip';
+
+                    var typeSpan = document.createElement('span');
+                    typeSpan.className = 'chip-type';
+                    typeSpan.textContent = 'strangle';
+
+                    var strong = document.createElement('strong');
+                    strong.textContent = label;
+
+                    var rmBtn = document.createElement('button');
+                    rmBtn.type = 'button';
+                    rmBtn.className = 'chip-remove';
+                    rmBtn.title = 'Remove';
+                    rmBtn.dataset.field = 'strangleSelection';
+                    rmBtn.dataset.value = label;
+                    rmBtn.textContent = '\u2715';
+
+                    chip.appendChild(typeSpan);
+                    chip.appendChild(document.createTextNode('\u00a0'));
+                    chip.appendChild(strong);
+                    chip.appendChild(document.createTextNode('\u00a0'));
+                    chip.appendChild(rmBtn);
+                    strangleActiveFilters.appendChild(chip);
+                });
+
+                strangleFilterHint.style.display = strangleSelectionLabels.length === 0 ? '' : 'none';
+            }
+
+            function toSortableTimeValue(value) {
+                var raw = (value || '').trim();
+                if (!raw) {
+                    return 0;
+                }
+                var asDate = Date.parse(raw.replace(' ', 'T'));
+                if (Number.isFinite(asDate)) {
+                    return asDate;
+                }
+                return raw;
+            }
+
+            var strangleRenderToken = 0;
+
+            function renderStrangleRows() {
+                if (!strangleTableBody) {
+                    return;
+                }
+
+                var renderToken = ++strangleRenderToken;
+                strangleTableBody.innerHTML = '';
+                if (strangleSelectionLabels.length === 0) {
+                    var empty = document.createElement('tr');
+                    var emptyCell = document.createElement('td');
+                    emptyCell.colSpan = 15;
+                    emptyCell.className = 'table-empty';
+                    emptyCell.textContent = 'No strangle snapshots found for selected legs.';
+                    empty.appendChild(emptyCell);
+                    strangleTableBody.appendChild(empty);
+                    return;
+                }
+
+                var loading = document.createElement('tr');
+                var loadingCell = document.createElement('td');
+                loadingCell.colSpan = 15;
+                loadingCell.className = 'table-empty';
+                loadingCell.textContent = 'Loading strangle snapshots...';
+                loading.appendChild(loadingCell);
+                strangleTableBody.appendChild(loading);
+
+                Promise.all(strangleSelectionLabels.map(function (label) {
+                    var parsed = parseStrangleKey(label);
+                    if (!parsed) {
+                        return Promise.resolve([]);
+                    }
+
+                    var putContract = Array.from(contractsById.values()).find(function (entry) {
+                        return entry.ticker === parsed.ticker
+                            && entry.expirationDate === parsed.expirationDate
+                            && entry.strikePrice === parsed.putStrike
+                            && entry.contractType === 'PUT';
+                    });
+
+                    var callContract = Array.from(contractsById.values()).find(function (entry) {
+                        return entry.ticker === parsed.ticker
+                            && entry.expirationDate === parsed.expirationDate
+                            && entry.strikePrice === parsed.callStrike
+                            && entry.contractType === 'CALL';
+                    });
+
+                    if (!putContract || !callContract) {
+                        return Promise.resolve([]);
+                    }
+
+                    return Promise.all([
+                        fetchContractSnapshots(putContract.id),
+                        fetchContractSnapshots(callContract.id)
+                    ]).then(function (result) {
+                        var putSnapshots = result[0].slice();
+                        var callSnapshots = result[1].slice();
+
+                        putSnapshots.sort(function (a, b) {
+                            var left = toSortableTimeValue(a.snapshotTime);
+                            var right = toSortableTimeValue(b.snapshotTime);
+                            if (left === right) {
+                                return 0;
+                            }
+                            return left < right ? 1 : -1;
+                        });
+
+                        callSnapshots.sort(function (a, b) {
+                            var left = toSortableTimeValue(a.snapshotTime);
+                            var right = toSortableTimeValue(b.snapshotTime);
+                            if (left === right) {
+                                return 0;
+                            }
+                            return left < right ? 1 : -1;
+                        });
+
+                        var rows = [];
+                        var rowCount = Math.max(callSnapshots.length, putSnapshots.length);
+                        for (var index = 0; index < rowCount; index++) {
+                            rows.push({
+                                label: label,
+                                ticker: parsed.ticker,
+                                expirationDate: parsed.expirationDate,
+                                putStrike: parsed.putStrike,
+                                callStrike: parsed.callStrike,
+                                putSnapshot: putSnapshots[index] || null,
+                                callSnapshot: callSnapshots[index] || null
+                            });
+                        }
+                        return rows;
+                    });
+                })).then(function (renderGroups) {
+                    if (renderToken !== strangleRenderToken) {
+                        return;
+                    }
+
+                    var renderedRows = renderGroups.flat();
+                    strangleTableBody.innerHTML = '';
+
+                    if (renderedRows.length === 0) {
+                        var empty = document.createElement('tr');
+                        var emptyCell = document.createElement('td');
+                        emptyCell.colSpan = 15;
+                        emptyCell.className = 'table-empty';
+                        emptyCell.textContent = 'No strangle snapshots found for selected legs.';
+                        empty.appendChild(emptyCell);
+                        strangleTableBody.appendChild(empty);
+                        return;
+                    }
+
+                    renderedRows.forEach(function (entry) {
+                    var tr = document.createElement('tr');
+
+                    function appendCell(value) {
+                        var td = document.createElement('td');
+                        td.textContent = value == null ? '' : value;
+                        tr.appendChild(td);
+                    }
+
+                    function appendLegCell(putValue, callValue) {
+                        var td = document.createElement('td');
+                        var wrap = document.createElement('div');
+                        wrap.className = 'strangle-two-line-cell';
+
+                        var putLine = document.createElement('span');
+                        putLine.className = 'line';
+                        putLine.textContent = (putValue == null || putValue === '' ? '-' : putValue);
+
+                        var callLine = document.createElement('span');
+                        callLine.className = 'line';
+                        callLine.textContent = (callValue == null || callValue === '' ? '-' : callValue);
+
+                        wrap.appendChild(putLine);
+                        wrap.appendChild(callLine);
+                        td.appendChild(wrap);
+                        tr.appendChild(td);
+                    }
+
+                    function valueOrDash(snapshot, key) {
+                        if (!snapshot) {
+                            return '-';
+                        }
+                        var value = snapshot[key];
+                        return value == null || value === '' ? '-' : value;
+                    }
+
+                    appendLegCell(
+                        valueOrDash(entry.putSnapshot, 'snapshotTime'),
+                        valueOrDash(entry.callSnapshot, 'snapshotTime'));
+                    appendCell(entry.ticker);
+                    appendCell(entry.expirationDate);
+                    appendCell('PUT ' + entry.putStrike + ' / CALL ' + entry.callStrike);
+
+                    appendLegCell(valueOrDash(entry.putSnapshot, 'underlyingPrice'), valueOrDash(entry.callSnapshot, 'underlyingPrice'));
+                    appendLegCell(valueOrDash(entry.putSnapshot, 'bid'), valueOrDash(entry.callSnapshot, 'bid'));
+                    appendLegCell(valueOrDash(entry.putSnapshot, 'ask'), valueOrDash(entry.callSnapshot, 'ask'));
+                    appendLegCell(valueOrDash(entry.putSnapshot, 'midpoint'), valueOrDash(entry.callSnapshot, 'midpoint'));
+                    appendLegCell(valueOrDash(entry.putSnapshot, 'impliedVolatility'), valueOrDash(entry.callSnapshot, 'impliedVolatility'));
+                    appendLegCell(valueOrDash(entry.putSnapshot, 'delta'), valueOrDash(entry.callSnapshot, 'delta'));
+                    appendLegCell(valueOrDash(entry.putSnapshot, 'gamma'), valueOrDash(entry.callSnapshot, 'gamma'));
+                    appendLegCell(valueOrDash(entry.putSnapshot, 'theta'), valueOrDash(entry.callSnapshot, 'theta'));
+                    appendLegCell(valueOrDash(entry.putSnapshot, 'vega'), valueOrDash(entry.callSnapshot, 'vega'));
+                    appendLegCell(valueOrDash(entry.putSnapshot, 'openInterest'), valueOrDash(entry.callSnapshot, 'openInterest'));
+                    appendLegCell(valueOrDash(entry.putSnapshot, 'dayVolume'), valueOrDash(entry.callSnapshot, 'dayVolume'));
+
+                    strangleTableBody.appendChild(tr);
+                    });
+                }).catch(function () {
+                    if (renderToken !== strangleRenderToken) {
+                        return;
+                    }
+
+                    strangleTableBody.innerHTML = '';
+                    var error = document.createElement('tr');
+                    var errorCell = document.createElement('td');
+                    errorCell.colSpan = 15;
+                    errorCell.className = 'table-empty';
+                    errorCell.textContent = 'Failed to load strangle snapshots.';
+                    error.appendChild(errorCell);
+                    strangleTableBody.appendChild(error);
+                });
+            }
+
+            function addStrangleSelection() {
+                var ticker = normalizeValue('ticker', strangleTickerInput ? strangleTickerInput.value : '');
+                var expirationDate = normalizeValue('expirationDate', strangleExpirationInput ? strangleExpirationInput.value : '');
+                var putStrike = normalizeStrangleStrike(stranglePutStrikeInput ? stranglePutStrikeInput.value : '');
+                var callStrike = normalizeStrangleStrike(strangleCallStrikeInput ? strangleCallStrikeInput.value : '');
+
+                if (!ticker || !expirationDate || !putStrike || !callStrike) {
+                    return;
+                }
+
+                var putExists = Array.from(contractsById.values()).some(function (entry) {
+                    return entry.ticker === ticker
+                        && entry.expirationDate === expirationDate
+                        && entry.strikePrice === putStrike
+                        && entry.contractType === 'PUT';
+                });
+
+                var callExists = Array.from(contractsById.values()).some(function (entry) {
+                    return entry.ticker === ticker
+                        && entry.expirationDate === expirationDate
+                        && entry.strikePrice === callStrike
+                        && entry.contractType === 'CALL';
+                });
+
+                if (!putExists || !callExists) {
+                    return;
+                }
+
+                var label = buildStrangleKey(ticker, expirationDate, putStrike, callStrike);
+                if (!strangleSelectionLabels.includes(label)) {
+                    strangleSelectionLabels.push(label);
+                }
+
+                persistStrangleSelections();
+                renderStrangleChips();
+                renderStrangleRows();
+            }
+
+            function scheduleSnapshotRefresh() {
+                if (!pageContent) {
+                    return;
+                }
+
+                var refreshIntervalMs = Number(pageContent.dataset.snapshotRefreshMs || '0');
+                if (!Number.isFinite(refreshIntervalMs) || refreshIntervalMs <= 0) {
+                    return;
+                }
+
+                window.setInterval(function () {
+                    if (window.location.pathname !== '/option-analysis/snapshot') {
+                        return;
+                    }
+                    window.location.assign('/option-analysis/snapshot' + (window.location.hash || ''));
+                }, refreshIntervalMs);
+            }
+            var contractsById = new Map();
+
+            function dedupeContractTabOptions() {
+                var tickerOptions = document.getElementById('contractTabTickerOptions');
+                var expirationOptions = document.getElementById('contractTabExpirationOptions');
+
+                if (tickerOptions) {
+                    var seenTickers = new Set();
+                    Array.from(tickerOptions.querySelectorAll('option')).forEach(function (opt) {
+                        var value = normalizeValue('ticker', opt.value);
+                        if (!value || seenTickers.has(value)) {
+                            opt.remove();
+                            return;
+                        }
+                        seenTickers.add(value);
+                        opt.value = value;
+                    });
+                }
+
+                if (expirationOptions) {
+                    var seenExpirations = new Set();
+                    Array.from(expirationOptions.querySelectorAll('option')).forEach(function (opt) {
+                        var value = normalizeValue('expirationDate', opt.value);
+                        if (!value || seenExpirations.has(value)) {
+                            opt.remove();
+                            return;
+                        }
+                        seenExpirations.add(value);
+                        opt.value = value;
+                    });
+                }
+            }
+
+            function normalizeValue(field, value) {
+                var normalized = (value || '').trim();
+                if (field === 'ticker' || field === 'contractType') {
+                    normalized = normalized.toUpperCase();
+                }
+                if (field === 'strikePrice') {
+                    var numeric = Number(normalized);
+                    normalized = Number.isFinite(numeric) ? numeric.toString() : normalized;
+                }
+                return normalized;
+            }
+
+            Array.from(contractTabTable ? contractTabTable.tBodies[0].rows : []).forEach(function (row) {
+                if (!row.dataset.contractId || row.id) {
+                    return;
+                }
+
+                var contractId = normalizeValue('optionContractId', row.dataset.contractId || '');
+                if (!contractId || contractsById.has(contractId)) {
+                    return;
+                }
+
+                contractsById.set(contractId, {
+                    id: contractId,
+                    ticker: normalizeValue('ticker', row.dataset.ticker || ''),
+                    expirationDate: normalizeValue('expirationDate', row.dataset.expiration || ''),
+                    strikePrice: normalizeValue('strikePrice', row.dataset.strike || ''),
+                    contractType: normalizeValue('contractType', row.children[3] ? row.children[3].textContent : '')
+                });
+            });
+
+            var snapshotCache = new Map();
+
+            function fetchContractSnapshots(contractId) {
+                if (!contractId) {
+                    return Promise.resolve([]);
+                }
+
+                if (snapshotCache.has(contractId)) {
+                    return snapshotCache.get(contractId);
+                }
+
+                var request = window.fetch('/option-analysis/snapshot/contracts/' + encodeURIComponent(contractId), {
+                    headers: { 'Accept': 'application/json' }
+                }).then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('Failed to load snapshots for contract ' + contractId);
+                    }
+                    return response.json();
+                }).then(function (rows) {
+                    if (!Array.isArray(rows)) {
+                        return [];
+                    }
+
+                    return rows.map(function (row) {
+                        return {
+                            snapshotTime: row.option_quote_time || row.optionQuoteTime || '',
+                            underlyingPrice: row.underlying_price || row.underlyingPrice || '',
+                            bid: row.bid || '',
+                            ask: row.ask || '',
+                            midpoint: row.midpoint || '',
+                            impliedVolatility: row.implied_volatility || row.impliedVolatility || '',
+                            delta: row.delta || '',
+                            gamma: row.gamma || '',
+                            theta: row.theta || '',
+                            vega: row.vega || '',
+                            openInterest: row.open_interest || row.openInterest || '',
+                            dayVolume: row.day_volume || row.dayVolume || ''
+                        };
+                    });
+                }).catch(function (error) {
+                    snapshotCache.delete(contractId);
+                    throw error;
+                });
+
+                snapshotCache.set(contractId, request);
+                return request;
+            }
+
+            function getContractsForTicker(ticker) {
+                var normalizedTicker = normalizeValue('ticker', ticker);
+                return Array.from(contractsById.values()).filter(function (entry) {
+                    return entry.ticker === normalizedTicker;
+                });
+            }
+
+            function removeFilter(field, value) {
+                if (field === 'contractTabSelection') {
+                    contractTabSelectionLabels = contractTabSelectionLabels.filter(function (entry) { return entry !== value; });
+                    rebuildContractTabSelectedIds();
+                    persistContractTabSelections();
+                    renderContractTabChips();
+                    applyContractTabFilters();
+                    return;
+                }
+
+                if (field === 'strangleSelection') {
+                    strangleSelectionLabels = strangleSelectionLabels.filter(function (entry) { return entry !== value; });
+                    persistStrangleSelections();
+                    renderStrangleChips();
+                    renderStrangleRows();
+                    return;
+                }
+
+                return;
+            }
+
+            function renderContractSnapshots(contractId) {
+                var detailsRow = document.getElementById('contract-snapshots-' + contractId);
+                if (!detailsRow) return;
+
+                var tbody = detailsRow.querySelector('.contract-snapshot-tbody');
+                if (!tbody) return;
+
+                tbody.innerHTML = '';
+                var loadingRow = document.createElement('tr');
+                var loadingCell = document.createElement('td');
+                loadingCell.colSpan = 12;
+                loadingCell.className = 'table-empty';
+                loadingCell.textContent = 'Loading snapshots...';
+                loadingRow.appendChild(loadingCell);
+                tbody.appendChild(loadingRow);
+
+                fetchContractSnapshots(contractId).then(function (rows) {
+                    tbody.innerHTML = '';
+                    if (rows.length === 0) {
+                        var emptyRow = document.createElement('tr');
+                        var emptyCell = document.createElement('td');
+                        emptyCell.colSpan = 12;
+                        emptyCell.className = 'table-empty';
+                        emptyCell.textContent = 'No snapshots found for this contract.';
+                        emptyRow.appendChild(emptyCell);
+                        tbody.appendChild(emptyRow);
+                        return;
+                    }
+
+                    rows.forEach(function (snapshot) {
+                        var tr = document.createElement('tr');
+                        [
+                            snapshot.snapshotTime,
+                            snapshot.underlyingPrice,
+                            snapshot.bid,
+                            snapshot.ask,
+                            snapshot.midpoint,
+                            snapshot.impliedVolatility,
+                            snapshot.delta,
+                            snapshot.gamma,
+                            snapshot.theta,
+                            snapshot.vega,
+                            snapshot.openInterest,
+                            snapshot.dayVolume
+                        ].forEach(function (value) {
+                            var td = document.createElement('td');
+                            td.textContent = value == null ? '' : value;
+                            tr.appendChild(td);
+                        });
+                        tbody.appendChild(tr);
+                    });
+                }).catch(function () {
+                    tbody.innerHTML = '';
+                    var errorRow = document.createElement('tr');
+                    var errorCell = document.createElement('td');
+                    errorCell.colSpan = 12;
+                    errorCell.className = 'table-empty';
+                    errorCell.textContent = 'Failed to load snapshots for this contract.';
+                    errorRow.appendChild(errorCell);
+                    tbody.appendChild(errorRow);
+                });
+            }
+
+            tabButtons.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    setActiveTab(btn.dataset.tabTarget);
+                });
+            });
+
+            if (applyContractTabSelectionBtn) {
+                applyContractTabSelectionBtn.addEventListener('click', addContractTabSelection);
+            }
+
+            if (clearContractTabFiltersBtn) {
+                clearContractTabFiltersBtn.addEventListener('click', function () {
+                    if (contractTabTickerInput) contractTabTickerInput.value = '';
+                    if (contractTabExpirationInput) contractTabExpirationInput.value = '';
+                    if (contractTabStrikeInput) contractTabStrikeInput.value = '';
+                    if (contractTabTypeSelect) contractTabTypeSelect.value = 'BOTH';
+                    contractTabSelectionLabels = [];
+                    contractTabSelectedIds = [];
+                    persistContractTabSelections();
+                    renderContractTabChips();
+                    applyContractTabFilters();
+                });
+            }
+
+            if (applyStrangleSelectionBtn) {
+                applyStrangleSelectionBtn.addEventListener('click', addStrangleSelection);
+            }
+
+            if (clearStrangleFiltersBtn) {
+                clearStrangleFiltersBtn.addEventListener('click', function () {
+                    if (strangleTickerInput) strangleTickerInput.value = '';
+                    if (strangleExpirationInput) strangleExpirationInput.value = '';
+                    if (stranglePutStrikeInput) stranglePutStrikeInput.value = '';
+                    if (strangleCallStrikeInput) strangleCallStrikeInput.value = '';
+                    strangleSelectionLabels = [];
+                    persistStrangleSelections();
+                    renderStrangleChips();
+                    renderStrangleRows();
+                });
+            }
+
+            document.addEventListener('click', function (e) {
+                var removeBtn = e.target.closest('.chip-remove[data-field]');
+                if (removeBtn) {
+                    removeFilter(removeBtn.dataset.field, removeBtn.dataset.value);
+                    return;
+                }
+
+                var toggleBtn = e.target.closest('.contract-toggle-btn[data-contract-id]');
+                if (toggleBtn) {
+                    var contractId = toggleBtn.dataset.contractId;
+                    var detailsRow = document.getElementById('contract-snapshots-' + contractId);
+                    if (!detailsRow) return;
+
+                    var isOpen = detailsRow.style.display !== 'none';
+                    if (isOpen) {
+                        detailsRow.style.display = 'none';
+                        toggleBtn.textContent = '+';
+                        toggleBtn.setAttribute('aria-expanded', 'false');
+                    } else {
+                        renderContractSnapshots(contractId);
+                        detailsRow.style.display = '';
+                        toggleBtn.textContent = '-';
+                        toggleBtn.setAttribute('aria-expanded', 'true');
+                    }
+                }
+            });
+
+            dedupeContractTabOptions();
+            restoreContractTabSelections();
+            restoreStrangleSelections();
+            renderContractTabChips();
+            renderStrangleChips();
+            applyContractTabFilters();
+            renderStrangleRows();
+            scheduleSnapshotRefresh();
+
+            var hashTab = (window.location.hash || '').replace('#', '').trim();
+            var initialTab = tabPanes.some(function (pane) { return pane.id === hashTab; }) ? hashTab : 'pane-contract';
+            setActiveTab(initialTab);
+        })();
+    </script>
+</div>
+</body>
+</html>

@@ -18,7 +18,7 @@ import com.rama.mudstock.repository.daystock.DayStockMovementMapRepository;
 import com.rama.mudstock.service.DayStockMovementAggregateParser;
 import com.rama.mudstock.service.MarketCalendarService;
 import com.rama.mudstock.service.MassiveRestStockService;
-import com.rama.mudstock.util.MudDateUtil;
+import com.rama.mudstock.util.DataConversionUtil;
 
 @Service
 public class DayStockMovementFacade {
@@ -62,7 +62,7 @@ public class DayStockMovementFacade {
                                          String rawCutOffTime,
                                          String rawCutOffTimeFormat,
                                          ZoneId zoneId) {
-        LocalDate eventDate = toLocalDate(mapping.get("date"));
+        LocalDate eventDate = DataConversionUtil.toLocalDate(mapping.get("date"));
         if (eventDate == null) {
             log.warn("Skipping mapping with missing eventDate: {}", mapping);
             return false;
@@ -106,13 +106,13 @@ public class DayStockMovementFacade {
     private void processMapping(Map<String, Object> mapping) {
         try {
             String ticker = (String) mapping.get("ticker");
-            LocalDate eventDate = toLocalDate(mapping.get("date"));
+            LocalDate eventDate = DataConversionUtil.toLocalDate(mapping.get("date"));
             if (ticker == null || eventDate == null) {
                 log.warn("Skipping mapping with missing ticker or eventDate: {}", mapping);
                 return;
             }
 
-            Long mappingId = toLong(mapping.get("map_id"));
+            Long mappingId = DataConversionUtil.toLong(mapping.get("map_id"));
             if (marketCalendarService.isMarketClosed(eventDate)) {
                 if (mappingId != null) {
                     mappingRepository.updateStatus(mappingId, "MARKET_CLOSED");
@@ -178,23 +178,6 @@ public class DayStockMovementFacade {
         } catch (Exception ex) {
             log.error("Failed to fetch aggregate for mapping {}", mapping, ex);
         }
-    }
-
-    private LocalDate toLocalDate(Object rawValue) {
-        if (rawValue instanceof java.sql.Date sqlDate) {
-            return sqlDate.toLocalDate();
-        }
-        if (rawValue instanceof LocalDate localDate) {
-            return localDate;
-        }
-        if (rawValue != null) {
-            return MudDateUtil.parseIso(rawValue.toString());
-        }
-        return null;
-    }
-
-    private Long toLong(Object rawValue) {
-        return rawValue instanceof Number number ? number.longValue() : null;
     }
 
     private LocalDate previousMarketDay(LocalDate date) {
