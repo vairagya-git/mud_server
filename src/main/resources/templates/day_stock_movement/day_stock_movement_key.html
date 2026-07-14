@@ -25,18 +25,67 @@
     </div>
     <div class="card table-wrap" style="margin-top:20px">
         <div th:if="${events.isEmpty()}" class="table-empty">No keys yet.</div>
-        <table th:unless="${events.isEmpty()}">
-            <thead><tr><th>ID</th><th>Code</th><th>Description</th><th>Date</th></tr></thead>
+        <table id="dayStockMovementKeyTable" th:unless="${events.isEmpty()}">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Code</th>
+                    <th>Description</th>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" id="sortDayStockDateBtn" data-dir="desc">
+                            Date <span id="dayStockDateSortIndicator">↓</span>
+                        </button>
+                    </th>
+                </tr>
+            </thead>
             <tbody>
                 <tr th:each="k : ${events}">
                     <td th:text="${k.id}"></td>
                     <td><code th:text="${k.code}"></code></td>
                     <td th:text="${k.description != null ? k.description : '&#8212;'}"></td>
-                    <td th:text="${k.date != null ? k.date : '&#8212;'}"></td>
+                    <td th:attr="data-sort-value=${k.date != null ? k.date : ''}" th:text="${k.date != null ? k.date : '&#8212;'}"></td>
                 </tr>
             </tbody>
         </table>
     </div>
+
+    <script>
+        (function () {
+            var table = document.getElementById('dayStockMovementKeyTable');
+            var sortBtn = document.getElementById('sortDayStockDateBtn');
+            var indicator = document.getElementById('dayStockDateSortIndicator');
+            if (!table || !sortBtn || !table.tBodies.length) return;
+
+            function parseDateValue(row) {
+                var raw = (row.children[3].dataset.sortValue || '').trim();
+                if (!raw) return Number.NEGATIVE_INFINITY;
+                var ts = Date.parse(raw);
+                return Number.isNaN(ts) ? Number.NEGATIVE_INFINITY : ts;
+            }
+
+            function sortRows(dir) {
+                var tbody = table.tBodies[0];
+                var rows = Array.from(tbody.rows);
+                rows.sort(function (a, b) {
+                    var av = parseDateValue(a);
+                    var bv = parseDateValue(b);
+                    if (av < bv) return dir === 'asc' ? -1 : 1;
+                    if (av > bv) return dir === 'asc' ? 1 : -1;
+                    return 0;
+                });
+                rows.forEach(function (row) { tbody.appendChild(row); });
+                indicator.textContent = dir === 'asc' ? '↑' : '↓';
+                sortBtn.dataset.dir = dir;
+            }
+
+            sortBtn.addEventListener('click', function () {
+                var nextDir = sortBtn.dataset.dir === 'asc' ? 'desc' : 'asc';
+                sortRows(nextDir);
+            });
+
+            sortRows('desc');
+        }());
+    </script>
 </div>
 </body>
 </html>

@@ -11,47 +11,39 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.rama.mudstock.constant.SystemConfigEnum;
 import com.rama.mudstock.scheduler.AbstractCronjob;
 import com.rama.mudstock.service.DayStockMovementService;
 import com.rama.mudstock.service.SystemConfigService;
 
 @Component
 @Profile("cronjob")
-public class DayStockMovementKeyMapEntryScheduler extends AbstractCronjob {
+public class StockMovementKeyMapEntryScheduler extends AbstractCronjob {
 
     private final DayStockMovementService dayStockMovementService;
-    private final Logger log = LoggerFactory.getLogger(DayStockMovementKeyMapEntryScheduler.class);
+    private final Logger log = LoggerFactory.getLogger(StockMovementKeyMapEntryScheduler.class);
 
     @Value("${dayStockMovementKeyMapEntry.cron:}")
     private String dayStockMovementKeyMapEntryCron;
 
-    public DayStockMovementKeyMapEntryScheduler(DayStockMovementService dayStockMovementService,
-                                                SystemConfigService systemConfigService) {
+    public StockMovementKeyMapEntryScheduler(DayStockMovementService dayStockMovementService,
+                                             SystemConfigService systemConfigService) {
         super(systemConfigService);
         this.dayStockMovementService = dayStockMovementService;
     }
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
     public void runDayStockMovementKeyMapEntry() {
-        var enabledCfg = SystemConfigEnum.DayStockMovementKeyMapEntry.ENABLED;
-        var cronCfg = SystemConfigEnum.DayStockMovementKeyMapEntry.CRON_EXPRESSION;
-        var lastUpdatedCfg = SystemConfigEnum.DayStockMovementKeyMapEntry.LAST_UPDATED;
-        String purpose = enabledCfg.purpose();
+        String purpose = "DayStockMovementKeyMapEntry";
 
-        boolean enabled = isEnabled(purpose, enabledCfg.code());
+        boolean enabled = isEnabled(purpose);
 
         if (!enabled) {
-            log.info("DayStockMovementKeyMapEntryScheduler: disabled by system_config (purpose={}, code={})",
-                purpose, enabledCfg.code());
+            log.info("StockMovementKeyMapEntryScheduler: disabled by system_config (purpose={}, code={})",
+                purpose, enabledCode());
             return;
         }
 
-        if (!shouldExecuteSinceLastUpdated(
-            purpose,
-            cronCfg.code(),
-            lastUpdatedCfg.code(),
-            LISBON)) {
+        if (!shouldExecuteSinceLastUpdated(purpose, LISBON)) {
             return;
         }
 
@@ -60,7 +52,7 @@ public class DayStockMovementKeyMapEntryScheduler extends AbstractCronjob {
         DayStockMovementService.KeyPreparationResult preparation =
             dayStockMovementService.prepareDayStockMovementKeys(today);
         if (preparation.marketClosed()) {
-            log.info("DayStockMovementKeyMapEntryScheduler: market is closed on {} (weekend or holiday), skipping", today);
+            log.info("StockMovementKeyMapEntryScheduler: market is closed on {} (weekend or holiday), skipping", today);
             return;
         }
 
@@ -68,19 +60,19 @@ public class DayStockMovementKeyMapEntryScheduler extends AbstractCronjob {
             dayStockMovementService.createMappingsForPreparedKeys(today, preparation);
 
         if (!mappingResult.watchlistFound()) {
-            log.info("DayStockMovementKeyMapEntryScheduler: no watchlist found/configured for day-stock mapping; skipping lastUpdated update");
+            log.info("StockMovementKeyMapEntryScheduler: no watchlist found/configured for day-stock mapping; skipping lastUpdated update");
             return;
         }
 
-        updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
+        updateLastUpdatedNowUtc(purpose);
     }
 
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
         if (dayStockMovementKeyMapEntryCron == null || dayStockMovementKeyMapEntryCron.isBlank()) {
-            log.warn("DayStockMovementKeyMapEntryScheduler: dayStockMovementKeyMapEntry.cron is not set or empty. @Scheduled may not be active.");
+            log.warn("StockMovementKeyMapEntryScheduler: dayStockMovementKeyMapEntry.cron is not set or empty. @Scheduled may not be active.");
         } else {
-            log.info("DayStockMovementKeyMapEntryScheduler initialized with cron='{}'", dayStockMovementKeyMapEntryCron);
+            log.info("StockMovementKeyMapEntryScheduler initialized with cron='{}'", dayStockMovementKeyMapEntryCron);
         }
     }
 }

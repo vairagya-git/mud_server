@@ -6,7 +6,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.rama.mudstock.constant.SystemConfigEnum;
 import com.rama.mudstock.scheduler.AbstractCronjob;
 import com.rama.mudstock.service.BenzingaFirmService;
 import com.rama.mudstock.service.SystemConfigService;
@@ -16,10 +15,10 @@ import com.rama.mudstock.service.SystemConfigService;
  * and performs a smart upsert — only updating rows whose {@code last_updated}
  * date differs from what is already stored in the database.
  *
- * <p>Cron configuration is read from {@code system_config}:</p>
+ * <p>Execution configuration is read from {@code system_config}:</p>
  * <pre>
  * purpose = WeeklyAnalystFirmUpdateCronjob
- * code = cronExpression
+ * code = execution / minuteHourlyFrequency
  * </pre>
  */
 @Component
@@ -38,32 +37,25 @@ public class WeeklyAnalystFirmUpdateCronjob extends AbstractCronjob {
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
     public void run() {
-        var enabledCfg = SystemConfigEnum.WeeklyAnalystFirmUpdateCronjob.ENABLED;
-        var cronCfg = SystemConfigEnum.WeeklyAnalystFirmUpdateCronjob.CRON_EXPRESSION;
-        var lastUpdatedCfg = SystemConfigEnum.WeeklyAnalystFirmUpdateCronjob.LAST_UPDATED;
-        String purpose = enabledCfg.purpose();
+        String purpose = "WeeklyAnalystFirmUpdateCronjob";
 
-        boolean enabled = isEnabled(purpose, enabledCfg.code());
+        boolean enabled = isEnabled(purpose);
 
         if (!enabled) {
             log.info("WeeklyAnalystFirmUpdateCronjob: disabled by system_config (purpose={}, code={})",
                 purpose,
-                enabledCfg.code());
+                enabledCode());
             return;
         }
 
-        if (!shouldExecuteSinceLastUpdated(
-            purpose,
-            cronCfg.code(),
-            lastUpdatedCfg.code(),
-            LISBON)) {
+        if (!shouldExecuteSinceLastUpdated(purpose, LISBON)) {
             return;
         }
 
         log.info("WeeklyAnalystFirmUpdateCronjob: starting weekly analyst firm sync");
         try {
             int updated = benzingaFirmService.fetchAndSaveSmart();
-            updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
+            updateLastUpdatedNowUtc(purpose);
             log.info("WeeklyAnalystFirmUpdateCronjob: completed — {} firm(s) inserted/updated", updated);
         } catch (Exception ex) {
             log.error("WeeklyAnalystFirmUpdateCronjob: error during firm sync", ex);

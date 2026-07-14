@@ -14,12 +14,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.rama.mudstock.constant.SystemConfigEnum;
+import com.rama.mudstock.enums.CronjobConfigEnum;
 import com.rama.mudstock.model.daystock.DayStockMovementKey;
 import com.rama.mudstock.model.stockwatchlist.Stock;
 import com.rama.mudstock.model.stockwatchlist.Watchlist;
-import com.rama.mudstock.repository.daystock.DayStockMovementMapRepository;
 import com.rama.mudstock.repository.daystock.DayStockMovementKeyRepository;
+import com.rama.mudstock.repository.daystock.DayStockMovementMapRepository;
 import com.rama.mudstock.repository.stockwatchlist.WatchlistRepository;
 import com.rama.mudstock.util.MudDateUtil;
 
@@ -57,9 +57,10 @@ public class DayStockMovementService {
     }
 
     public List<String> getWatchlistCodes() {
-        var watchlistCfg = SystemConfigEnum.DayStockMovementKeyMapEntry.WATCHLIST_CODES;
+        var watchlistCfg = CronjobConfigEnum.WATCHLIST_CODES;
+        String purpose = "DayStockMovementKeyMapEntry";
         return systemConfigService
-                .findByPurposeAndCode(watchlistCfg.purpose(), watchlistCfg.code())
+            .findByPurposeAndCode(purpose, watchlistCfg.code())
                 .filter(List.class::isInstance)
                 .map(v -> ((List<?>) v).stream()
                         .filter(String.class::isInstance)
@@ -245,9 +246,10 @@ public class DayStockMovementService {
     }
 
     private LocalDate resolveBackfillStartDate(LocalDate endDate) {
-        var lastUpdatedCfg = SystemConfigEnum.DayStockMovementKeyMapEntry.LAST_UPDATED;
+        var lastUpdatedCfg = CronjobConfigEnum.LAST_UPDATED;
+        String purpose = "DayStockMovementKeyMapEntry";
         String raw = systemConfigService
-            .findByPurposeAndCode(lastUpdatedCfg.purpose(), lastUpdatedCfg.code())
+            .findByPurposeAndCode(purpose, lastUpdatedCfg.code())
             .filter(String.class::isInstance)
             .map(String.class::cast)
             .map(String::trim)

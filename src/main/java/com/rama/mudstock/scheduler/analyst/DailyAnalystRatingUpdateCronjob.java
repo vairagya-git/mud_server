@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.rama.mudstock.constant.SystemConfigEnum;
+import com.rama.mudstock.enums.CronjobConfigEnum;
 import com.rama.mudstock.facade.AnalystRatingFacade;
 import com.rama.mudstock.model.stockwatchlist.Stock;
 import com.rama.mudstock.repository.stockwatchlist.WatchlistRepository;
@@ -42,33 +42,26 @@ public class DailyAnalystRatingUpdateCronjob extends AbstractCronjob {
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
     public void run() {
-        var enabledCfg = SystemConfigEnum.DailyAnalystRatingCronjob.ENABLED;
-        var cronCfg = SystemConfigEnum.DailyAnalystRatingCronjob.CRON_EXPRESSION;
-        var lastUpdatedCfg = SystemConfigEnum.DailyAnalystRatingCronjob.LAST_UPDATED;
-        var watchlistCfg = SystemConfigEnum.DailyAnalystRatingCronjob.WATCHLIST_CODES;
-        String purpose = enabledCfg.purpose();
+        String purpose = "DailyAnalystRatingCronjob";
+        String watchlistCode = CronjobConfigEnum.WATCHLIST_CODES.code();
 
-        boolean enabled = isEnabled(purpose, enabledCfg.code());
+        boolean enabled = isEnabled(purpose);
 
         if (!enabled) {
             log.info("DailyAnalystRatingUpdateCronjob: disabled by system_config (purpose={}, code={})",
                 purpose,
-                enabledCfg.code());
+                enabledCode());
             return;
         }
 
-        if (!shouldExecuteSinceLastUpdated(
-            purpose,
-            cronCfg.code(),
-            lastUpdatedCfg.code(),
-            LISBON)) {
+        if (!shouldExecuteSinceLastUpdated(purpose, LISBON)) {
             return;
         }
 
         List<String> watchlistCodeList = systemConfigService
             .findByPurposeAndCode(
-                watchlistCfg.purpose(),
-                watchlistCfg.code())
+                purpose,
+                watchlistCode)
             .filter(List.class::isInstance)
             .map(v -> ((List<?>) v).stream()
                 .filter(String.class::isInstance)
@@ -79,7 +72,7 @@ public class DailyAnalystRatingUpdateCronjob extends AbstractCronjob {
         String watchlistCodes = String.join(",", watchlistCodeList);
         log.info("DailyAnalystRatingUpdateCronjob: starting for watchlist-codes=[{}]", watchlistCodes);
 
-        String lastUpdatedRaw = resolveLastUpdated(purpose, lastUpdatedCfg.code());
+        String lastUpdatedRaw = resolveLastUpdated(purpose);
         LocalDate ratingDate = resolveRatingDateFromLastUpdated(lastUpdatedRaw);
         String ratingDateStr = ratingDate.toString();
         log.info("DailyAnalystRatingUpdateCronjob: using rating date={}", ratingDateStr);
@@ -106,7 +99,7 @@ public class DailyAnalystRatingUpdateCronjob extends AbstractCronjob {
         }
 
         log.info("DailyAnalystRatingUpdateCronjob: done — total ratings saved={}", totalSaved);
-        updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
+        updateLastUpdatedNowUtc(purpose);
     }
 
     private LocalDate resolveRatingDateFromLastUpdated(String rawLastUpdated) {
