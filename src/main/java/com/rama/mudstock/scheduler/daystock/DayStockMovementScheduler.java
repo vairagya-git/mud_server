@@ -1,5 +1,7 @@
 package com.rama.mudstock.scheduler.daystock;
 
+import java.time.LocalDate;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
@@ -39,10 +41,15 @@ public class DayStockMovementScheduler extends AbstractCronjob {
             return;
         }
 
-        if (!shouldExecuteSinceLastUpdated(
+        LocalDate processingDate = resolveNextProcessingDate(resolveLastUpdated(purpose, lastUpdatedCfg.code()), LISBON);
+        if (!shouldProcessDate(
+            "DayStockMovementScheduler",
+            processingDate,
             purpose,
             cronCfg.code(),
             lastUpdatedCfg.code(),
+            cutOffTimeCfg.code(),
+            cutOffTimeCfg.format(),
             LISBON)) {
             return;
         }
@@ -51,7 +58,7 @@ public class DayStockMovementScheduler extends AbstractCronjob {
         try {
             String cutOffTime = resolveStringValue(purpose, cutOffTimeCfg.code());
             dayStockMovementFacade.fetchAggregatesForNewMappings(cutOffTime, cutOffTimeCfg.format(), LISBON);
-            updateLastUpdatedNowUtc(purpose, lastUpdatedCfg.code());
+            updateLastUpdatedForProcessingDate(purpose, lastUpdatedCfg.code(), processingDate, LISBON);
         } catch (Exception ex) {
             log.error("DayStockMovementScheduler: error while fetching aggregates", ex);
         }

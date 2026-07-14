@@ -1,7 +1,12 @@
 package com.rama.mudstock.scheduler;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,6 +67,86 @@ public abstract class AbstractCronjob {
             .orElse("");
     }
 
+    protected LocalDate resolveLastUpdatedDate(String rawLastUpdated, ZoneId zoneId) {
+        if (rawLastUpdated == null || rawLastUpdated.isBlank()) {
+            return null;
+        }
+
+        String value = rawLastUpdated.trim();
+        try {
+            return LocalDate.parse(value.substring(0, Math.min(value.length(), 10)));
+        } catch (Exception ignored) {
+        }
+        try {
+            return Instant.parse(value).atZone(zoneId).toLocalDate();
+        } catch (Exception ignored) {
+        }
+        try {
+            return OffsetDateTime.parse(value).atZoneSameInstant(zoneId).toLocalDate();
+        } catch (Exception ignored) {
+        }
+        try {
+            return ZonedDateTime.parse(value).withZoneSameInstant(zoneId).toLocalDate();
+        } catch (Exception ignored) {
+        }
+        try {
+            return null;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    protected LocalDate resolveNextProcessingDate(String rawLastUpdated, ZoneId zoneId) {
+        LocalDate lastUpdatedDate = resolveLastUpdatedDate(rawLastUpdated, zoneId);
+        if (lastUpdatedDate == null) {
+            return LocalDate.now(zoneId);
+        }
+        return lastUpdatedDate.plusDays(1);
+    }
+
+    protected boolean shouldProcessDate(String logPrefix,
+                                        LocalDate processingDate,
+                                        String purpose,
+                                        String cronCode,
+                                        String lastUpdatedCode,
+                                        String cutOffTimeCode,
+                                        String cutOffTimeFormat,
+                                        ZoneId zoneId) {
+        LocalDate today = LocalDate.now(zoneId);
+        if (processingDate.isAfter(today)) {
+            log.info("{}: processing date {} is after today {}; skipping", logPrefix, processingDate, today);
+            return false;
+        }
+
+        if (processingDate.isBefore(today)) {
+            return true;
+        }
+
+        if (!shouldExecuteSinceLastUpdated(purpose, cronCode, lastUpdatedCode, zoneId)) {
+            return false;
+        }
+
+        String rawCutOffTime = resolveStringValue(purpose, cutOffTimeCode);
+        if (rawCutOffTime.isBlank()) {
+            log.warn("{}: missing cutoff time config (purpose={}, code={})", logPrefix, purpose, cutOffTimeCode);
+            return false;
+        }
+
+        String format = (cutOffTimeFormat == null || cutOffTimeFormat.isBlank()) ? "HH:mm" : cutOffTimeFormat.trim();
+        try {
+            LocalTime cutOffTime = LocalTime.parse(rawCutOffTime, DateTimeFormatter.ofPattern(format));
+            LocalTime now = LocalTime.now(zoneId);
+            boolean allowed = !now.isBefore(cutOffTime);
+            if (!allowed) {
+                log.info("{}: before cutoff now={} cutoff={}", logPrefix, now, cutOffTime);
+            }
+            return allowed;
+        } catch (Exception ex) {
+            log.warn("{}: invalid cutoff time value='{}' format='{}'", logPrefix, rawCutOffTime, format, ex);
+            return false;
+        }
+    }
+
     protected boolean shouldExecuteSinceLastUpdated(String purpose,
                                                     String cronCode,
                                                     String lastUpdatedCode,
@@ -88,6 +173,21 @@ public abstract class AbstractCronjob {
         boolean updated = systemConfigService.updateValue(purpose, lastUpdatedCode, nowUtc);
         if (!updated) {
             log.warn("AbstractCronjob: failed to update lastUpdated config (purpose={}, code={})", purpose, lastUpdatedCode);
+        }
+    }
+
+    protected void updateLastUpdatedForProcessingDate(String purpose,
+                                                      String lastUpdatedCode,
+                                                      LocalDate processingDate,
+                                                      ZoneId zoneId) {
+        String processingDateValue = processingDate.toString();
+
+        boolean updated = systemConfigService.updateValue(purpose, lastUpdatedCode, processingDateValue);
+        if (!updated) {
+            log.warn("AbstractCronjob: failed to update lastUpdated for processingDate={} (purpose={}, code={})",
+                processingDate,
+                purpose,
+                lastUpdatedCode);
         }
     }
 }

@@ -301,6 +301,8 @@ public enum SystemConfigEnum {
     public enum OptionSnapshotFetcherJob {
         USEAGE("useage", "String", "Option Snapshot Fetcher Job > Usage"),
         ENABLED("enabled", "Boolean", "Option Snapshot Fetcher Job > Enabled"),
+        START_TIME("startTime", "Time", "Option Snapshot Fetcher Job > Start Time"),
+        END_TIME("endTime", "Time", "Option Snapshot Fetcher Job > End Time"),
         CRON_EXPRESSION("cronExpression", "CronExpression", "Option Snapshot Fetcher Job > Cron Expression"),
         LAST_UPDATED("lastUpdated", "DateTime", "Option Snapshot Fetcher Job > Last Updated");
 
@@ -326,6 +328,52 @@ public enum SystemConfigEnum {
 
         public String type() {
             return type;
+        }
+
+        public String description() {
+            return description;
+        }
+    }
+
+    public enum OptionSnapshotIVMetrics {
+        USEAGE("useage", "String", "Option Snapshot IV Metrics > Usage"),
+        ENABLED("enabled", "Boolean", "Option Snapshot IV Metrics > Enabled"),
+        CRON_EXPRESSION("cronExpression", "CronExpression", "Option Snapshot IV Metrics > Cron Expression"),
+        LAST_UPDATED("lastUpdated", "DateTime", "Option Snapshot IV Metrics > Last Updated"),
+        CUTOFF_TIME("cutOffTime", "Time", "HH:mm", "Option Snapshot IV Metrics > Cutoff Time");
+
+        private static final String PURPOSE = "OptionSnapshotIVMetrics";
+
+        private final String code;
+        private final String type;
+        private final String format;
+        private final String description;
+
+        OptionSnapshotIVMetrics(String code, String type, String description) {
+            this(code, type, null, description);
+        }
+
+        OptionSnapshotIVMetrics(String code, String type, String format, String description) {
+            this.code = code;
+            this.type = type;
+            this.format = format;
+            this.description = description;
+        }
+
+        public String purpose() {
+            return PURPOSE;
+        }
+
+        public String code() {
+            return code;
+        }
+
+        public String type() {
+            return type;
+        }
+
+        public String format() {
+            return format;
         }
 
         public String description() {

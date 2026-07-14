@@ -21,6 +21,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.rama.mudstock.config.ApplicationProperties;
 import com.rama.mudstock.repository.option.OptionContractRepository;
+import com.rama.mudstock.repository.option.OptionSnapshotIVMetricRepository;
 import com.rama.mudstock.repository.option.OptionSnapshotRepository;
 import com.rama.mudstock.repository.option.OptionToAnalyseRepository;
 import com.rama.mudstock.repository.stockwatchlist.StockRepository;
@@ -33,17 +34,20 @@ public class OptionAnalysisController {
     private final OptionToAnalyseRepository optionToAnalyseRepository;
     private final OptionContractRepository optionContractRepository;
     private final OptionSnapshotRepository optionSnapshotRepository;
+    private final OptionSnapshotIVMetricRepository optionSnapshotIVMetricRepository;
     private final ApplicationProperties applicationProperties;
 
     public OptionAnalysisController(StockRepository stockRepository,
                                     OptionToAnalyseRepository optionToAnalyseRepository,
                                     OptionContractRepository optionContractRepository,
                                     OptionSnapshotRepository optionSnapshotRepository,
+                                    OptionSnapshotIVMetricRepository optionSnapshotIVMetricRepository,
                                     ApplicationProperties applicationProperties) {
         this.stockRepository = stockRepository;
         this.optionToAnalyseRepository = optionToAnalyseRepository;
         this.optionContractRepository = optionContractRepository;
         this.optionSnapshotRepository = optionSnapshotRepository;
+        this.optionSnapshotIVMetricRepository = optionSnapshotIVMetricRepository;
         this.applicationProperties = applicationProperties;
     }
 
@@ -203,6 +207,13 @@ public class OptionAnalysisController {
         model.addAttribute("activeContracts", optionContractRepository.listActiveWithTicker());
         model.addAttribute("snapshotRefreshIntervalMs", applicationProperties.getSnapshotRefreshMs());
         return hxRequest != null ? "option_analysis/snapshot :: content" : "option_analysis/snapshot";
+    }
+
+    @GetMapping("/metrics")
+    public String metricsList(Model model,
+                              @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
+        model.addAttribute("metrics", optionSnapshotIVMetricRepository.listAllWithTickerAndContract());
+        return hxRequest != null ? "option_analysis/metrics :: content" : "option_analysis/metrics";
     }
 
     @GetMapping("/snapshot/contracts/{contractId}")

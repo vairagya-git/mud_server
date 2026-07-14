@@ -75,25 +75,11 @@
 
     <div class="mapping-tab-shell">
         <div class="mapping-tabs" role="tablist" aria-label="Option analysis modes">
-            <button type="button" class="mapping-tab-btn" data-tab-target="pane-first-snapshot">First Option Snapshot</button>
             <button type="button" class="mapping-tab-btn" data-tab-target="pane-entries">Entries</button>
             <button type="button" class="mapping-tab-btn" data-tab-target="pane-new-entry">New Entry</button>
         </div>
 
         <div class="mapping-tab-panel">
-            <div id="pane-first-snapshot" class="mapping-tab-pane">
-                <div class="mapping-form-section">
-                    <h3 class="mapping-form-title">First Option Snapshot</h3>
-                    <div class="mapping-form-subtitle">Open the snapshot contracts listing to review first-level option snapshot contract data.</div>
-                    <a href="/option-analysis/contract"
-                       hx-get="/option-analysis/contract"
-                       hx-target="#page-content"
-                       hx-swap="outerHTML"
-                       hx-push-url="true"
-                       class="btn btn-primary">Open Snapshot Contracts</a>
-                </div>
-            </div>
-
             <div id="pane-entries" class="mapping-tab-pane">
                 <div class="card table-wrap" style="margin:16px">
                     <h3 style="margin-bottom:12px">Current Entries</h3>
