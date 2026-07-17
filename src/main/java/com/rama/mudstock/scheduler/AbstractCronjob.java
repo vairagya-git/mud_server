@@ -37,6 +37,10 @@ public abstract class AbstractCronjob {
         return CronjobConfigEnum.EXECUTION.code();
     }
 
+    protected String forceExecuteCode() {
+        return CronjobConfigEnum.FORCE_EXECUTE.code();
+    }
+
     protected String minuteHourlyFrequencyCode() {
         return CronjobConfigEnum.MINUTE_HOURLY_FREQUENCY.code();
     }
@@ -74,46 +78,48 @@ public abstract class AbstractCronjob {
     }
 
     protected LocalDate resolveNextProcessingDate(String purpose, ZoneId zoneId) {
-        return resolveNextProcessingDate(resolveLastUpdated(purpose), zoneId);
+        return resolveNextProcessingDateFromLastUpdated(resolveLastUpdated(purpose), zoneId);
     }
 
-    protected boolean shouldProcessDate(String logPrefix,
-                                        LocalDate processingDate,
-                                        String purpose,
-                                        ZoneId zoneId) {
-        return shouldProcessDate(
-            logPrefix,
-            processingDate,
-            purpose,
-            executionCode(),
-            minuteHourlyFrequencyCode(),
-            lastUpdatedCode(),
-            cutOffTimeCode(),
-            cutOffTimeFormat(),
-            zoneId);
-    }
-
-    protected boolean shouldExecuteSinceLastUpdated(String purpose,
+    protected boolean shouldExecuteSinceLastUpdated(String logPrefix,
+                                                    LocalDate processingDate,
+                                                    String purpose,
                                                     ZoneId zoneId) {
-        return shouldExecuteSinceLastUpdated(
-            purpose,
-            executionCode(),
-            minuteHourlyFrequencyCode(),
-            lastUpdatedCode(),
-            zoneId);
-    }
+        if (isForceExecuteEnabled(purpose)) {
+            log.info("{}: forceExecute is enabled (purpose={}, code={}); bypassing schedule checks",
+                logPrefix,
+                purpose,
+                forceExecuteCode());
+            return true;
+        }
 
-    protected boolean shouldExecuteSinceLastUpdated(String purpose,
-                                                    String cutOffTimeFormat,
-                                                    ZoneId zoneId) {
-        return shouldExecuteSinceLastUpdated(
-            purpose,
-            executionCode(),
-            minuteHourlyFrequencyCode(),
-            lastUpdatedCode(),
-            cutOffTimeCode(),
-            cutOffTimeFormat,
-            zoneId);
+        String executionCode = executionCode();
+        String execution = resolveExecutionMode(purpose, executionCode);
+        String lastUpdated = resolveLastUpdated(purpose, lastUpdatedCode());
+        LocalDate effectiveProcessingDate = processingDate != null
+            ? processingDate
+            : resolveNextProcessingDateFromLastUpdated(lastUpdated, zoneId);
+
+        switch (execution) {
+            case "hourly":
+                return shouldExecuteAtFrequency("hours", purpose, minuteHourlyFrequencyCode(), lastUpdated, zoneId, ChronoUnit.HOURS);
+            case "minutes":
+                return shouldExecuteAtFrequency("minutes", purpose, minuteHourlyFrequencyCode(), lastUpdated, zoneId, ChronoUnit.MINUTES);
+            case "daily":
+                return shouldExecuteDailyByLastUpdatedAndCutoff(
+                    logPrefix,
+                    effectiveProcessingDate,
+                    purpose,
+                    cutOffTimeCode(),
+                    cutOffTimeFormat(),
+                    zoneId);
+            default:
+                log.warn("AbstractCronjob: unsupported execution mode '{}' (purpose={}, code={})",
+                    execution,
+                    purpose,
+                    executionCode);
+                return false;
+        }
     }
 
     protected boolean isWithinExecutionWindow(String logPrefix,
@@ -126,16 +132,6 @@ public abstract class AbstractCronjob {
             endTimeCode(),
             timeFormat(),
             zoneId);
-    }
-
-    protected void updateLastUpdatedNowUtc(String purpose) {
-        updateLastUpdatedNowUtc(purpose, lastUpdatedCode());
-    }
-
-    protected void updateLastUpdatedForProcessingDate(String purpose,
-                                                      LocalDate processingDate,
-                                                      ZoneId zoneId) {
-        updateLastUpdatedForProcessingDate(purpose, lastUpdatedCode(), processingDate, zoneId);
     }
 
     protected boolean isEnabled(String purpose, String enabledCode) {
@@ -225,14 +221,10 @@ public abstract class AbstractCronjob {
             return ZonedDateTime.parse(value).withZoneSameInstant(zoneId).toLocalDate();
         } catch (Exception ignored) {
         }
-        try {
-            return null;
-        } catch (Exception ignored) {
-            return null;
-        }
+        return null;
     }
 
-    protected LocalDate resolveNextProcessingDate(String rawLastUpdated, ZoneId zoneId) {
+    protected LocalDate resolveNextProcessingDateFromLastUpdated(String rawLastUpdated, ZoneId zoneId) {
         LocalDate lastUpdatedDate = resolveLastUpdatedDate(rawLastUpdated, zoneId);
         if (lastUpdatedDate == null) {
             return LocalDate.now(zoneId);
@@ -270,107 +262,23 @@ public abstract class AbstractCronjob {
         return null;
     }
 
-    protected boolean shouldProcessDate(String logPrefix,
-                                        LocalDate processingDate,
-                                        String purpose,
-                                        String executionCode,
-                                        String minuteHourlyFrequencyCode,
-                                        String lastUpdatedCode,
-                                        String cutOffTimeCode,
-                                        String cutOffTimeFormat,
-                                        ZoneId zoneId) {
+    private boolean shouldExecuteDailyByLastUpdatedAndCutoff(String logPrefix,
+                                                             LocalDate processingDate,
+                                                             String purpose,
+                                                             String cutOffTimeCode,
+                                                             String cutOffTimeFormat,
+                                                             ZoneId zoneId) {
         LocalDate today = LocalDate.now(zoneId);
+
         if (processingDate.isAfter(today)) {
             log.info("{}: processing date {} is after today {}; skipping", logPrefix, processingDate, today);
             return false;
         }
-
         if (processingDate.isBefore(today)) {
             return true;
         }
 
-        String execution = resolveExecutionMode(purpose, executionCode);
-        switch (execution) {
-            case "daily":
-                return isOnOrAfterCutoff(logPrefix, purpose, cutOffTimeCode, cutOffTimeFormat, zoneId);
-            case "hourly":
-            case "minutes":
-                return shouldExecuteSinceLastUpdated(
-                    purpose,
-                    executionCode,
-                    minuteHourlyFrequencyCode,
-                    lastUpdatedCode,
-                    zoneId);
-            default:
-                log.warn("{}: unsupported execution mode '{}' (purpose={}, code={})",
-                    logPrefix,
-                    execution,
-                    purpose,
-                    executionCode);
-                return false;
-        }
-    }
-
-    protected boolean shouldExecuteSinceLastUpdated(String purpose,
-                                                    String executionCode,
-                                                    String minuteHourlyFrequencyCode,
-                                                    String lastUpdatedCode,
-                                                    ZoneId zoneId) {
-        String execution = resolveExecutionMode(purpose, executionCode);
-        String lastUpdated = resolveLastUpdated(purpose, lastUpdatedCode);
-        switch (execution) {
-            case "hourly":
-                return shouldExecuteAtFrequency("hours", purpose, minuteHourlyFrequencyCode, lastUpdated, zoneId, ChronoUnit.HOURS);
-            case "minutes":
-                return shouldExecuteAtFrequency("minutes", purpose, minuteHourlyFrequencyCode, lastUpdated, zoneId, ChronoUnit.MINUTES);
-            case "daily":
-                log.warn("AbstractCronjob: daily execution requires cutoff time (purpose={}, executionCode={})", purpose, executionCode);
-                return false;
-            default:
-                log.warn("AbstractCronjob: unsupported execution mode '{}' (purpose={}, code={})", execution, purpose, executionCode);
-                return false;
-        }
-    }
-
-    protected boolean shouldExecuteSinceLastUpdated(String purpose,
-                                                    String executionCode,
-                                                    String minuteHourlyFrequencyCode,
-                                                    String lastUpdatedCode,
-                                                    String cutOffTimeCode,
-                                                    String cutOffTimeFormat,
-                                                    ZoneId zoneId) {
-        String execution = resolveExecutionMode(purpose, executionCode);
-        String lastUpdated = resolveLastUpdated(purpose, lastUpdatedCode);
-        switch (execution) {
-            case "hourly":
-                return shouldExecuteAtFrequency("hours", purpose, minuteHourlyFrequencyCode, lastUpdated, zoneId, ChronoUnit.HOURS);
-            case "minutes":
-                return shouldExecuteAtFrequency("minutes", purpose, minuteHourlyFrequencyCode, lastUpdated, zoneId, ChronoUnit.MINUTES);
-            case "daily":
-                return shouldExecuteDaily(purpose, lastUpdated, cutOffTimeCode, cutOffTimeFormat, zoneId);
-            default:
-                log.warn("AbstractCronjob: unsupported execution mode '{}' (purpose={}, code={})", execution, purpose, executionCode);
-                return false;
-        }
-    }
-
-    private boolean shouldExecuteDaily(String purpose,
-                                       String rawLastUpdated,
-                                       String cutOffTimeCode,
-                                       String cutOffTimeFormat,
-                                       ZoneId zoneId) {
-        LocalDate today = LocalDate.now(zoneId);
-        LocalDate lastExecutedDate = resolveLastUpdatedDate(rawLastUpdated, zoneId);
-        LocalDate nextExecutionDate = lastExecutedDate == null ? today : lastExecutedDate.plusDays(1);
-
-        if (nextExecutionDate.isAfter(today)) {
-            return false;
-        }
-        if (nextExecutionDate.isBefore(today)) {
-            return true;
-        }
-
-        return isOnOrAfterCutoff("AbstractCronjob", purpose, cutOffTimeCode, cutOffTimeFormat, zoneId);
+        return isOnOrAfterCutoff(logPrefix, purpose, cutOffTimeCode, cutOffTimeFormat, zoneId);
     }
 
     private boolean shouldExecuteAtFrequency(String unitName,
@@ -430,6 +338,14 @@ public abstract class AbstractCronjob {
                                               String endTimeCode,
                                               String timeFormat,
                                               ZoneId zoneId) {
+        if (isForceExecuteEnabled(purpose)) {
+            log.info("{}: forceExecute is enabled (purpose={}, code={}); bypassing execution window check",
+                logPrefix,
+                purpose,
+                forceExecuteCode());
+            return true;
+        }
+
         String startRaw = resolveStringValue(purpose, startTimeCode);
         String endRaw = resolveStringValue(purpose, endTimeCode);
 
@@ -493,5 +409,20 @@ public abstract class AbstractCronjob {
                 purpose,
                 lastUpdatedCode);
         }
+    }
+
+    protected boolean isForceExecuteEnabled(String purpose) {
+        return systemConfigService
+            .findByPurposeAndCode(purpose, forceExecuteCode())
+            .map(value -> {
+                if (value instanceof Boolean boolValue) {
+                    return boolValue;
+                }
+                if (value instanceof String strValue) {
+                    return Boolean.parseBoolean(strValue.trim());
+                }
+                return Boolean.FALSE;
+            })
+            .orElse(Boolean.FALSE);
     }
 }

@@ -92,7 +92,7 @@ public class OptionSnapshotRepository {
     }
 
     public List<Map<String, Object>> listByContractId(Long optionContractId) {
-        String sql = "SELECT DATE_FORMAT(os.option_quote_time, '%Y-%m-%d %H:%i') AS option_quote_time, "
+        String sql = "SELECT os.option_quote_time AS option_quote_time, "
             + "os.underlying_price, os.bid, os.ask, os.midpoint, os.implied_volatility, "
             + "os.delta, os.gamma, os.theta, os.vega, os.open_interest, os.day_volume "
             + "FROM option_snapshot os "

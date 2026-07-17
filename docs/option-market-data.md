@@ -23,3 +23,9 @@ Capture market-data sources, URL patterns, and parsing rules used for option wor
 ## Operational Notes
 - Keep API-key handling in configuration.
 - Avoid noisy logs in normal runs; retain sufficient context for debugging.
+
+## Timestamp Policy
+- Store option snapshot quote timestamps in UTC in the database.
+- Do not change persisted timezone values during writes.
+- Convert UTC timestamps to local time only when preparing data for frontend responses.
+- Keep backend/domain processing that depends on canonical snapshot time aligned to UTC source values.

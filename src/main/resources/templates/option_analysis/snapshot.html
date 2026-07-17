@@ -194,18 +194,43 @@
                                                 <table>
                                                     <thead>
                                                         <tr>
-                                                            <th>Option Quote Time</th>
-                                                            <th>Underlying Price</th>
+                                                            <th>
+                                                                <button type="button" class="btn btn-sm table-sort-btn contract-snapshot-sort-btn" data-contract-sort="snapshotTime" data-dir="desc">
+                                                                    Option Quote Time <span data-contract-sort-indicator="snapshotTime">↓</span>
+                                                                </button>
+                                                            </th>
+                                                            <th>
+                                                                <button type="button" class="btn btn-sm table-sort-btn contract-snapshot-sort-btn" data-contract-sort="underlyingPrice" data-dir="desc">
+                                                                    Underlying Price <span data-contract-sort-indicator="underlyingPrice">↕</span>
+                                                                </button>
+                                                            </th>
+                                                            <th>
+                                                                <button type="button" class="btn btn-sm table-sort-btn contract-snapshot-sort-btn" data-contract-sort="stockDistance" data-dir="desc">
+                                                                    Stock Distance <span data-contract-sort-indicator="stockDistance">↕</span>
+                                                                </button>
+                                                            </th>
                                                             <th>Bid</th>
                                                             <th>Ask</th>
                                                             <th>Midpoint</th>
-                                                            <th>IV</th>
+                                                            <th>
+                                                                <button type="button" class="btn btn-sm table-sort-btn contract-snapshot-sort-btn" data-contract-sort="impliedVolatility" data-dir="desc">
+                                                                    IV <span data-contract-sort-indicator="impliedVolatility">↕</span>
+                                                                </button>
+                                                            </th>
                                                             <th>Delta</th>
                                                             <th>Gamma</th>
                                                             <th>Theta</th>
                                                             <th>Vega</th>
-                                                            <th>Open Interest</th>
-                                                            <th>Day Volume</th>
+                                                            <th>
+                                                                <button type="button" class="btn btn-sm table-sort-btn contract-snapshot-sort-btn" data-contract-sort="openInterest" data-dir="desc">
+                                                                    Open Interest <span data-contract-sort-indicator="openInterest">↕</span>
+                                                                </button>
+                                                            </th>
+                                                            <th>
+                                                                <button type="button" class="btn btn-sm table-sort-btn contract-snapshot-sort-btn" data-contract-sort="dayVolume" data-dir="desc">
+                                                                    Day Volume <span data-contract-sort-indicator="dayVolume">↕</span>
+                                                                </button>
+                                                            </th>
                                                         </tr>
                                                     </thead>
                                                     <tbody class="contract-snapshot-tbody"></tbody>
@@ -253,10 +278,23 @@
                     </div>
 
                     <div class="table-wrap">
+                        <div id="strangleSummary" class="subtitle" style="margin:0 0 8px 0">
+                            Midpoint Sum: <strong id="strangleSummaryMidpoint">0.00</strong>
+                            &nbsp;|&nbsp;
+                            Net IV: <strong id="strangleSummaryNetIv">0.00</strong>
+                            &nbsp;|&nbsp;
+                            Net Delta: <strong id="strangleSummaryDelta">0.00</strong>
+                            &nbsp;|&nbsp;
+                            Net Theta: <strong id="strangleSummaryTheta">0.00</strong>
+                        </div>
                         <table id="strangleTable">
                             <thead>
                                 <tr>
-                                    <th>Option Quote Time</th>
+                                    <th>
+                                        <button type="button" class="btn btn-sm table-sort-btn" data-strangle-sort="snapshotTime" data-dir="desc">
+                                            Option Quote Time <span data-strangle-sort-indicator="snapshotTime">↓</span>
+                                        </button>
+                                    </th>
                                     <th>Ticker</th>
                                     <th>Expiration</th>
                                     <th>Strikes</th>
@@ -264,10 +302,30 @@
                                     <th>Bid</th>
                                     <th>Ask</th>
                                     <th>Midpoint</th>
+                                    <th>
+                                        <button type="button" class="btn btn-sm table-sort-btn" data-strangle-sort="netMidpoint" data-dir="desc">
+                                            Net Midpoint <span data-strangle-sort-indicator="netMidpoint">↓</span>
+                                        </button>
+                                    </th>
                                     <th>IV</th>
+                                    <th>
+                                        <button type="button" class="btn btn-sm table-sort-btn" data-strangle-sort="netIv" data-dir="desc">
+                                            Net IV <span data-strangle-sort-indicator="netIv">↓</span>
+                                        </button>
+                                    </th>
                                     <th>Delta</th>
+                                    <th>
+                                        <button type="button" class="btn btn-sm table-sort-btn" data-strangle-sort="netDelta" data-dir="desc">
+                                            Net Delta <span data-strangle-sort-indicator="netDelta">↓</span>
+                                        </button>
+                                    </th>
                                     <th>Gamma</th>
                                     <th>Theta</th>
+                                    <th>
+                                        <button type="button" class="btn btn-sm table-sort-btn" data-strangle-sort="netTheta" data-dir="desc">
+                                            Net Theta <span data-strangle-sort-indicator="netTheta">↓</span>
+                                        </button>
+                                    </th>
                                     <th>Vega</th>
                                     <th>Open Interest</th>
                                     <th>Day Volume</th>
@@ -307,8 +365,15 @@
             var strangleActiveFilters = document.getElementById('strangleActiveFilters');
             var strangleFilterHint = document.getElementById('strangleFilterHint');
             var strangleTableBody = document.getElementById('strangleTableBody');
+            var strangleSummaryMidpoint = document.getElementById('strangleSummaryMidpoint');
+            var strangleSummaryNetIv = document.getElementById('strangleSummaryNetIv');
+            var strangleSummaryDelta = document.getElementById('strangleSummaryDelta');
+            var strangleSummaryTheta = document.getElementById('strangleSummaryTheta');
+            var strangleSortButtons = Array.from(document.querySelectorAll('[data-strangle-sort]'));
             var strangleSelectionLabels = [];
             var strangleFilterStorageKey = 'option-analysis-snapshot#pane-strangle-filters';
+            var strangleSortField = 'snapshotTime';
+            var strangleSortDirection = 'desc';
 
             function setActiveTab(tabName) {
                 tabPanes.forEach(function (pane) { pane.classList.remove('active'); });
@@ -591,6 +656,97 @@
                 return raw;
             }
 
+            function parseNumber(value) {
+                if (value == null || value === '') {
+                    return null;
+                }
+                var numeric = Number(value);
+                return Number.isFinite(numeric) ? numeric : null;
+            }
+
+            function formatNumber(value) {
+                return Number.isFinite(value) ? value.toFixed(2) : '-';
+            }
+
+            function updateStrangleSummary(midpointSum, netIvSum, deltaSum, thetaSum) {
+                if (strangleSummaryMidpoint) {
+                    strangleSummaryMidpoint.textContent = formatNumber(midpointSum);
+                }
+                if (strangleSummaryNetIv) {
+                    strangleSummaryNetIv.textContent = formatNumber(netIvSum);
+                }
+                if (strangleSummaryDelta) {
+                    strangleSummaryDelta.textContent = formatNumber(deltaSum);
+                }
+                if (strangleSummaryTheta) {
+                    strangleSummaryTheta.textContent = formatNumber(thetaSum);
+                }
+            }
+
+            function toNumberOrZero(value) {
+                var parsed = parseNumber(value);
+                return parsed == null ? 0 : parsed;
+            }
+
+            function buildStrangleDerived(entry) {
+                var putSnapshot = entry.putSnapshot || {};
+                var callSnapshot = entry.callSnapshot || {};
+
+                return {
+                    netMidpoint: toNumberOrZero(putSnapshot.midpoint) + toNumberOrZero(callSnapshot.midpoint),
+                    netIv: toNumberOrZero(putSnapshot.impliedVolatility) + toNumberOrZero(callSnapshot.impliedVolatility),
+                    netDelta: toNumberOrZero(putSnapshot.delta) + toNumberOrZero(callSnapshot.delta),
+                    netTheta: toNumberOrZero(putSnapshot.theta) + toNumberOrZero(callSnapshot.theta)
+                };
+            }
+
+            function getSnapshotTimeForSort(entry) {
+                var putTime = entry.putSnapshot ? entry.putSnapshot.snapshotTime : '';
+                var callTime = entry.callSnapshot ? entry.callSnapshot.snapshotTime : '';
+                return callTime || putTime || '';
+            }
+
+            function sortStrangleRows(renderedRows) {
+                if (!Array.isArray(renderedRows) || renderedRows.length < 2) {
+                    return renderedRows;
+                }
+
+                var dir = strangleSortDirection === 'asc' ? 1 : -1;
+                return renderedRows.slice().sort(function (a, b) {
+                    if (strangleSortField === 'snapshotTime') {
+                        var ta = toSortableTimeValue(getSnapshotTimeForSort(a));
+                        var tb = toSortableTimeValue(getSnapshotTimeForSort(b));
+                        if (ta === tb) return 0;
+                        return ta < tb ? -dir : dir;
+                    }
+
+                    var da = buildStrangleDerived(a);
+                    var db = buildStrangleDerived(b);
+                    var av = da[strangleSortField] || 0;
+                    var bv = db[strangleSortField] || 0;
+                    if (av === bv) return 0;
+                    return av < bv ? -dir : dir;
+                });
+            }
+
+            function renderStrangleSortIndicators() {
+                strangleSortButtons.forEach(function (btn) {
+                    var field = btn.dataset.strangleSort;
+                    var indicator = btn.querySelector('[data-strangle-sort-indicator]');
+                    if (!indicator) {
+                        return;
+                    }
+
+                    if (field === strangleSortField) {
+                        indicator.textContent = strangleSortDirection === 'asc' ? '↑' : '↓';
+                        btn.dataset.dir = strangleSortDirection;
+                    } else {
+                        indicator.textContent = '↕';
+                        btn.dataset.dir = 'desc';
+                    }
+                });
+            }
+
             var strangleRenderToken = 0;
 
             function renderStrangleRows() {
@@ -601,9 +757,10 @@
                 var renderToken = ++strangleRenderToken;
                 strangleTableBody.innerHTML = '';
                 if (strangleSelectionLabels.length === 0) {
+                    updateStrangleSummary(0, 0, 0, 0);
                     var empty = document.createElement('tr');
                     var emptyCell = document.createElement('td');
-                    emptyCell.colSpan = 15;
+                    emptyCell.colSpan = 19;
                     emptyCell.className = 'table-empty';
                     emptyCell.textContent = 'No strangle snapshots found for selected legs.';
                     empty.appendChild(emptyCell);
@@ -613,7 +770,7 @@
 
                 var loading = document.createElement('tr');
                 var loadingCell = document.createElement('td');
-                loadingCell.colSpan = 15;
+                loadingCell.colSpan = 19;
                 loadingCell.className = 'table-empty';
                 loadingCell.textContent = 'Loading strangle snapshots...';
                 loading.appendChild(loadingCell);
@@ -692,15 +849,23 @@
                     strangleTableBody.innerHTML = '';
 
                     if (renderedRows.length === 0) {
+                        updateStrangleSummary(0, 0, 0, 0);
                         var empty = document.createElement('tr');
                         var emptyCell = document.createElement('td');
-                        emptyCell.colSpan = 15;
+                        emptyCell.colSpan = 19;
                         emptyCell.className = 'table-empty';
                         emptyCell.textContent = 'No strangle snapshots found for selected legs.';
                         empty.appendChild(emptyCell);
                         strangleTableBody.appendChild(empty);
                         return;
                     }
+
+                    renderedRows = sortStrangleRows(renderedRows);
+
+                    var totalMidpointSum = 0;
+                    var totalNetIv = 0;
+                    var totalNetDelta = 0;
+                    var totalNetTheta = 0;
 
                     renderedRows.forEach(function (entry) {
                     var tr = document.createElement('tr');
@@ -749,25 +914,42 @@
                     appendLegCell(valueOrDash(entry.putSnapshot, 'bid'), valueOrDash(entry.callSnapshot, 'bid'));
                     appendLegCell(valueOrDash(entry.putSnapshot, 'ask'), valueOrDash(entry.callSnapshot, 'ask'));
                     appendLegCell(valueOrDash(entry.putSnapshot, 'midpoint'), valueOrDash(entry.callSnapshot, 'midpoint'));
+
+                    var derived = buildStrangleDerived(entry);
+                    appendCell(formatNumber(derived.netMidpoint));
+
                     appendLegCell(valueOrDash(entry.putSnapshot, 'impliedVolatility'), valueOrDash(entry.callSnapshot, 'impliedVolatility'));
+                    appendCell(formatNumber(derived.netIv));
                     appendLegCell(valueOrDash(entry.putSnapshot, 'delta'), valueOrDash(entry.callSnapshot, 'delta'));
+                    appendCell(formatNumber(derived.netDelta));
+
                     appendLegCell(valueOrDash(entry.putSnapshot, 'gamma'), valueOrDash(entry.callSnapshot, 'gamma'));
                     appendLegCell(valueOrDash(entry.putSnapshot, 'theta'), valueOrDash(entry.callSnapshot, 'theta'));
+                    appendCell(formatNumber(derived.netTheta));
+
                     appendLegCell(valueOrDash(entry.putSnapshot, 'vega'), valueOrDash(entry.callSnapshot, 'vega'));
                     appendLegCell(valueOrDash(entry.putSnapshot, 'openInterest'), valueOrDash(entry.callSnapshot, 'openInterest'));
                     appendLegCell(valueOrDash(entry.putSnapshot, 'dayVolume'), valueOrDash(entry.callSnapshot, 'dayVolume'));
 
+                    totalMidpointSum += derived.netMidpoint;
+                    totalNetIv += derived.netIv;
+                    totalNetDelta += derived.netDelta;
+                    totalNetTheta += derived.netTheta;
+
                     strangleTableBody.appendChild(tr);
                     });
+
+                    updateStrangleSummary(totalMidpointSum, totalNetIv, totalNetDelta, totalNetTheta);
                 }).catch(function () {
                     if (renderToken !== strangleRenderToken) {
                         return;
                     }
 
                     strangleTableBody.innerHTML = '';
+                    updateStrangleSummary(0, 0, 0, 0);
                     var error = document.createElement('tr');
                     var errorCell = document.createElement('td');
-                    errorCell.colSpan = 15;
+                    errorCell.colSpan = 19;
                     errorCell.className = 'table-empty';
                     errorCell.textContent = 'Failed to load strangle snapshots.';
                     error.appendChild(errorCell);
@@ -813,6 +995,27 @@
                 renderStrangleRows();
             }
 
+            strangleSortButtons.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var field = btn.dataset.strangleSort;
+                    if (!field) {
+                        return;
+                    }
+
+                    if (strangleSortField === field) {
+                        strangleSortDirection = strangleSortDirection === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        strangleSortField = field;
+                        strangleSortDirection = 'desc';
+                    }
+
+                    renderStrangleSortIndicators();
+                    renderStrangleRows();
+                });
+            });
+
+            renderStrangleSortIndicators();
+
             function scheduleSnapshotRefresh() {
                 if (!pageContent) {
                     return;
@@ -831,6 +1034,83 @@
                 }, refreshIntervalMs);
             }
             var contractsById = new Map();
+            var contractSnapshotSortState = new Map();
+
+            function getContractSnapshotSort(contractId) {
+                var key = normalizeValue('optionContractId', contractId);
+                if (!key) {
+                    return { field: 'snapshotTime', direction: 'desc' };
+                }
+
+                if (!contractSnapshotSortState.has(key)) {
+                    contractSnapshotSortState.set(key, { field: 'snapshotTime', direction: 'desc' });
+                }
+                return contractSnapshotSortState.get(key);
+            }
+
+            function setContractSnapshotSort(contractId, field, direction) {
+                var key = normalizeValue('optionContractId', contractId);
+                if (!key) {
+                    return;
+                }
+                contractSnapshotSortState.set(key, { field: field, direction: direction });
+            }
+
+            function renderContractSnapshotSortIndicators(detailsRow, field, direction) {
+                if (!detailsRow) {
+                    return;
+                }
+
+                var buttons = Array.from(detailsRow.querySelectorAll('[data-contract-sort]'));
+                buttons.forEach(function (btn) {
+                    var sortField = btn.dataset.contractSort;
+                    var indicator = btn.querySelector('[data-contract-sort-indicator]');
+                    if (!indicator) {
+                        return;
+                    }
+
+                    if (sortField === field) {
+                        indicator.textContent = direction === 'asc' ? '↑' : '↓';
+                        btn.dataset.dir = direction;
+                    } else {
+                        indicator.textContent = '↕';
+                        btn.dataset.dir = 'desc';
+                    }
+                });
+            }
+
+            function numericValueForSort(rawValue) {
+                var parsed = parseNumber(rawValue);
+                return parsed == null ? 0 : parsed;
+            }
+
+            function sortContractSnapshots(rows, strikePrice, sortField, sortDirection) {
+                if (!Array.isArray(rows) || rows.length < 2) {
+                    return rows;
+                }
+
+                var dir = sortDirection === 'asc' ? 1 : -1;
+                return rows.slice().sort(function (a, b) {
+                    var av;
+                    var bv;
+
+                    if (sortField === 'snapshotTime') {
+                        av = toSortableTimeValue(a.snapshotTime);
+                        bv = toSortableTimeValue(b.snapshotTime);
+                    } else if (sortField === 'stockDistance') {
+                        av = numericValueForSort(a.underlyingPrice) - numericValueForSort(strikePrice);
+                        bv = numericValueForSort(b.underlyingPrice) - numericValueForSort(strikePrice);
+                    } else {
+                        av = numericValueForSort(a[sortField]);
+                        bv = numericValueForSort(b[sortField]);
+                    }
+
+                    if (av === bv) {
+                        return 0;
+                    }
+                    return av < bv ? -dir : dir;
+                });
+            }
 
             function dedupeContractTabOptions() {
                 var tickerOptions = document.getElementById('contractTabTickerOptions');
@@ -977,21 +1257,30 @@
                 var tbody = detailsRow.querySelector('.contract-snapshot-tbody');
                 if (!tbody) return;
 
+                var sortState = getContractSnapshotSort(contractId);
+                renderContractSnapshotSortIndicators(detailsRow, sortState.field, sortState.direction);
+
                 tbody.innerHTML = '';
                 var loadingRow = document.createElement('tr');
                 var loadingCell = document.createElement('td');
-                loadingCell.colSpan = 12;
+                loadingCell.colSpan = 13;
                 loadingCell.className = 'table-empty';
                 loadingCell.textContent = 'Loading snapshots...';
                 loadingRow.appendChild(loadingCell);
                 tbody.appendChild(loadingRow);
 
                 fetchContractSnapshots(contractId).then(function (rows) {
+                    var contract = contractsById.get(normalizeValue('optionContractId', contractId)) || null;
+                    var strikePrice = contract ? parseNumber(contract.strikePrice) : null;
+                    var currentSort = getContractSnapshotSort(contractId);
+
+                    rows = sortContractSnapshots(rows, strikePrice, currentSort.field, currentSort.direction);
+
                     tbody.innerHTML = '';
                     if (rows.length === 0) {
                         var emptyRow = document.createElement('tr');
                         var emptyCell = document.createElement('td');
-                        emptyCell.colSpan = 12;
+                        emptyCell.colSpan = 13;
                         emptyCell.className = 'table-empty';
                         emptyCell.textContent = 'No snapshots found for this contract.';
                         emptyRow.appendChild(emptyCell);
@@ -1000,10 +1289,16 @@
                     }
 
                     rows.forEach(function (snapshot) {
+                        var underlyingPrice = parseNumber(snapshot.underlyingPrice);
+                        var stockDistance = (strikePrice == null || underlyingPrice == null)
+                            ? '-'
+                            : formatNumber(underlyingPrice - strikePrice);
+
                         var tr = document.createElement('tr');
                         [
                             snapshot.snapshotTime,
                             snapshot.underlyingPrice,
+                            stockDistance,
                             snapshot.bid,
                             snapshot.ask,
                             snapshot.midpoint,
@@ -1025,7 +1320,7 @@
                     tbody.innerHTML = '';
                     var errorRow = document.createElement('tr');
                     var errorCell = document.createElement('td');
-                    errorCell.colSpan = 12;
+                    errorCell.colSpan = 13;
                     errorCell.className = 'table-empty';
                     errorCell.textContent = 'Failed to load snapshots for this contract.';
                     errorRow.appendChild(errorCell);
@@ -1037,6 +1332,34 @@
                 btn.addEventListener('click', function () {
                     setActiveTab(btn.dataset.tabTarget);
                 });
+            });
+
+            document.addEventListener('click', function (event) {
+                var btn = event.target.closest('[data-contract-sort]');
+                if (!btn) {
+                    return;
+                }
+
+                var detail = btn.closest('.contract-snapshot-detail');
+                if (!detail || !detail.dataset.contractId) {
+                    return;
+                }
+
+                var contractId = detail.dataset.contractId;
+                var field = btn.dataset.contractSort;
+                if (!field) {
+                    return;
+                }
+
+                var current = getContractSnapshotSort(contractId);
+                var nextDirection = 'desc';
+                if (current.field === field) {
+                    nextDirection = current.direction === 'asc' ? 'desc' : 'asc';
+                }
+
+                setContractSnapshotSort(contractId, field, nextDirection);
+                renderContractSnapshotSortIndicators(detail.closest('tr'), field, nextDirection);
+                renderContractSnapshots(contractId);
             });
 
             if (applyContractTabSelectionBtn) {

@@ -25,6 +25,7 @@ import com.rama.mudstock.repository.option.OptionSnapshotIVMetricRepository;
 import com.rama.mudstock.repository.option.OptionSnapshotRepository;
 import com.rama.mudstock.repository.option.OptionToAnalyseRepository;
 import com.rama.mudstock.repository.stockwatchlist.StockRepository;
+import com.rama.mudstock.util.MudDateUtil;
 
 @Controller
 @RequestMapping("/option-analysis")
@@ -219,6 +220,10 @@ public class OptionAnalysisController {
     @GetMapping("/snapshot/contracts/{contractId}")
     @ResponseBody
     public List<Map<String, Object>> snapshotByContract(@PathVariable Long contractId) {
-        return optionSnapshotRepository.listByContractId(contractId);
+        List<Map<String, Object>> rows = optionSnapshotRepository.listByContractId(contractId);
+        rows.forEach(row -> row.put(
+            "option_quote_time",
+            MudDateUtil.utcToLocalDateTimeMinuteString(row.get("option_quote_time"))));
+        return rows;
     }
 }

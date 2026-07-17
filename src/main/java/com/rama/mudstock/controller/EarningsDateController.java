@@ -3,8 +3,6 @@ package com.rama.mudstock.controller;
 import java.time.LocalDate;
 
 import org.springframework.format.annotation.DateTimeFormat;
-
-import com.rama.mudstock.util.MudDateUtil;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +16,7 @@ import com.rama.mudstock.model.earnings.EarningsDate;
 import com.rama.mudstock.model.earnings.EarningsDateView;
 import com.rama.mudstock.model.stockwatchlist.Stock;
 import com.rama.mudstock.service.EarningsDateService;
+import com.rama.mudstock.util.MudDateUtil;
 
 
 // Sync
@@ -51,6 +50,19 @@ public class EarningsDateController {
         }
         model.addAttribute("list", view);
         return hxRequest != null ? "earnings/list :: content" : "earnings/list";
+    }
+
+    @GetMapping("/list")
+    public String listAlias(Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
+        return list(model, hxRequest);
+    }
+
+    @GetMapping("/entries")
+    public String entries(Model model,
+            @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
+        model.addAttribute("entryList", service.listAllEntries());
+        return hxRequest != null ? "earnings/entries :: content" : "earnings/entries";
     }
 
     @GetMapping("/new")

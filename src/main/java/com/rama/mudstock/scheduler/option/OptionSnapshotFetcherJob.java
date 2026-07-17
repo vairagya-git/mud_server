@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import com.rama.mudstock.enums.CronjobConfigEnum;
 import com.rama.mudstock.facade.OptionSnapshotFetcherFacade;
 import com.rama.mudstock.scheduler.AbstractCronjob;
 import com.rama.mudstock.service.SystemConfigService;
@@ -29,7 +30,7 @@ public class OptionSnapshotFetcherJob extends AbstractCronjob {
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
     public void fetchSnapshots() {
-        String purpose = "OptionSnapshotFetcherJob";
+        String purpose = CronjobConfigEnum.Purpose.OPTION_SNAPSHOT_FETCHER_JOB.value();
 
         if (!isEnabled(purpose)) {
             log.info("OptionSnapshotFetcherJob: disabled by system_config (purpose={}, code={})", purpose, enabledCode());
@@ -40,14 +41,14 @@ public class OptionSnapshotFetcherJob extends AbstractCronjob {
             return;
         }
 
-        if (!shouldExecuteSinceLastUpdated(purpose, LISBON)) {
+        if (!shouldExecuteSinceLastUpdated("OptionSnapshotFetcherJob", null, purpose, LISBON)) {
             return;
         }
 
         try {
             int inserted = optionSnapshotFetcherFacade.fetchAndStoreSnapshots();
             log.info("OptionSnapshotFetcherJob: inserted {} option_snapshot row(s)", inserted);
-            updateLastUpdatedNowUtc(purpose);
+            updateLastUpdatedNowUtc(purpose, lastUpdatedCode());
         } catch (Exception ex) {
             log.error("OptionSnapshotFetcherJob: snapshot fetch failed", ex);
         }

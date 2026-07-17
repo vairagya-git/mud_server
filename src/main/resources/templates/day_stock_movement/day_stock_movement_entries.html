@@ -176,6 +176,7 @@
             var addChangePercentFilterBtn = document.getElementById('addChangePercentFilterBtn');
             var openChangePercentSearchInput = document.getElementById('openChangePercentSearchInput');
             var addOpenChangePercentFilterBtn = document.getElementById('addOpenChangePercentFilterBtn');
+            var filterStorageKey = 'day-stock-movement/entries#filters';
             var sortState = { key: null, dir: 'asc' };
             var filters = { ticker: [], dayCode: [], date: [], changePercent: [], openChangePercent: [] };
 
@@ -290,6 +291,42 @@
                 });
             }
 
+            function saveFilters() {
+                try {
+                    window.localStorage.setItem(filterStorageKey, JSON.stringify(filters));
+                } catch (err) {
+                    console.warn('Failed to persist day stock movement entry filters', err);
+                }
+            }
+
+            function restoreFilters() {
+                try {
+                    var raw = window.localStorage.getItem(filterStorageKey);
+                    if (!raw) {
+                        return;
+                    }
+
+                    var saved = JSON.parse(raw);
+                    if (!saved || typeof saved !== 'object') {
+                        return;
+                    }
+
+                    ['ticker', 'dayCode', 'date', 'changePercent', 'openChangePercent'].forEach(function (field) {
+                        if (!Array.isArray(saved[field])) {
+                            return;
+                        }
+
+                        filters[field] = saved[field]
+                            .filter(function (value) { return typeof value === 'string'; })
+                            .map(function (value) { return value.trim(); })
+                            .filter(function (value) { return value !== ''; })
+                            .slice(0, 10);
+                    });
+                } catch (err) {
+                    console.warn('Failed to restore day stock movement entry filters', err);
+                }
+            }
+
             function addFilter(field, value) {
                 var normalized = (value || '').trim();
                 if (!normalized) return;
@@ -312,12 +349,14 @@
                 filters[field].push(normalized);
                 renderActiveFilters();
                 applyFilters();
+                saveFilters();
             }
 
             function removeFilter(field, value) {
                 filters[field] = filters[field].filter(function (v) { return v !== value; });
                 renderActiveFilters();
                 applyFilters();
+                saveFilters();
             }
 
             if (addTickerFilterBtn) {
@@ -491,9 +530,11 @@
                     filters.openChangePercent = [];
                     renderActiveFilters();
                     applyFilters();
+                    saveFilters();
                 });
             }
 
+            restoreFilters();
             renderActiveFilters();
             applyFilters();
         })();

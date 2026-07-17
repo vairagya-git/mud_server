@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import com.rama.mudstock.enums.CronjobConfigEnum;
 import com.rama.mudstock.scheduler.AbstractCronjob;
 import com.rama.mudstock.service.BenzingaFirmService;
 import com.rama.mudstock.service.SystemConfigService;
@@ -37,7 +38,7 @@ public class WeeklyAnalystFirmUpdateCronjob extends AbstractCronjob {
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
     public void run() {
-        String purpose = "WeeklyAnalystFirmUpdateCronjob";
+        String purpose = CronjobConfigEnum.Purpose.WEEKLY_ANALYST_FIRM_UPDATE_CRONJOB.value();
 
         boolean enabled = isEnabled(purpose);
 
@@ -48,14 +49,14 @@ public class WeeklyAnalystFirmUpdateCronjob extends AbstractCronjob {
             return;
         }
 
-        if (!shouldExecuteSinceLastUpdated(purpose, LISBON)) {
+        if (!shouldExecuteSinceLastUpdated("WeeklyAnalystFirmUpdateCronjob", null, purpose, LISBON)) {
             return;
         }
 
         log.info("WeeklyAnalystFirmUpdateCronjob: starting weekly analyst firm sync");
         try {
             int updated = benzingaFirmService.fetchAndSaveSmart();
-            updateLastUpdatedNowUtc(purpose);
+            updateLastUpdatedNowUtc(purpose, lastUpdatedCode());
             log.info("WeeklyAnalystFirmUpdateCronjob: completed — {} firm(s) inserted/updated", updated);
         } catch (Exception ex) {
             log.error("WeeklyAnalystFirmUpdateCronjob: error during firm sync", ex);

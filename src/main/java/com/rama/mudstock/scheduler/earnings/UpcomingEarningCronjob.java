@@ -52,7 +52,7 @@ public class UpcomingEarningCronjob extends AbstractCronjob {
     @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
     public void run() {
         var watchlistCfg = CronjobConfigEnum.WATCHLIST_CODES;
-        String purpose = "WeeklyUpcomingEarningCronjob";
+        String purpose = CronjobConfigEnum.Purpose.WEEKLY_UPCOMING_EARNING_CRONJOB.value();
 
         boolean enabled = isEnabled(purpose);
 
@@ -63,7 +63,7 @@ public class UpcomingEarningCronjob extends AbstractCronjob {
             return;
         }
 
-        if (!shouldExecuteSinceLastUpdated(purpose, LISBON)) {
+        if (!shouldExecuteSinceLastUpdated("UpcomingEarningCronjob", null, purpose, LISBON)) {
             return;
         }
 
@@ -95,7 +95,7 @@ public class UpcomingEarningCronjob extends AbstractCronjob {
                 log.error("UpcomingEarningCronjob: error processing stock {}", stock.getTicker(), ex);
             }
         }
-        updateLastUpdatedNowUtc(purpose);
+        updateLastUpdatedNowUtc(purpose, lastUpdatedCode());
         log.info("UpcomingEarningCronjob: finished");
     }
 

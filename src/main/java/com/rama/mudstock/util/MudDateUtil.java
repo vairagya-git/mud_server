@@ -1,6 +1,11 @@
 package com.rama.mudstock.util;
 
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
@@ -24,6 +29,9 @@ public final class MudDateUtil {
 
     /** Slash date: {@code dd/MM/yyyy} */
     public static final DateTimeFormatter FMT_SLASH = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    /** Date-time to minute precision: {@code yyyy-MM-dd HH:mm}. */
+    public static final DateTimeFormatter FMT_DATE_TIME_MINUTE = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     /**
      * Day-code format used for auto-generated movement key codes: {@code dd_MMM_yy}
@@ -159,5 +167,36 @@ public final class MudDateUtil {
     public static String unquote(String s) {
         if (s == null) return "";
         return s.trim().replaceAll("^\"|\"$", "");
+    }
+
+    /**
+     * Converts a UTC date-time value to a local-time display string
+     * ({@code yyyy-MM-dd HH:mm}) using the JVM default time zone.
+     *
+     * <p>Accepted inputs: {@link Timestamp}, {@link Instant}, and
+     * {@link LocalDateTime} (treated as UTC).</p>
+     *
+     * @param utcValue UTC value from persistence/query layer
+     * @return local-time formatted string, or {@code ""} when value is null
+     */
+    public static String utcToLocalDateTimeMinuteString(Object utcValue) {
+        if (utcValue == null) {
+            return "";
+        }
+
+        Instant instant;
+        if (utcValue instanceof Timestamp timestamp) {
+            instant = timestamp.toInstant();
+        } else if (utcValue instanceof Instant parsedInstant) {
+            instant = parsedInstant;
+        } else if (utcValue instanceof LocalDateTime localDateTime) {
+            instant = localDateTime.atZone(ZoneOffset.UTC).toInstant();
+        } else {
+            return utcValue.toString();
+        }
+
+        return instant
+            .atZone(ZoneId.systemDefault())
+            .format(FMT_DATE_TIME_MINUTE);
     }
 }

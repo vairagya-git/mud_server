@@ -11,6 +11,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import com.rama.mudstock.enums.CronjobConfigEnum;
 import com.rama.mudstock.scheduler.AbstractCronjob;
 import com.rama.mudstock.service.DayStockMovementService;
 import com.rama.mudstock.service.SystemConfigService;
@@ -33,7 +34,7 @@ public class StockMovementKeyMapEntryScheduler extends AbstractCronjob {
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
     public void runDayStockMovementKeyMapEntry() {
-        String purpose = "DayStockMovementKeyMapEntry";
+        String purpose = CronjobConfigEnum.Purpose.DAY_STOCK_MOVEMENT_KEY_MAP_ENTRY.value();
 
         boolean enabled = isEnabled(purpose);
 
@@ -43,7 +44,7 @@ public class StockMovementKeyMapEntryScheduler extends AbstractCronjob {
             return;
         }
 
-        if (!shouldExecuteSinceLastUpdated(purpose, LISBON)) {
+        if (!shouldExecuteSinceLastUpdated("StockMovementKeyMapEntryScheduler", null, purpose, LISBON)) {
             return;
         }
 
@@ -64,7 +65,7 @@ public class StockMovementKeyMapEntryScheduler extends AbstractCronjob {
             return;
         }
 
-        updateLastUpdatedNowUtc(purpose);
+        updateLastUpdatedNowUtc(purpose, lastUpdatedCode());
     }
 
     @EventListener(ApplicationReadyEvent.class)

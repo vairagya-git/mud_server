@@ -60,4 +60,29 @@ public class EarningsDateEntryRepository {
         Integer count = jdbc.queryForObject(sql, Integer.class, earningsDateId);
         return count != null && count == 0;
     }
+
+    public java.util.List<java.util.Map<String, Object>> listEntriesForFrontend() {
+        String sql = """
+                SELECT
+                    ede.id,
+                    ede.stock_id,
+                    ede.earnings_date_id,
+                    s.ticker,
+                    ed.quarter,
+                    ed.earnings_date,
+                    ede.datePeriod,
+                    ede.`from` AS from_date,
+                    ede.`Open` AS open_price,
+                    ede.`high` AS high_price,
+                    ede.`low` AS low_price,
+                    ede.`close` AS close_price,
+                    ede.`volume` AS volume,
+                    ede.`status` AS status
+                FROM earnings_date_entry ede
+                JOIN earnings_date ed ON ed.id = ede.earnings_date_id
+                JOIN stock s ON s.id = ede.stock_id
+                ORDER BY ed.earnings_date DESC, s.ticker ASC, ede.id ASC
+                """;
+        return jdbc.queryForList(sql);
+    }
 }

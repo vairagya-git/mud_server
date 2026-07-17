@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import com.rama.mudstock.enums.CronjobConfigEnum;
 import com.rama.mudstock.scheduler.AbstractCronjob;
 import com.rama.mudstock.service.DayStockMovementService;
 import com.rama.mudstock.service.SystemConfigService;
@@ -29,7 +30,7 @@ public class StockMovementCleanupScheduler extends AbstractCronjob {
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
     public void cleanupRedundantKeys() {
-        String purpose = "DayStockMovementCleanup";
+        String purpose = CronjobConfigEnum.Purpose.DAY_STOCK_MOVEMENT_CLEANUP.value();
 
         boolean enabled = isEnabled(purpose);
 
@@ -39,14 +40,14 @@ public class StockMovementCleanupScheduler extends AbstractCronjob {
             return;
         }
 
-        if (!shouldExecuteSinceLastUpdated(purpose, LISBON)) {
+        if (!shouldExecuteSinceLastUpdated("StockMovementCleanupScheduler", null, purpose, LISBON)) {
             return;
         }
 
         log.info("StockMovementCleanupScheduler: scanning for redundant every-day movement keys");
         try {
             int removed = dayStockMovementService.cleanupRedundantMasters();
-            updateLastUpdatedNowUtc(purpose);
+            updateLastUpdatedNowUtc(purpose, lastUpdatedCode());
             log.info("StockMovementCleanupScheduler: removed {} redundant key(s)", removed);
         } catch (Exception ex) {
             log.error("StockMovementCleanupScheduler: error during cleanup", ex);

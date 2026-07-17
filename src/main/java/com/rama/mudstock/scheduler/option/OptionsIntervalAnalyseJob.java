@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import com.rama.mudstock.enums.CronjobConfigEnum;
 import com.rama.mudstock.facade.OptionsIntervalAnalyseFacade;
 import com.rama.mudstock.scheduler.AbstractCronjob;
 import com.rama.mudstock.service.SystemConfigService;
@@ -29,21 +30,21 @@ public class OptionsIntervalAnalyseJob extends AbstractCronjob {
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
     public void analyseOptionContracts() {
-        String purpose = "OptionsIntervalAnalyseDailyJob";
+        String purpose = CronjobConfigEnum.Purpose.OPTIONS_INTERVAL_ANALYSE_DAILY_JOB.value();
 
         if (!isEnabled(purpose)) {
             log.info("OptionsIntervalAnalyseJob: disabled by system_config (purpose={}, code={})", purpose, enabledCode());
             return;
         }
 
-        if (!shouldExecuteSinceLastUpdated(purpose, LISBON)) {
+        if (!shouldExecuteSinceLastUpdated("OptionsIntervalAnalyseJob", null, purpose, LISBON)) {
             return;
         }
 
         try {
             int processed = optionsIntervalAnalyseFacade.analyseDaily();
             log.info("OptionsIntervalAnalyseJob: processed {} option contract(s)", processed);
-            updateLastUpdatedNowUtc(purpose);
+            updateLastUpdatedNowUtc(purpose, lastUpdatedCode());
         } catch (Exception ex) {
             log.error("OptionsIntervalAnalyseJob: option contract analysis failed", ex);
         }

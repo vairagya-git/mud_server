@@ -29,14 +29,14 @@ public class MysqlDBDumpScheduler extends AbstractCronjob {
     @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
     public void dumpMysqlDatabase() {
         var locationCfg = CronjobConfigEnum.LOCATION;
-        String purpose = "DailyMysqlDBDump";
+        String purpose = CronjobConfigEnum.Purpose.DAILY_MY_SQL_DB_DUMP.value();
 
         if (!isEnabled(purpose)) {
             log.info("MysqlDBDumpScheduler: disabled by system_config (purpose={}, code={})", purpose, enabledCode());
             return;
         }
 
-        if (!shouldExecuteSinceLastUpdated(purpose, LISBON)) {
+        if (!shouldExecuteSinceLastUpdated("MysqlDBDumpScheduler", null, purpose, LISBON)) {
             return;
         }
 
@@ -49,7 +49,7 @@ public class MysqlDBDumpScheduler extends AbstractCronjob {
         try {
             Path outputFile = mysqlDumpService.dumpToLocation(outputLocation);
             log.info("MysqlDBDumpScheduler: mysql dump completed at {}", outputFile);
-            updateLastUpdatedNowUtc(purpose);
+            updateLastUpdatedNowUtc(purpose, lastUpdatedCode());
         } catch (Exception ex) {
             log.error("MysqlDBDumpScheduler: mysql dump failed", ex);
         }

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Earnings Entries - MudStock</title></head>
+<body>
+<div id="page-content" th:fragment="content">
+    <div class="page-header"><h1>Earnings Date Entries</h1></div>
+    <div class="filter-bar" style="margin-bottom:16px">
+        <span class="filter-bar-label">Entries Filter</span>
+        <div class="table-filter-input">
+            <input id="entriesTickerFilterInput" class="table-filter-input-uppercase" type="text" placeholder="Ticker" aria-label="Filter entries by ticker">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+            <button id="clearEntriesFilterBtn" type="button" class="btn btn-sm btn-secondary">Clear</button>
+        </div>
+    </div>
+    <div class="card table-wrap">
+        <table id="earningsEntriesTable">
+            <thead>
+                <tr>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-entries-sort="ticker" data-dir="asc">
+                            Ticker <span data-entries-sort-indicator="ticker">↕</span>
+                        </button>
+                    </th>
+                    <th>Quarter</th>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-entries-sort="earningsDate" data-dir="desc">
+                            Earnings Date <span data-entries-sort-indicator="earningsDate">↕</span>
+                        </button>
+                    </th>
+                    <th>Date Period</th>
+                    <th>From</th>
+                    <th>Open</th>
+                    <th>High</th>
+                    <th>Low</th>
+                    <th>Close</th>
+                    <th>Volume</th>
+                </tr>
+            </thead>
+            <tbody id="earningsEntriesTableBody">
+                <tr th:if="${entryList == null || #lists.isEmpty(entryList)}">
+                    <td colspan="10" class="table-empty">No earnings_date_entry rows found.</td>
+                </tr>
+                <tr th:each="e : ${entryList}"
+                    th:attr="data-entry-row=true,data-ticker=${e.ticker},data-earnings-date=${e.earnings_date}">
+                    <td><span class="badge badge-grey" th:text="${e.ticker}"></span></td>
+                    <td th:text="${e.quarter}"></td>
+                    <td th:text="${e.earnings_date}"></td>
+                    <td th:text="${e.datePeriod}"></td>
+                    <td th:text="${e.from_date}"></td>
+                    <td th:text="${e.open_price}"></td>
+                    <td th:text="${e.high_price}"></td>
+                    <td th:text="${e.low_price}"></td>
+                    <td th:text="${e.close_price}"></td>
+                    <td th:text="${e.volume}"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        (function () {
+            var tickerFilterInput = document.getElementById('entriesTickerFilterInput');
+            var clearFilterBtn = document.getElementById('clearEntriesFilterBtn');
+            var tableBody = document.getElementById('earningsEntriesTableBody');
+            var sortButtons = Array.from(document.querySelectorAll('[data-entries-sort]'));
+            var sortField = '';
+            var sortDirection = 'asc';
+
+            if (!tableBody) {
+                return;
+            }
+
+            function normalize(value) {
+                return (value || '').toString().trim().toUpperCase();
+            }
+
+            function toSortableDate(value) {
+                var raw = (value || '').toString().trim();
+                if (!raw) {
+                    return 0;
+                }
+                var ts = Date.parse(raw.replace(' ', 'T'));
+                return Number.isFinite(ts) ? ts : 0;
+            }
+
+            function removeNoResultsRow() {
+                var existing = tableBody.querySelector('tr[data-entries-empty="true"]');
+                if (existing) {
+                    existing.remove();
+                }
+            }
+
+            function ensureNoResultsRow() {
+                removeNoResultsRow();
+                var row = document.createElement('tr');
+                row.dataset.entriesEmpty = 'true';
+                var cell = document.createElement('td');
+                cell.colSpan = 10;
+                cell.className = 'table-empty';
+                cell.textContent = 'No entries match current filters.';
+                row.appendChild(cell);
+                tableBody.appendChild(row);
+            }
+
+            function renderSortIndicators() {
+                sortButtons.forEach(function (btn) {
+                    var field = btn.dataset.entriesSort;
+                    var indicator = btn.querySelector('[data-entries-sort-indicator]');
+                    if (!indicator) {
+                        return;
+                    }
+
+                    if (field === sortField) {
+                        indicator.textContent = sortDirection === 'asc' ? '↑' : '↓';
+                    } else {
+                        indicator.textContent = '↕';
+                    }
+                });
+            }
+
+            function applyFilterAndSort() {
+                removeNoResultsRow();
+
+                var rows = Array.from(tableBody.querySelectorAll('tr[data-entry-row="true"]'));
+                var tickerFilter = normalize(tickerFilterInput ? tickerFilterInput.value : '');
+
+                rows.forEach(function (row) {
+                    var ticker = normalize(row.dataset.ticker || '');
+                    var visible = !tickerFilter || ticker.indexOf(tickerFilter) !== -1;
+                    row.style.display = visible ? '' : 'none';
+                });
+
+                if (sortField) {
+                    var dir = sortDirection === 'asc' ? 1 : -1;
+                    rows.sort(function (a, b) {
+                        var av;
+                        var bv;
+
+                        if (sortField === 'ticker') {
+                            av = normalize(a.dataset.ticker || '');
+                            bv = normalize(b.dataset.ticker || '');
+                        } else if (sortField === 'earningsDate') {
+                            av = toSortableDate(a.dataset.earningsDate || '');
+                            bv = toSortableDate(b.dataset.earningsDate || '');
+                        } else {
+                            av = '';
+                            bv = '';
+                        }
+
+                        if (av === bv) {
+                            return 0;
+                        }
+                        return av < bv ? -dir : dir;
+                    });
+
+                    rows.forEach(function (row) {
+                        tableBody.appendChild(row);
+                    });
+                }
+
+                var visibleCount = rows.filter(function (row) {
+                    return row.style.display !== 'none';
+                }).length;
+
+                if (visibleCount === 0 && rows.length > 0) {
+                    ensureNoResultsRow();
+                }
+            }
+
+            sortButtons.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var field = btn.dataset.entriesSort;
+                    if (!field) {
+                        return;
+                    }
+
+                    if (sortField === field) {
+                        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        sortField = field;
+                        sortDirection = field === 'earningsDate' ? 'desc' : 'asc';
+                    }
+
+                    renderSortIndicators();
+                    applyFilterAndSort();
+                });
+            });
+
+            if (tickerFilterInput) {
+                tickerFilterInput.addEventListener('input', applyFilterAndSort);
+            }
+
+            if (clearFilterBtn) {
+                clearFilterBtn.addEventListener('click', function () {
+                    if (tickerFilterInput) {
+                        tickerFilterInput.value = '';
+                        tickerFilterInput.focus();
+                    }
+                    applyFilterAndSort();
+                });
+            }
+
+            renderSortIndicators();
+            applyFilterAndSort();
+        })();
+    </script>
+</div>
+</body>
+</html>

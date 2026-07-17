@@ -42,7 +42,7 @@ public class DailyAnalystRatingUpdateCronjob extends AbstractCronjob {
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
     public void run() {
-        String purpose = "DailyAnalystRatingCronjob";
+        String purpose = CronjobConfigEnum.Purpose.DAILY_ANALYST_RATING_CRONJOB.value();
         String watchlistCode = CronjobConfigEnum.WATCHLIST_CODES.code();
 
         boolean enabled = isEnabled(purpose);
@@ -54,7 +54,7 @@ public class DailyAnalystRatingUpdateCronjob extends AbstractCronjob {
             return;
         }
 
-        if (!shouldExecuteSinceLastUpdated(purpose, LISBON)) {
+        if (!shouldExecuteSinceLastUpdated("DailyAnalystRatingUpdateCronjob", null, purpose, LISBON)) {
             return;
         }
 
@@ -99,7 +99,7 @@ public class DailyAnalystRatingUpdateCronjob extends AbstractCronjob {
         }
 
         log.info("DailyAnalystRatingUpdateCronjob: done — total ratings saved={}", totalSaved);
-        updateLastUpdatedNowUtc(purpose);
+        updateLastUpdatedNowUtc(purpose, lastUpdatedCode());
     }
 
     private LocalDate resolveRatingDateFromLastUpdated(String rawLastUpdated) {

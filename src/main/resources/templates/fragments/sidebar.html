@@ -65,6 +65,14 @@
                    data-path="/earnings">
                     <i class="nav-icon">📅</i> Earnings List
                 </a>
+                     <a href="/earnings/entries"
+                         hx-get="/earnings/entries"
+                         hx-target="#page-content"
+                         hx-swap="outerHTML"
+                         hx-push-url="true"
+                         data-path="/earnings/entries">
+                          <i class="nav-icon">📄</i> Earnings Entries
+                     </a>
                 <a href="/earnings/new"
                    hx-get="/earnings/new"
                    hx-target="#page-content"

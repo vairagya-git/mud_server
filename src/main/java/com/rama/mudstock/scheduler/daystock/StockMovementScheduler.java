@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import com.rama.mudstock.enums.CronjobConfigEnum;
 import com.rama.mudstock.facade.DayStockMovementFacade;
 import com.rama.mudstock.scheduler.AbstractCronjob;
 import com.rama.mudstock.service.SystemConfigService;
@@ -26,7 +27,7 @@ public class StockMovementScheduler extends AbstractCronjob {
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
     public void pollDayStockMovementMappings() {
-        String purpose = "DayStockMovementData";
+        String purpose = CronjobConfigEnum.Purpose.DAY_STOCK_MOVEMENT_DATA.value();
 
         boolean enabled = isEnabled(purpose);
 
@@ -37,7 +38,7 @@ public class StockMovementScheduler extends AbstractCronjob {
         }
 
         LocalDate processingDate = resolveNextProcessingDate(purpose, LISBON);
-        if (!shouldProcessDate("StockMovementScheduler", processingDate, purpose, LISBON)) {
+        if (!shouldExecuteSinceLastUpdated("StockMovementScheduler", processingDate, purpose, LISBON)) {
             return;
         }
 
@@ -45,7 +46,7 @@ public class StockMovementScheduler extends AbstractCronjob {
         try {
             String cutOffTime = resolveStringValue(purpose, cutOffTimeCode());
             dayStockMovementFacade.fetchAggregatesForNewMappings(cutOffTime, cutOffTimeFormat(), LISBON);
-            updateLastUpdatedForProcessingDate(purpose, processingDate, LISBON);
+            updateLastUpdatedForProcessingDate(purpose, lastUpdatedCode(), processingDate, LISBON);
         } catch (Exception ex) {
             log.error("StockMovementScheduler: error while fetching aggregates", ex);
         }

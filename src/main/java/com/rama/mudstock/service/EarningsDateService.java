@@ -25,6 +25,8 @@ public class EarningsDateService {
 
     public List<EarningsDate> listAll() { return repo.findAll(); }
 
+    public List<java.util.Map<String, Object>> listAllEntries() { return entryRepository.listEntriesForFrontend(); }
+
     public List<java.util.Map<String, Object>> listUpcoming() { return repo.listUpcoming(); }
 
     public Optional<EarningsDate> get(Long id) { return repo.findById(id); }
