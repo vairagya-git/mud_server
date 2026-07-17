@@ -1,7 +1,5 @@
 
 
-SELECT * from firm;
-
 /* Analyst Rating */
 CREATE TABLE `firm` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -15,7 +13,11 @@ CREATE TABLE `firm` (
   CONSTRAINT unique_earnings_upcoming UNIQUE (`benzinga_firm_id`, `name`)
 ) ENGINE=InnoDB;
 
-select * from firm_analyst;
+select * from firm_analyst
+where benzinga_analyst_id = "585939c2ee7bf600010fe946";
+
+SELECT * from firm 
+where benzinga_firm_id = "6065edf1a93f970001bad529";
 
 CREATE TABLE `firm_analyst` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -40,20 +42,22 @@ CREATE TABLE `firm_analyst` (
 
 select * from firm_analyst_stock_rating;
 
+drop table firm_analyst_stock_rating;
+
 CREATE TABLE `firm_analyst_stock_rating` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `firm_analyst_id` bigint unsigned NOT NULL,
   `firm_id` bigint unsigned NOT NULL,
   `stock_id` bigint unsigned NOT NULL,
-   `rating_action` ENUM('maintains', 'downgrades', 'upgrades', 'initiates_coverage_on', 'reiterates', 'resumes_coverage', 'suspends_coverage') NOT NULL,
-   `price_target_action` ENUM('maintains', 'lowers', 'raises', 'announces', 'removes', 'resumes') NOT NULL,
-   `rating` ENUM('buy', 'outperform', 'overweight', 'positive', 'equal-weight', 'sector perform', 'sector outperform', 'market outperform', 'neutral', 'hold', "sell", "perform") NOT NULL,
-   `previous_rating` ENUM('buy', 'outperform', 'overweight', 'positive', 'equal-weight', 'sector perform', 'sector outperform', 'market outperform', 'neutral', 'hold', "sell", "perform") NOT NULL,
+   `rating_action` ENUM('maintains', 'downgrades', 'upgrades', 'initiates_coverage_on', 'reiterates', "reinstates", 'resumes_coverage', 'suspends_coverage', "assumes") NOT NULL,
+   `price_target_action` ENUM('maintains', 'lowers', 'raises', 'announces', 'removes', 'resumes', "none") NOT NULL default 'none',
+   `rating` ENUM('buy', "strong buy", 'outperform', 'underweight', "underperform", "peer perform", 'overweight', 'positive', 'equal-weight', 'sector perform', 'sector outperform', 'sector weight', "market perform", 'market outperform', 'neutral', 'hold', "sell", "perform", "reduce", "in-line") NOT NULL,
+   `previous_rating` ENUM('buy', "strong buy", 'outperform','underweight', "underperform", "peer perform", 'overweight', 'positive', 'equal-weight', 'sector perform', 'sector outperform', 'sector weight', "market perform", 'market outperform', 'neutral', 'hold', "sell", "perform", "reduce", "in-line", "none") NOT NULL default 'none',
    `price_target` decimal(20,0) NOT NULL,
-   `previous_price_target`  decimal(20,0) NOT NULL,
-   `price_percent_change`  decimal(20,2) NOT NULL,
-   `adjusted_price_target` decimal(20,0) NOT NULL,
-   `previous_adjusted_price_target` decimal(20,0) NOT NULL,
+   `previous_price_target`  decimal(20,0) DEFAULT NULL,
+   `price_percent_change`  decimal(20,2) DEFAULT NULL,
+   `adjusted_price_target` decimal(20,0) DEFAULT NULL,
+   `previous_adjusted_price_target` decimal(20,0) DEFAULT NULL,
    `importance` int NOT NULL, 
    `last_updated` date DEFAULT NULL,
    `date` date DEFAULT NULL,
@@ -111,9 +115,20 @@ CREATE TABLE `earnings_date_entry` (
   CONSTRAINT unique_earnings_upcoming UNIQUE (`stock_id`, `earnings_date_id`,`datePeriod`)
 ) ENGINE=InnoDB;
 
+
+select * from day_stock_movement_entry;
+
 /*  Day Stock Movement */
 
-select * from day_stock_movement_key;
+select * from day_stock_movement_key
+order by id desc;
+
+DELETE dsmm
+FROM day_stock_movement_map dsmm
+JOIN day_stock_movement_key dsmk
+    ON dsmm.day_stock_movement_key_id = dsmk.id
+WHERE dsmk.code = '16_JUL_26_MOVING_STOCK';
+DELETE from day_stock_movement_key where code = "16_JUL_26_MOVING_STOCK";
 
 CREATE TABLE `day_stock_movement_key` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -141,7 +156,8 @@ CREATE TABLE `day_stock_movement_map` (
   CONSTRAINT `unique_dsm_stock_key` UNIQUE (`stock_id`, `day_stock_movement_key_id`)
 ) ENGINE=InnoDB;
 
-select * from day_stock_movement_entry;
+select * from day_stock_movement_entry
+order by id desc
 
 CREATE TABLE `day_stock_movement_entry` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -212,114 +228,164 @@ CREATE TABLE `system_config` (
   CONSTRAINT unique_day_event_master UNIQUE (`code`, `purpose`)
 ) ENGINE=InnoDB;
 
-drop table system_config;
-
-SELECT * FROM watchlist;
-
+delete from system_config;
 
 INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VALUES
 /* WeeklyAnalystFirmUpdateCronjob Settings*/
 ('useage', 'useage', 'String', 'WeeklyAnalystFirmUpdateCronjob', 'Populate weekly analyst firm details from Benzinga API'),
-('enabled', 'false', 'boolean', 'WeeklyAnalystFirmUpdateCronjob', 'Weekly Analyst Firm Update > cronjob Enabled'),
-('cronExpression', '0 0 21 * * SUN', 'CronExpression', 'WeeklyAnalystFirmUpdateCronjob', 'CronExpression for the cronjob'),
+('enabled', 'true', 'boolean', 'WeeklyAnalystFirmUpdateCronjob', 'Weekly Analyst Firm Update > cronjob Enabled'),
+('execution', 'hourly', 'String', 'WeeklyAnalystFirmUpdateCronjob', 'CronExpression for the cronjob'),
+('minuteHourlyFrequency', '2', 'Integer', 'WeeklyAnalystFirmUpdateCronjob', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'WeeklyAnalystFirmUpdateCronjob', 'LastUpdated dateTime'),
+('forceExecute', 'false', 'boolean', 'WeeklyAnalystFirmUpdateCronjob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
+
 /* DailyAnalystRatingCronjob Settings*/
 ('useage', 'useage', 'String', 'DailyAnalystRatingCronjob', 'Pull the Analyst rating details from Benzinga API'),
 ('watchlist-codes', 'MOVING_STOCK,SEMI_WATCHLIST', 'StringArray', 'DailyAnalystRatingCronjob', 'Benzinga Analyst Rating > Watchlist Codes'),
-('enabled', 'false', 'boolean', 'DailyAnalystRatingCronjob', 'Benzinga Analyst Rating > cronjob Enabled'),
-('cronExpression', '0 0 0/15 * * SUN', 'CronExpression', 'DailyAnalystRatingCronjob', 'CronExpression for the cronjob'),
+('enabled', 'true', 'boolean', 'DailyAnalystRatingCronjob', 'Benzinga Analyst Rating > cronjob Enabled'),
+('execution', 'hourly', 'String', 'DailyAnalystRatingCronjob', 'CronExpression for the cronjob'),
+('minuteHourlyFrequency', '2', 'Integer', 'DailyAnalystRatingCronjob', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'DailyAnalystRatingCronjob', 'LastUpdated dateTime'),
+('forceExecute', 'false', 'boolean', 'DailyAnalystRatingCronjob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
+
 /* WeeklyUpcomingEarningCronjob Settings*/
 ('useage', 'useage', 'String', 'WeeklyUpcomingEarningCronjob', 'Populate the weekly upcoming earnings for the next week from yfinance'),
-('enabled', 'false', 'boolean', 'WeeklyUpcomingEarningCronjob', 'Weekly Upcoming Earning Cronjob > cronjob Enabled'),
+('enabled', 'true', 'boolean', 'WeeklyUpcomingEarningCronjob', 'Weekly Upcoming Earning Cronjob > cronjob Enabled'),
 ('watchlist-codes', 'MOVING_STOCK,SEMI_WATCHLIST', 'StringArray', 'WeeklyUpcomingEarningCronjob', 'Weekly Upcoming Earning Cronjob > Watchlist Codes'),
-('cronExpression', '0 0 21 * * MON-FRI', 'CronExpression', 'WeeklyUpcomingEarningCronjob', 'CronExpression for the cronjob'),
+('execution', 'hourly', 'String', 'WeeklyUpcomingEarningCronjob', 'CronExpression for the cronjob'),
+('minuteHourlyFrequency', '12', 'Integer', 'WeeklyUpcomingEarningCronjob', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'WeeklyUpcomingEarningCronjob', 'LastUpdated dateTime'),
+('forceExecute', 'false', 'boolean', 'WeeklyUpcomingEarningCronjob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
+
 /*DayStockMovementData Settings*/
 ('useage', 'useage', 'String', 'DayStockMovementData', 'Populated the day stock movment data for the current day'),
-('enabled', 'false', 'boolean', 'DayStockMovementData', 'Day Stock Movement Data > cronjob Enabled'),
-('cronExpression', '0 0 21 * * FRI', 'CronExpression', 'DayStockMovementData', 'CronExpression for the cronjob'),
+('enabled', 'true', 'boolean', 'DayStockMovementData', 'Day Stock Movement Data > cronjob Enabled'),
+('execution', 'daily', 'String', 'DayStockMovementData', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'DayStockMovementData', 'LastUpdated dateTime'),
 ('cutOffTime', '22:00', 'DateTime', 'DayStockMovementData', 'Record should only be fetched after the cutoffTime'),
+('forceExecute', 'false', 'boolean', 'DayStockMovementData', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
+
+
 /*DayStockMovementCleanup Settings*/
 ('useage', 'useage', 'String', 'DayStockMovementCleanup', 'Cleanup the day stock movement data for the current day'),
-('enabled', 'false', 'boolean', 'DayStockMovementCleanup', 'Day Stock Movement Cleanup > cronjob Enabled'),
-('cronExpression', '0 0 8 * * MON-FRI', 'CronExpression', 'DayStockMovementCleanup', 'CronExpression for the cronjob'),
-('lastUpdated', '22:00', 'DateTime', 'DayStockMovementCleanup', 'LastUpdated dateTime'),
+('enabled', 'true', 'boolean', 'DayStockMovementCleanup', 'Day Stock Movement Cleanup > cronjob Enabled'),
+('execution', 'daily', 'String', 'DayStockMovementCleanup', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'DayStockMovementCleanup', 'LastUpdated dateTime'),
+('cutOffTime', '23:00', 'DateTime', 'DayStockMovementCleanup', 'Record should only be fetched after the cutoffTime'),
+('forceExecute', 'false', 'boolean', 'DayStockMovementCleanup', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
+
 /*DayStockMovementKeyMapEntry Settings*/
 ('useage', 'useage', 'String', 'DayStockMovementKeyMapEntry', 'Populate the day stock movement key map entry for the current day'),
-('enabled', 'false', 'boolean', 'DayStockMovementKeyMapEntry', 'Day Stock Movement Key Map Entry > cronjob Enabled'),
+('enabled', 'true', 'boolean', 'DayStockMovementKeyMapEntry', 'Day Stock Movement Key Map Entry > cronjob Enabled'),
 ('watchlist-codes', 'MOVING_STOCK,SEMI_WATCHLIST', 'StringArray', 'DayStockMovementKeyMapEntry', 'Day Stock Movement Key Map Entry > Watchlist Codes'),
-('cronExpression', '0 0 22 * * FRI', 'CronExpression', 'DayStockMovementKeyMapEntry', 'CronExpression for the cronjob'),
+('execution', 'daily', 'String', 'DayStockMovementKeyMapEntry', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'DayStockMovementKeyMapEntry', 'LastUpdated dateTime'),
+('cutOffTime', '19:00', 'DateTime', 'DayStockMovementKeyMapEntry', 'Record should only be fetched after the cutoffTime'),
+('minuteHourlyFrequency', '1', 'DateTime', 'DayStockMovementKeyMapEntry', 'Incase want to push date temporarily. Change execution to minutes'),
+('forceExecute', 'false', 'boolean', 'DayStockMovementKeyMapEntry', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
+
 /*MYSQL DB Dump Settings*/
 ('useage', 'useage', 'String', 'DailyMysqlDBDump', 'Dump the Mysql and write into the location'),
-('enabled', 'false', 'boolean', 'DailyMysqlDBDump', 'Mysql Stock Dump Enable property'),
+('enabled', 'true', 'boolean', 'DailyMysqlDBDump', 'Mysql Stock Dump Enable property'),
 ('location', '/Users/rama/Library/Mobile Documents/com~apple~CloudDocs/TechExamples/mysql', 'String', 'DailyMysqlDBDump', 'Day Stock Movement Key Map Entry > Watchlist Codes'),
-('cronExpression', '0 0 22 * * *', 'CronExpression', 'DailyMysqlDBDump', 'CronExpression for the cronjob'),
+('execution', 'daily', 'String', 'DailyMysqlDBDump', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'DailyMysqlDBDump', 'LastUpdated dateTime'),
-/*OptionContractAnalyserDailyJob Settings*/
-('useage', 'useage', 'String', 'OptionContractAnalyserDailyJob', 'Dump the Mysql and write into the location'),
-('enabled', 'false', 'boolean', 'OptionContractAnalyserDailyJob', 'OptionContractAnalyserDailyJob Enable property'),
-('cronExpression', '0 0/1 * * * *', 'CronExpression', 'OptionContractAnalyserDailyJob', 'CronExpression for the cronjob'),
-('lastUpdated', '', 'DateTime', 'OptionContractAnalyserDailyJob', 'LastUpdated dateTime');
+('cutOffTime', '22:00', 'DateTime', 'DailyMysqlDBDump', 'Record should only be fetched after the cutoffTime'),
+('forceExecute', 'false', 'boolean', 'DailyMysqlDBDump', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
 
+/*OptionsIntervalAnalyseDailyJob Settings*/
+('useage', 'useage', 'String', 'OptionsIntervalAnalyseDailyJob', 'Create and Close Optoin Contract entry'),
+('enabled', 'true', 'boolean', 'OptionsIntervalAnalyseDailyJob', 'OptionContractAnalyserDailyJob Enable property'),
+('execution', 'minutes', 'String', 'OptionsIntervalAnalyseDailyJob', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'OptionsIntervalAnalyseDailyJob', 'Create and Close Optoin Contract entry'),
+('minuteHourlyFrequency', '5', 'Integer', 'OptionsIntervalAnalyseDailyJob', 'CronExpression for the cronjob'),
+('forceExecute', 'false', 'boolean', 'OptionsIntervalAnalyseDailyJob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
 
+/*OptionSnapshotFetcherJob Settings*/
+('useage', 'useage', 'String', 'OptionSnapshotFetcherJob', 'Fetch Option snapshot data for the given ticker, strike and expiration date'),
+('enabled', 'true', 'boolean', 'OptionSnapshotFetcherJob', 'OptionSnapshotFetcherJob Enable property'),
+('execution', 'minutes', 'String', 'OptionSnapshotFetcherJob', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'OptionSnapshotFetcherJob', 'Create and Close Optoin Contract entry'),
+('startTime', '14:30', 'Time', 'OptionSnapshotFetcherJob', 'Cronjob Start Time'),
+('endTime', '21:00', 'Time', 'OptionSnapshotFetcherJob', 'Cronjob End Time'),
+('minuteHourlyFrequency', '5', 'Integer', 'OptionSnapshotFetcherJob', 'CronExpression for the cronjob'),
+('forceExecute', 'false', 'boolean', 'OptionSnapshotFetcherJob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
 
-select * from system_config where `code` = 'cutOffTime';
-
-select * from day_stock_movement_entry; day_opening_change_percent
+/*OptionSnapshotIVMetrics Settings*/
+('useage', 'useage', 'String', 'OptionSnapshotIVMetrics', 'Calculate Option IV Metrics after end of the day'),
+('enabled', 'true', 'boolean', 'OptionSnapshotIVMetrics', 'OptionSnapshotIVMetrics Enable property'),
+('execution', 'daily', 'String', 'OptionSnapshotIVMetrics', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'OptionSnapshotIVMetrics', 'Create and Close Optoin Contract entry'),
+('cutOffTime', '22:00', 'DateTime', 'OptionSnapshotIVMetrics', 'Record should only be fetched after the cutoffTime'),
+('forceExecute', 'false', 'boolean', 'OptionSnapshotIVMetrics', 'Set this flag if you want to execute this cronjob by overriding all the other flag');
 
 
 /**** OPTION CONTRACT START ****/
-CREATE TABLE option_to_analyse (
+
+select * from options_interval_analyse;
+
+CREATE TABLE options_interval_analyse (
     id  bigint unsigned NOT NULL AUTO_INCREMENT,
     stock_id bigint unsigned NOT NULL,
     contract_type ENUM('CALL', 'PUT', 'BOTH') NOT NULL,
-    status ENUM('TRUE', 'FALSE') NOT NULL,
+    status ENUM('CREATE_CONTRACT', 'ACTIVE', 'CLOSE', 'COMPLETED') NOT NULL default 'CREATE_CONTRACT',
     expiration_date DATE NOT NULL,
     strike_from DECIMAL(12,4) NOT NULL,
     strike_to DECIMAL(12,4) NOT NULL,
     `interval` DECIMAL(12,2) NOT NULL,
-    call_option_contract_id bigint unsigned DEFAULT NULL,
-    put_option_contract_id bigint unsigned DEFAULT NULL,
     created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-	updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-	KEY `fk_ota_stock` (`stock_id`),
-    KEY `fk_ota_call_optcon` (`call_option_contract_id`),
-    KEY `fk_ota_put_optcon` (`put_option_contract_id`),
-	CONSTRAINT `fk_ota_stock` FOREIGN KEY (`stock_id`) REFERENCES `stock` (`id`),
-    CONSTRAINT `fk_ota_call_optcon` FOREIGN KEY (`call_option_contract_id`) REFERENCES `option_contract` (`id`),
-    CONSTRAINT `fk_ota_put_optcon` FOREIGN KEY (`call_option_contract_id`) REFERENCES `option_contract` (`id`),
-	CONSTRAINT `unique_ota_option_to_analyse` UNIQUE (`stock_id`, contract_type,`expiration_date`,strike_from,strike_to)
+  KEY `fk_ota_stock` (`stock_id`),
+  CONSTRAINT `fk_ota_stock` FOREIGN KEY (`stock_id`) REFERENCES `stock` (`id`),
+  CONSTRAINT `unique_ota_option_to_analyse` UNIQUE (`stock_id`, contract_type,`expiration_date`,strike_from,strike_to)
 );
 
-drop table option_to_analyse;
-    
+ALTER TABLE option_contract
+    ADD COLUMN status ENUM('ACTIVE', 'COMPLETED')
+    NOT NULL DEFAULT 'ACTIVE';
+
+select * from option_contract;
+
 CREATE TABLE option_contract (
     id  bigint unsigned NOT NULL AUTO_INCREMENT,
     stock_id bigint unsigned NOT NULL,
     contract_type ENUM('CALL', 'PUT') NOT NULL,
+    status ENUM('ACTIVE', 'COMPLETED') NOT NULL default 'ACTIVE',
     exercise_style VARCHAR(32),
     expiration_date DATE NOT NULL,
     strike_price DECIMAL(12,4) NOT NULL,
     shares_per_contract INT NOT NULL DEFAULT 100,
-	contract_ticker VARCHAR(128),
+  contract_ticker VARCHAR(128),
     created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-	updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-	PRIMARY KEY (`id`),
+  updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
     KEY `fk_optcon_stock` (`stock_id`),
     CONSTRAINT `fk_optcon_stock` FOREIGN KEY (`stock_id`) REFERENCES `stock` (`id`),
-	CONSTRAINT `unique_optcon_option_contract` UNIQUE (`stock_id`, contract_type,`expiration_date`,contract_ticker)
+    CONSTRAINT uk_optcon_contract_ticker UNIQUE (contract_ticker),
+  CONSTRAINT `unique_optcon_option_contract` UNIQUE (`stock_id`, contract_type,`expiration_date`,contract_ticker)
 );
 
+
+select * from option_snapshot os
+join option_contract oc on os.option_contract_id = oc.id
+where oc.contract_ticker = "O:INTC260717C00100000";
+
+delete from option_snapshot;
+drop table option_snapshot;
+drop table option_strategy_leg;
+drop table option_strategy_leg_snapshot;
+
 CREATE TABLE option_snapshot (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id bigint unsigned NOT NULL AUTO_INCREMENT,
 
-    option_contract_id BIGINT NOT NULL,
+    option_contract_id bigint unsigned NOT NULL,
+    stock_id bigint unsigned NOT NULL,
 
+-- Time this record was collected by the Java application
     snapshot_time DATETIME(6) NOT NULL,
+
+-- Provider timestamps
     option_quote_time DATETIME(6),
     option_trade_time DATETIME(6),
     underlying_time DATETIME(6),
@@ -328,115 +394,307 @@ CREATE TABLE option_snapshot (
     break_even_price DECIMAL(14,4),
     change_to_break_even DECIMAL(14,4),
 
-    bid DECIMAL(14,4),
-    ask DECIMAL(14,4),
-    midpoint DECIMAL(14,4),
-    last_trade_price DECIMAL(14,4),
-
+-- Greek
+    bid DECIMAL(6,2),
+    ask DECIMAL(6,2),
+    midpoint DECIMAL(6,2),
+    last_trade_price DECIMAL(6,2),
     bid_size INT,
     ask_size INT,
     last_trade_size INT,
 
-    implied_volatility DECIMAL(10,6),
-
-    delta DECIMAL(12,8),
-    gamma DECIMAL(12,8),
-    theta DECIMAL(12,8),
-    vega DECIMAL(12,8),
-
-    open_interest INT,
+# Greek
+    implied_volatility DECIMAL(6,2),
+  open_interest INT,
     day_volume INT,
 
-    quote_timeframe VARCHAR(32),
-    underlying_timeframe VARCHAR(32),
+# Greek
+    delta DECIMAL(12,3),
+    gamma DECIMAL(12,3),
+    theta DECIMAL(12,3),
+    vega DECIMAL(12,3),
+
+  quote_timeframe ENUM('DELAYED', 'REAL-TIME') NOT NULL default 'DELAYED',
+    underlying_timeframe ENUM('DELAYED', 'REAL-TIME') NOT NULL default 'DELAYED',
+    trade_timeframe ENUM('DELAYED', 'REAL-TIME') NOT NULL DEFAULT 'DELAYED',
+    
+    bid_exchange INT,
+  ask_exchange INT,
+  last_trade_exchange INT,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (`id`),
+    
+    CONSTRAINT fk_option_snapshot_stock 
+    FOREIGN KEY (stock_id) 
+        REFERENCES stock (id),
 
     CONSTRAINT fk_option_snapshot_contract
         FOREIGN KEY (option_contract_id)
         REFERENCES option_contract(id),
+  
+     CONSTRAINT uk_option_snapshot_contract_time
+        UNIQUE (option_contract_id, option_quote_time),
 
     INDEX idx_snapshot_contract_time (
         option_contract_id,
-        snapshot_time
-    ),
-
-    INDEX idx_snapshot_underlying_time (
-        snapshot_time,
-        underlying_price
+        option_quote_time
     )
 );
 
-CREATE TABLE option_snapshot_metric (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
 
-    option_snapshot_id BIGINT NOT NULL,
+CREATE TABLE option_strategy (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 
-    moneyness_pct DECIMAL(10,4),
-    days_to_expiry DECIMAL(10,4),
+    stock_id BIGINT UNSIGNED NOT NULL,
 
-    bid_ask_spread DECIMAL(14,4),
-    bid_ask_spread_pct DECIMAL(10,4),
+    previous_strategy_id BIGINT UNSIGNED NULL,
 
-    volume_oi_ratio DECIMAL(12,6),
+    strategy_name VARCHAR(150),
 
-    gamma_theta_ratio DECIMAL(14,8),
-    vega_theta_ratio DECIMAL(14,8),
+    strategy_type ENUM(
+        'LONG_CALL',
+        'LONG_PUT',
+        'LONG_STRADDLE',
+        'LONG_STRANGLE',
+        'BULL_CALL_SPREAD',
+        'BEAR_CALL_SPREAD',
+        'BULL_PUT_SPREAD',
+        'BEAR_PUT_SPREAD',
+        'IRON_CONDOR',
+        'IRON_BUTTERFLY',
+        'REVERSE_IRON_CONDOR',
+        'CUSTOM'
+    ) NOT NULL,
+
+    strategy_mode ENUM(
+        'LIVE_TRADE',
+        'SIMULATION'
+    ) NOT NULL,
+
+    strategy_action ENUM(
+        'NEW',
+        'ROLL',
+        'REBALANCE'
+    ) NOT NULL DEFAULT 'NEW',
+
+    status ENUM(
+        'OPEN',
+        'CLOSED',
+        'CANCELLED'
+    ) NOT NULL DEFAULT 'OPEN',
+
+    opened_at DATETIME(6) NOT NULL,
+    closed_at DATETIME(6) NULL,
+
+    entry_underlying_price DECIMAL(14,4),
+    exit_underlying_price DECIMAL(14,4),
+
+    realized_pnl DECIMAL(18,4),
+
+    notes TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    CONSTRAINT fk_option_strategy_stock
+        FOREIGN KEY (stock_id)
+        REFERENCES stock(id),
+
+    CONSTRAINT fk_option_strategy_previous
+        FOREIGN KEY (previous_strategy_id)
+        REFERENCES option_strategy(id),
+
+    INDEX idx_option_strategy_stock_status (
+        stock_id,
+        status
+    ),
+
+    INDEX idx_option_strategy_previous (
+        previous_strategy_id
+    )
+);
+
+CREATE TABLE option_strategy_leg (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+    option_strategy_id BIGINT UNSIGNED NOT NULL,
+    option_contract_id BIGINT UNSIGNED NOT NULL,
+
+    leg_number SMALLINT UNSIGNED NOT NULL,
+
+    position_side ENUM(
+        'LONG',
+        'SHORT'
+    ) NOT NULL,
+
+    quantity INT UNSIGNED NOT NULL DEFAULT 1,
+
+    entry_snapshot_id BIGINT UNSIGNED NULL,
+    entry_price DECIMAL(14,4) NOT NULL,
+
+    exit_snapshot_id BIGINT UNSIGNED NULL,
+    exit_price DECIMAL(14,4) NULL,
+
+    realized_pnl DECIMAL(18,4) NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    CONSTRAINT fk_strategy_leg_strategy
+        FOREIGN KEY (option_strategy_id)
+        REFERENCES option_strategy(id),
+
+    CONSTRAINT fk_strategy_leg_contract
+        FOREIGN KEY (option_contract_id)
+        REFERENCES option_contract(id),
+
+    CONSTRAINT fk_strategy_leg_entry_snapshot
+        FOREIGN KEY (entry_snapshot_id)
+        REFERENCES option_snapshot(id),
+
+    CONSTRAINT fk_strategy_leg_exit_snapshot
+        FOREIGN KEY (exit_snapshot_id)
+        REFERENCES option_snapshot(id),
+
+    CONSTRAINT uk_strategy_leg_number
+        UNIQUE (option_strategy_id, leg_number)
+);
+
+drop table option_strategy_snapshot;
+
+CREATE TABLE option_strategy_snapshot (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+    option_strategy_id BIGINT UNSIGNED NOT NULL,
+
+    snapshot_time DATETIME(6) NOT NULL,
+
+    underlying_price DECIMAL(14,4) NOT NULL,
+
+    entry_cost DECIMAL(18,4) NOT NULL,
+    current_market_value DECIMAL(18,4) NOT NULL,
+
+    unrealized_pnl DECIMAL(18,4) NOT NULL,
+    unrealized_pnl_pct DECIMAL(12,4),
+
+    realized_pnl DECIMAL(18,4) NOT NULL DEFAULT 0,
+    total_pnl DECIMAL(18,4) NOT NULL,
+
+    net_delta DECIMAL(14,8),
+    net_gamma DECIMAL(14,8),
+    net_theta DECIMAL(14,8),
+    net_vega DECIMAL(14,8),
+
+    average_iv DECIMAL(10,6),
+
+    total_open_interest BIGINT,
+    total_day_volume BIGINT,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_option_metric_snapshot
+    PRIMARY KEY (id),
+
+    CONSTRAINT fk_strategy_snapshot_strategy
+        FOREIGN KEY (option_strategy_id)
+        REFERENCES option_strategy(id),
+
+    CONSTRAINT uk_strategy_snapshot_time
+        UNIQUE (option_strategy_id, snapshot_time),
+
+    INDEX idx_strategy_snapshot_lookup (
+        option_strategy_id,
+        snapshot_time
+    )
+);
+
+
+CREATE TABLE option_strategy_leg_snapshot (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+    option_strategy_snapshot_id BIGINT UNSIGNED NOT NULL,
+    option_strategy_leg_id BIGINT UNSIGNED NOT NULL,
+    option_snapshot_id BIGINT UNSIGNED NOT NULL,
+
+    current_market_value DECIMAL(18,4) NOT NULL,
+    unrealized_pnl DECIMAL(18,4) NOT NULL,
+    unrealized_pnl_pct DECIMAL(12,4),
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    CONSTRAINT fk_leg_snapshot_strategy_snapshot
+        FOREIGN KEY (option_strategy_snapshot_id)
+        REFERENCES option_strategy_snapshot(id),
+
+    CONSTRAINT fk_leg_snapshot_strategy_leg
+        FOREIGN KEY (option_strategy_leg_id)
+        REFERENCES option_strategy_leg(id),
+
+    CONSTRAINT fk_leg_snapshot_option_snapshot
         FOREIGN KEY (option_snapshot_id)
         REFERENCES option_snapshot(id),
 
-    UNIQUE KEY uk_metric_snapshot (option_snapshot_id)
+    CONSTRAINT uk_strategy_leg_snapshot
+        UNIQUE (
+            option_strategy_snapshot_id,
+            option_strategy_leg_id
+        )
 );
 
-CREATE TABLE option_pair_snapshot (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
 
-    underlying_ticker VARCHAR(16) NOT NULL,
-    expiration_date DATE NOT NULL,
-    strike_price DECIMAL(12,4) NOT NULL,
+ max_iv_stock_distance DECIMAL(10,2),
+  min_iv_stock_distance DECIMAL(10,2),
 
-    snapshot_time DATETIME(6) NOT NULL,
-    underlying_price DECIMAL(14,4) NOT NULL,
+/*** Metrics tables ***/
 
-    call_snapshot_id BIGINT,
-    put_snapshot_id BIGINT,
+CREATE TABLE option_snapshot_iv_metric (
 
-    call_iv DECIMAL(10,6),
-    put_iv DECIMAL(10,6),
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    stock_id BIGINT UNSIGNED NOT NULL,
+    option_contract_id BIGINT UNSIGNED NOT NULL,
 
-    call_delta DECIMAL(12,8),
-    put_delta DECIMAL(12,8),
-    net_delta DECIMAL(12,8),
+    max_iv DECIMAL(10,2),
+    max_iv_time TIME(6),
+    max_iv_stock_distance DECIMAL(10,2),
 
-    combined_gamma DECIMAL(12,8),
-    combined_theta DECIMAL(12,8),
-    combined_vega DECIMAL(12,8),
+    min_iv DECIMAL(10,2),
+    min_iv_time TIME(6),
+    min_iv_stock_distance DECIMAL(10,2),
 
-    call_midpoint DECIMAL(14,4),
-    put_midpoint DECIMAL(14,4),
-    combined_midpoint DECIMAL(14,4),
-
-    call_open_interest INT,
-    put_open_interest INT,
-    total_open_interest INT,
-
-    call_volume INT,
-    put_volume INT,
-    total_volume INT,
+    iv_date DATE NOT NULL,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
 
-    INDEX idx_pair_lookup (
-        underlying_ticker,
-        expiration_date,
-        strike_price,
-        snapshot_time
-    )
+    PRIMARY KEY (id),
+
+    CONSTRAINT fk_option_snapshot_iv_metric_stock
+        FOREIGN KEY (stock_id)
+        REFERENCES stock(id),
+
+    CONSTRAINT fk_option_snapshot_iv_metric_contract
+        FOREIGN KEY (option_contract_id)
+        REFERENCES option_contract(id),
+
+    CONSTRAINT uk_option_snapshot_iv_metric
+        UNIQUE (
+            stock_id,
+            option_contract_id,
+            iv_date
+        )
 );
+
 /***** OPTION CONTRACT END ****/
 
 
@@ -818,7 +1076,7 @@ CREATE TABLE stock_days_price (
   performance_pct_1y DECIMAL(5,2) DEFAULT NULL,
 
   analyst_rating VARCHAR(64) DEFAULT NULL,
-	
+  
   created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
