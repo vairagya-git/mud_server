@@ -5,12 +5,15 @@ import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
-public final class DataConversionUtil {
+public final class TypeConverstionUtil {
 
     private static final BigDecimal HUNDRED = new BigDecimal("100");
 
-    private DataConversionUtil() {
+    private TypeConverstionUtil() {
     }
 
     public static Timestamp toTimestampFromEpochNanos(Long epochNanos) {
@@ -33,6 +36,75 @@ public final class DataConversionUtil {
         try {
             return Integer.valueOf(value.trim());
         } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    public static Integer toInteger(Object value) {
+        if (value instanceof Integer intValue) {
+            return intValue;
+        }
+        if (value instanceof Number numberValue) {
+            return numberValue.intValue();
+        }
+        if (value instanceof String strValue) {
+            return toInteger(strValue);
+        }
+        return null;
+    }
+
+    public static String toString(Object value) {
+        if (value == null) {
+            return "";
+        }
+        if (value instanceof String stringValue) {
+            return stringValue.trim();
+        }
+        return String.valueOf(value).trim();
+    }
+
+    public static Boolean toBoolean(Object value) {
+        if (value instanceof Boolean boolValue) {
+            return boolValue;
+        }
+        if (value instanceof String strValue) {
+            return Boolean.parseBoolean(strValue.trim());
+        }
+        return null;
+    }
+
+    public static Boolean toBooleanStrict(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String normalized = raw.trim();
+        if ("true".equalsIgnoreCase(normalized)) {
+            return Boolean.TRUE;
+        }
+        if ("false".equalsIgnoreCase(normalized)) {
+            return Boolean.FALSE;
+        }
+        return null;
+    }
+
+    public static List<String> toStringList(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return Collections.emptyList();
+        }
+        return Arrays.stream(raw.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isBlank())
+            .toList();
+    }
+
+    public static LocalDate toLocalDateFromDateOrDateTimePrefix(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String datePart = raw.length() >= 10 ? raw.substring(0, 10) : raw;
+        try {
+            return LocalDate.parse(datePart);
+        } catch (Exception ex) {
             return null;
         }
     }

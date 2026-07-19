@@ -1,6 +1,7 @@
 package com.rama.mudstock.repository;
 
 import java.util.Optional;
+import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -13,6 +14,8 @@ import com.rama.mudstock.model.SystemConfig;
 public interface SystemConfigRepository extends JpaRepository<SystemConfig, Long> {
 
     Optional<SystemConfig> findByPurposeAndCode(String purpose, String code);
+
+    List<SystemConfig> findByPurpose(String purpose);
 
     @Modifying
     @Transactional

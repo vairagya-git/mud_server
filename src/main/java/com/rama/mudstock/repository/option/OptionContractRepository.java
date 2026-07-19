@@ -51,34 +51,38 @@ public class OptionContractRepository {
         return count != null && count > 0;
     }
 
-    public List<Map<String, Object>> listAllWithTicker() {
-        String sql = "SELECT o.id, o.stock_id, s.ticker, o.contract_type, o.status, o.exercise_style, o.expiration_date, "
-            + "o.strike_price, o.shares_per_contract, o.contract_ticker, o.created_at, o.updated_at "
-            + "FROM option_contract o "
-            + "JOIN stock s ON s.id = o.stock_id "
-            + "ORDER BY o.updated_at DESC, s.ticker, o.expiration_date, o.strike_price";
-        return jdbc.queryForList(sql);
-    }
+    public List<Map<String, Object>> getOptionContractsWithTickerByStatus(String status, boolean snapshotFetchOnly) {
+        String selectClause = snapshotFetchOnly
+            ? "SELECT o.id, o.stock_id, s.ticker, o.contract_ticker, o.strike_price, o.expiration_date "
+            : "SELECT o.id, o.stock_id, s.ticker, o.contract_type, o.status, o.exercise_style, o.expiration_date, "
+                + "o.strike_price, o.shares_per_contract, o.contract_ticker, o.created_at, o.updated_at ";
 
-    public List<Map<String, Object>> listActiveWithTicker() {
-        String sql = "SELECT o.id, o.stock_id, s.ticker, o.contract_type, o.status, o.exercise_style, o.expiration_date, "
-            + "o.strike_price, o.shares_per_contract, o.contract_ticker, o.created_at, o.updated_at "
-            + "FROM option_contract o "
-            + "JOIN stock s ON s.id = o.stock_id "
-            + "WHERE UPPER(o.status) = UPPER(?) "
-            + "ORDER BY s.ticker, o.expiration_date, o.strike_price, o.contract_type";
-        return jdbc.queryForList(sql, STATUS_ACTIVE);
-    }
+        StringBuilder sql = new StringBuilder(selectClause)
+            .append("FROM option_contract o ")
+            .append("JOIN stock s ON s.id = o.stock_id ");
 
-    public List<Map<String, Object>> listActiveContractsForSnapshotFetch() {
-        String sql = "SELECT o.id, o.stock_id, s.ticker, o.contract_ticker, o.strike_price, o.expiration_date "
-            + "FROM option_contract o "
-            + "JOIN stock s ON s.id = o.stock_id "
-            + "WHERE UPPER(o.status) = UPPER(?) "
-            + "AND s.ticker IS NOT NULL "
-            + "AND s.ticker <> '' "
-            + "ORDER BY o.updated_at DESC";
-        return jdbc.queryForList(sql, STATUS_ACTIVE);
+        boolean hasStatus = status != null && !status.isBlank();
+        if (hasStatus) {
+            sql.append("WHERE UPPER(o.status) = UPPER(?) ");
+            if (snapshotFetchOnly) {
+                sql.append("AND s.ticker IS NOT NULL AND s.ticker <> '' ");
+            }
+        } else if (snapshotFetchOnly) {
+            sql.append("WHERE s.ticker IS NOT NULL AND s.ticker <> '' ");
+        }
+
+        if (snapshotFetchOnly) {
+            sql.append("ORDER BY o.updated_at DESC");
+        } else if (hasStatus) {
+            sql.append("ORDER BY s.ticker, o.expiration_date, o.strike_price, o.contract_type");
+        } else {
+            sql.append("ORDER BY o.updated_at DESC, s.ticker, o.expiration_date, o.strike_price");
+        }
+
+        if (hasStatus) {
+            return jdbc.queryForList(sql.toString(), status);
+        }
+        return jdbc.queryForList(sql.toString());
     }
 
     public int markContractsCompletedForInterval(Long stockId,

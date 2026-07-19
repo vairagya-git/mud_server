@@ -10,6 +10,7 @@ import com.rama.mudstock.enums.CronjobConfigEnum;
 import com.rama.mudstock.facade.DayStockMovementFacade;
 import com.rama.mudstock.scheduler.AbstractCronjob;
 import com.rama.mudstock.service.SystemConfigService;
+import com.rama.mudstock.util.TypeConverstionUtil;
 
 @Component
 @Profile("cronjob")
@@ -33,8 +34,11 @@ public class DayStockMovementCronjob extends AbstractCronjob {
 
         log.info("{}: polling for NEW day-stock-movement mappings and fetching aggregates", purpose);
         try {
-            String cutOffTime = resolveStringValue(purpose, cutOffTimeCode());
-            dayStockMovementFacade.fetchAggregatesForNewMappings(cutOffTime, cutOffTimeFormat(), com.rama.mudstock.config.ApplicationConfig.LISBON);
+            String cutOffTime = TypeConverstionUtil.toString(getConfigValue(CronjobConfigEnum.CUTOFF_TIME.code()));
+            dayStockMovementFacade.fetchAggregatesForNewMappings(
+                cutOffTime,
+                CronjobConfigEnum.CUTOFF_TIME.format(),
+                com.rama.mudstock.config.ApplicationConfig.LISBON);
             updateLastUpdatedNowUtc(purpose);
         } catch (Exception ex) {
             log.error("{}: error while fetching aggregates", purpose, ex);

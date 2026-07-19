@@ -13,7 +13,7 @@ import com.rama.mudstock.model.analyst.Firm;
 import com.rama.mudstock.repository.analyst.FirmAnalystRepository;
 import com.rama.mudstock.repository.analyst.FirmRepository;
 import com.rama.mudstock.service.BenzingaFirmService;
-import com.rama.mudstock.util.DataConversionUtil;
+import com.rama.mudstock.util.TypeConverstionUtil;
 import com.rama.mudstock.util.MudDateUtil;
 
 /**
@@ -83,12 +83,12 @@ public class FirmAnalystFacade {
                 analyst.getBenzingaFirmId(),
                 analyst.getFullName(),
                 lastUpdated,
-                DataConversionUtil.toBigDecimal(analyst.getOverallAvgReturn()),
-                DataConversionUtil.toBigDecimal(analyst.getOverallAvgReturnPercentile()),
-                DataConversionUtil.toBigDecimal(analyst.getOverallSuccessRate()),
-                DataConversionUtil.toBigDecimal(analyst.getSmartScore()),
-                DataConversionUtil.toBigDecimal(analyst.getTotalRatings()),
-                DataConversionUtil.toBigDecimal(analyst.getTotalRatingsPercentile()));
+                TypeConverstionUtil.toBigDecimal(analyst.getOverallAvgReturn()),
+                TypeConverstionUtil.toBigDecimal(analyst.getOverallAvgReturnPercentile()),
+                TypeConverstionUtil.toBigDecimal(analyst.getOverallSuccessRate()),
+                TypeConverstionUtil.toBigDecimal(analyst.getSmartScore()),
+                TypeConverstionUtil.toBigDecimal(analyst.getTotalRatings()),
+                TypeConverstionUtil.toBigDecimal(analyst.getTotalRatingsPercentile()));
 
         log.info("FirmAnalystFacade: upserted firm_analyst benzingaAnalystId={} firmId={}",
                 analyst.getBenzingaId(), firmId);

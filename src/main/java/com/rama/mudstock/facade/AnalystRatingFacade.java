@@ -17,7 +17,7 @@ import com.rama.mudstock.repository.analyst.FirmAnalystStockRatingRepository;
 import com.rama.mudstock.repository.analyst.FirmRepository;
 import com.rama.mudstock.repository.stockwatchlist.StockRepository;
 import com.rama.mudstock.service.BenzingaFirmService;
-import com.rama.mudstock.util.DataConversionUtil;
+import com.rama.mudstock.util.TypeConverstionUtil;
 import com.rama.mudstock.util.MudDateUtil;
 
 /**
@@ -122,11 +122,11 @@ public class AnalystRatingFacade {
             normalizePriceTargetAction(rating.getPriceTargetAction()),
             rating.getRating(),
             normalizePreviousRating(rating.getPreviousRating()),
-            DataConversionUtil.toBigDecimal(rating.getPriceTarget()),
-            DataConversionUtil.toBigDecimal(rating.getPreviousPriceTarget()),
-            DataConversionUtil.toBigDecimal(rating.getPricePercentChange()),
-            DataConversionUtil.toBigDecimal(rating.getAdjustedPriceTarget()),
-            DataConversionUtil.toBigDecimal(rating.getPreviousAdjustedPriceTarget()),
+            TypeConverstionUtil.toBigDecimal(rating.getPriceTarget()),
+            TypeConverstionUtil.toBigDecimal(rating.getPreviousPriceTarget()),
+            TypeConverstionUtil.toBigDecimal(rating.getPricePercentChange()),
+            TypeConverstionUtil.toBigDecimal(rating.getAdjustedPriceTarget()),
+            TypeConverstionUtil.toBigDecimal(rating.getPreviousAdjustedPriceTarget()),
             rating.getImportance(),
             lastUpdated,
             date,

@@ -59,7 +59,7 @@ public class OptionAnalysisController {
         stocks.sort(Comparator.comparing(s -> s.getTicker() == null ? "" : s.getTicker(), String.CASE_INSENSITIVE_ORDER));
 
         model.addAttribute("stocks", stocks);
-        model.addAttribute("entries", optionToAnalyseRepository.listAllWithTicker());
+        model.addAttribute("entries", optionToAnalyseRepository.getOptionsInternalAnalyseByStatus(null));
 
         return hxRequest != null ? "option_analysis/analyse :: content" : "option_analysis/analyse";
     }
@@ -187,6 +187,7 @@ public class OptionAnalysisController {
 
         if (OptionToAnalyseRepository.STATUS_CREATE_CONTRACT.equals(normalized)
             || OptionToAnalyseRepository.STATUS_ACTIVE.equals(normalized)
+            || OptionToAnalyseRepository.STATUS_PARTIALLY_COMPLETED.equals(normalized)
             || OptionToAnalyseRepository.STATUS_CLOSE.equals(normalized)
             || OptionToAnalyseRepository.STATUS_COMPLETED.equals(normalized)) {
             return normalized;
@@ -198,14 +199,16 @@ public class OptionAnalysisController {
     @GetMapping("/contract")
     public String contractList(Model model,
                                @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
-        model.addAttribute("contracts", optionContractRepository.listAllWithTicker());
+        model.addAttribute("contracts", optionContractRepository.getOptionContractsWithTickerByStatus(null, false));
         return hxRequest != null ? "option_analysis/contract :: content" : "option_analysis/contract";
     }
 
     @GetMapping("/snapshot")
     public String snapshotList(Model model,
                                @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
-        model.addAttribute("activeContracts", optionContractRepository.listActiveWithTicker());
+        model.addAttribute("activeContracts", optionContractRepository.getOptionContractsWithTickerByStatus(
+            OptionContractRepository.STATUS_ACTIVE,
+            false));
         model.addAttribute("snapshotRefreshIntervalMs", applicationProperties.getSnapshotRefreshMs());
         return hxRequest != null ? "option_analysis/snapshot :: content" : "option_analysis/snapshot";
     }

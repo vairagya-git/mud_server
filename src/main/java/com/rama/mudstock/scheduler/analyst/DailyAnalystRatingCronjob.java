@@ -19,6 +19,7 @@ import com.rama.mudstock.model.stockwatchlist.Stock;
 import com.rama.mudstock.repository.stockwatchlist.WatchlistRepository;
 import com.rama.mudstock.scheduler.AbstractCronjob;
 import com.rama.mudstock.service.SystemConfigService;
+import com.rama.mudstock.util.TypeConverstionUtil;
 import com.rama.mudstock.util.WatchlistUtil;
 
 @Component
@@ -63,7 +64,7 @@ public class DailyAnalystRatingCronjob extends AbstractCronjob {
         String watchlistCodes = String.join(",", watchlistCodeList);
         log.info("{}: starting for watchlist-codes=[{}]", purpose, watchlistCodes);
 
-        String lastUpdatedRaw = resolveStringValue(purpose, lastUpdatedCode());
+        String lastUpdatedRaw = TypeConverstionUtil.toString(getConfigValue(CronjobConfigEnum.LAST_UPDATED.code()));
         LocalDate ratingDate = resolveRatingDateFromLastUpdated(lastUpdatedRaw);
         String ratingDateStr = ratingDate.toString();
         log.info("{}: using rating date={}", purpose, ratingDateStr);

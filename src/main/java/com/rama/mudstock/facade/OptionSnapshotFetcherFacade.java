@@ -16,7 +16,7 @@ import com.rama.mudstock.repository.option.OptionContractRepository;
 import com.rama.mudstock.repository.option.OptionSnapshotRepository;
 import com.rama.mudstock.service.MassiveRestOptionSnapshotService;
 import com.rama.mudstock.service.OptionSnapshotParser;
-import com.rama.mudstock.util.DataConversionUtil;
+import com.rama.mudstock.util.TypeConverstionUtil;
 
 @Service
 public class OptionSnapshotFetcherFacade {
@@ -38,7 +38,9 @@ public class OptionSnapshotFetcherFacade {
     }
 
     public int fetchAndStoreSnapshots() {
-        List<Map<String, Object>> contracts = optionContractRepository.listActiveContractsForSnapshotFetch();
+        List<Map<String, Object>> contracts = optionContractRepository.getOptionContractsWithTickerByStatus(
+            OptionContractRepository.STATUS_ACTIVE,
+            true);
         int inserted = 0;
 
         for (Map<String, Object> contract : contracts) {
@@ -53,12 +55,12 @@ public class OptionSnapshotFetcherFacade {
     }
 
     private int processContract(Map<String, Object> contract) throws Exception {
-        Long optionContractId = DataConversionUtil.toLong(contract.get("id"));
-        Long stockId = DataConversionUtil.toLong(contract.get("stock_id"));
+        Long optionContractId = TypeConverstionUtil.toLong(contract.get("id"));
+        Long stockId = TypeConverstionUtil.toLong(contract.get("stock_id"));
         String stockTicker = toString(contract.get("ticker"));
         String contractTicker = toString(contract.get("contract_ticker"));
-        BigDecimal strikePrice = DataConversionUtil.toBigDecimal(contract.get("strike_price"));
-        LocalDate expirationDate = DataConversionUtil.toLocalDate(contract.get("expiration_date"));
+        BigDecimal strikePrice = TypeConverstionUtil.toBigDecimal(contract.get("strike_price"));
+        LocalDate expirationDate = TypeConverstionUtil.toLocalDate(contract.get("expiration_date"));
 
         if (optionContractId == null || stockId == null || stockTicker == null || strikePrice == null || expirationDate == null) {
             log.warn("OptionSnapshotFetcherFacade: skipping incomplete active contract {}", contract);
@@ -76,24 +78,24 @@ public class OptionSnapshotFetcherFacade {
             return 0;
         }
 
-        BigDecimal bid = DataConversionUtil.round(snapshot.bid(), 2);
-        BigDecimal ask = DataConversionUtil.round(snapshot.ask(), 2);
-        BigDecimal midpoint = DataConversionUtil.round(snapshot.midpoint(), 2);
-        BigDecimal lastTradePrice = DataConversionUtil.round(snapshot.lastTradePrice(), 2);
-        BigDecimal impliedVolatility = DataConversionUtil.toPercentAndRound(snapshot.impliedVolatility(), 2);
-        BigDecimal delta = DataConversionUtil.round(snapshot.delta(), 3);
-        BigDecimal gamma = DataConversionUtil.round(snapshot.gamma(), 3);
-        BigDecimal theta = DataConversionUtil.round(snapshot.theta(), 3);
-        BigDecimal vega = DataConversionUtil.round(snapshot.vega(), 3);
+        BigDecimal bid = TypeConverstionUtil.round(snapshot.bid(), 2);
+        BigDecimal ask = TypeConverstionUtil.round(snapshot.ask(), 2);
+        BigDecimal midpoint = TypeConverstionUtil.round(snapshot.midpoint(), 2);
+        BigDecimal lastTradePrice = TypeConverstionUtil.round(snapshot.lastTradePrice(), 2);
+        BigDecimal impliedVolatility = TypeConverstionUtil.toPercentAndRound(snapshot.impliedVolatility(), 2);
+        BigDecimal delta = TypeConverstionUtil.round(snapshot.delta(), 3);
+        BigDecimal gamma = TypeConverstionUtil.round(snapshot.gamma(), 3);
+        BigDecimal theta = TypeConverstionUtil.round(snapshot.theta(), 3);
+        BigDecimal vega = TypeConverstionUtil.round(snapshot.vega(), 3);
 
         try {
             optionSnapshotRepository.insert(
                 optionContractId,
                 stockId,
                 Timestamp.from(Instant.now()),
-                DataConversionUtil.toTimestampFromEpochNanos(snapshot.quoteLastUpdated()),
-                DataConversionUtil.toTimestampFromEpochNanos(snapshot.tradeSipTimestamp()),
-                DataConversionUtil.toTimestampFromEpochNanos(snapshot.underlyingLastUpdated()),
+                TypeConverstionUtil.toTimestampFromEpochNanos(snapshot.quoteLastUpdated()),
+                TypeConverstionUtil.toTimestampFromEpochNanos(snapshot.tradeSipTimestamp()),
+                TypeConverstionUtil.toTimestampFromEpochNanos(snapshot.underlyingLastUpdated()),
                 snapshot.underlyingPrice(),
                 snapshot.breakEvenPrice(),
                 snapshot.changeToBreakEven(),
@@ -118,7 +120,7 @@ public class OptionSnapshotFetcherFacade {
                 "OptionSnapshotFetcherFacade: skipping duplicate snapshot for option_contract_id={} contract_ticker={} quote_time={}",
                 optionContractId,
                 contractTicker,
-                DataConversionUtil.toTimestampFromEpochNanos(snapshot.quoteLastUpdated()));
+                TypeConverstionUtil.toTimestampFromEpochNanos(snapshot.quoteLastUpdated()));
             return 0;
         }
 

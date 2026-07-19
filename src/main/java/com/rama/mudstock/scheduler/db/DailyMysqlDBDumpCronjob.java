@@ -12,6 +12,7 @@ import com.rama.mudstock.enums.CronjobConfigEnum;
 import com.rama.mudstock.scheduler.AbstractCronjob;
 import com.rama.mudstock.service.MysqlDumpService;
 import com.rama.mudstock.service.SystemConfigService;
+import com.rama.mudstock.util.TypeConverstionUtil;
 
 @Component
 @Profile("cronjob")
@@ -35,7 +36,7 @@ public class DailyMysqlDBDumpCronjob extends AbstractCronjob {
             return;
         }
 
-        String outputLocation = resolveStringValue(purpose, locationCfg.code());
+        String outputLocation = TypeConverstionUtil.toString(getConfigValue(locationCfg.code()));
         if (outputLocation.isBlank()) {
             log.warn("{}: missing dump location in system_config (code={})", purpose, locationCfg.code());
             return;

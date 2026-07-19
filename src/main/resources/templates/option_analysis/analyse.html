@@ -99,7 +99,7 @@
                         <tbody>
                             <tr th:each="e : ${entries}">
                                 <td><span class="badge badge-grey" th:text="${e.ticker}"></span></td>
-                                <td th:text="${e.contract_type}"></td>
+                                <td th:text="${e.contractType}"></td>
                                 <td>
                                     <form th:if="${e.status == 'ACTIVE'}"
                                           th:action="@{/option-analysis/analyse/{id}/status(id=${e.id})}"
@@ -116,9 +116,9 @@
                                           class="badge badge-blue"
                                           th:text="${e.status != null ? e.status : '-'}"></span>
                                 </td>
-                                <td th:text="${e.expiration_date}"></td>
-                                <td th:text="${e.strike_from}"></td>
-                                <td th:text="${e.strike_to}"></td>
+                                <td th:text="${e.expirationDate}"></td>
+                                <td th:text="${e.strikeFrom}"></td>
+                                <td th:text="${e.strikeTo}"></td>
                                 <td th:text="${e.interval}"></td>
                             </tr>
                         </tbody>

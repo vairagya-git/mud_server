@@ -1,9 +1,6 @@
 package com.rama.mudstock.service;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import com.rama.mudstock.model.SystemConfig;
 import com.rama.mudstock.repository.SystemConfigRepository;
+import com.rama.mudstock.util.TypeConverstionUtil;
 
 /**
  * Service for reading and updating {@code system_config} table entries.
@@ -70,6 +68,18 @@ public class SystemConfigService {
     }
 
     /**
+     * Returns all typed config values for the given purpose as code -> value map.
+     */
+    public Map<String, Object> findAllByPurpose(String purpose) {
+        List<SystemConfig> configs = systemConfigRepository.findByPurpose(purpose);
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (SystemConfig cfg : configs) {
+            result.put(cfg.getCode(), convertValue(cfg));
+        }
+        return result;
+    }
+
+    /**
      * Returns the raw {@link SystemConfig} entity for {@code purpose} + {@code code},
      * or {@link Optional#empty()} if not found.
      */
@@ -122,39 +132,26 @@ public class SystemConfigService {
     }
 
     private List<String> parseStringArray(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return Collections.emptyList();
-        }
-        return Arrays.stream(raw.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isBlank())
-                .toList();
+        return TypeConverstionUtil.toStringList(raw);
     }
 
     private Boolean parseBoolean(String code, String raw) {
         if (raw == null || raw.isBlank()) {
             return Boolean.FALSE;
         }
-        String normalized = raw.trim();
-        if ("true".equalsIgnoreCase(normalized)) {
-            return Boolean.TRUE;
-        }
-        if ("false".equalsIgnoreCase(normalized)) {
-            return Boolean.FALSE;
+        Boolean parsed = TypeConverstionUtil.toBooleanStrict(raw);
+        if (parsed != null) {
+            return parsed;
         }
         log.warn("SystemConfigService: code={} has type=Boolean but value '{}' is invalid; returning false", code, raw);
         return Boolean.FALSE;
     }
 
     private LocalDate parseDate(String code, String raw) {
-        if (raw == null || raw.isBlank()) return null;
-        // Accept ISO date (yyyy-MM-dd) or datetime prefix (yyyy-MM-ddT...)
-        String datePart = raw.length() >= 10 ? raw.substring(0, 10) : raw;
-        try {
-            return LocalDate.parse(datePart);
-        } catch (DateTimeParseException e) {
+        LocalDate parsed = TypeConverstionUtil.toLocalDateFromDateOrDateTimePrefix(raw);
+        if (parsed == null && raw != null && !raw.isBlank()) {
             log.warn("SystemConfigService: code={} has type=Date but value '{}' could not be parsed; returning null", code, raw);
-            return null;
         }
+        return parsed;
     }
 }

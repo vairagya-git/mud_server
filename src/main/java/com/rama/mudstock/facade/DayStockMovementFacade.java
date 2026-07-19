@@ -19,7 +19,7 @@ import com.rama.mudstock.repository.daystock.DayStockMovementMapRepository;
 import com.rama.mudstock.service.DayStockMovementAggregateParser;
 import com.rama.mudstock.service.MarketCalendarService;
 import com.rama.mudstock.service.MassiveRestStockService;
-import com.rama.mudstock.util.DataConversionUtil;
+import com.rama.mudstock.util.TypeConverstionUtil;
 
 @Service
 public class DayStockMovementFacade {
@@ -63,7 +63,7 @@ public class DayStockMovementFacade {
                                          String rawCutOffTime,
                                          String rawCutOffTimeFormat,
                                          ZoneId zoneId) {
-        LocalDate eventDate = DataConversionUtil.toLocalDate(mapping.get("date"));
+        LocalDate eventDate = TypeConverstionUtil.toLocalDate(mapping.get("date"));
         if (eventDate == null) {
             log.warn("Skipping mapping with missing eventDate: {}", mapping);
             return false;
@@ -109,13 +109,13 @@ public class DayStockMovementFacade {
     private void processMapping(Map<String, Object> mapping) {
         try {
             String ticker = (String) mapping.get("ticker");
-            LocalDate eventDate = DataConversionUtil.toLocalDate(mapping.get("date"));
+            LocalDate eventDate = TypeConverstionUtil.toLocalDate(mapping.get("date"));
             if (ticker == null || eventDate == null) {
                 log.warn("Skipping mapping with missing ticker or eventDate: {}", mapping);
                 return;
             }
 
-            Long mappingId = DataConversionUtil.toLong(mapping.get("map_id"));
+            Long mappingId = TypeConverstionUtil.toLong(mapping.get("map_id"));
             if (marketCalendarService.isMarketClosed(eventDate)) {
                 if (mappingId != null) {
                     mappingRepository.updateStatus(mappingId, "MARKET_CLOSED");

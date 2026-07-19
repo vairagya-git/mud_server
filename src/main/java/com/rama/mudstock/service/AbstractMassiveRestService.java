@@ -50,7 +50,7 @@ public abstract class AbstractMassiveRestService {
         try {
             return rest.getForObject(url, String.class);
         } catch (HttpClientErrorException hce) {
-            if (propagateNotFound && hce.getStatusCode() == HttpStatus.NOT_FOUND) {
+            if (propagateNotFound && hce.getStatusCode().value() == HttpStatus.NOT_FOUND.value()) {
                 throw hce;
             }
             throw new RuntimeException(clientErrorMessage, hce);
