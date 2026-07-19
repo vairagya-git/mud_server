@@ -1,5 +1,7 @@
 package com.rama.mudstock.enums;
 
+import com.rama.mudstock.config.ApplicationConfig;
+
 public enum CronjobConfigEnum {
     USEAGE("useage", "String", "Usage"),
     ENABLED("enabled", "Boolean", "Enabled"),
@@ -7,9 +9,9 @@ public enum CronjobConfigEnum {
     EXECUTION("execution", "String", "Execution"),
     MINUTE_HOURLY_FREQUENCY("minuteHourlyFrequency", "Integer", "Minute/Hourly Frequency"),
     LAST_UPDATED("lastUpdated", "DateTime", "Last Updated"),
-    CUTOFF_TIME("cutOffTime", "Time", "HH:mm", "Cutoff Time"),
-    START_TIME("startTime", "Time", "HH:mm", "Start Time"),
-    END_TIME("endTime", "Time", "HH:mm", "End Time"),
+    CUTOFF_TIME("cutOffTime", "Time", ApplicationConfig.TIME_FORMAT_HH_MM, "Cutoff Time"),
+    START_TIME("startTime", "Time", ApplicationConfig.TIME_FORMAT_HH_MM, "Start Time"),
+    END_TIME("endTime", "Time", ApplicationConfig.TIME_FORMAT_HH_MM, "End Time"),
     WATCHLIST_CODES("watchlist-codes", "StringArray", "Watchlist Codes"),
     LOCATION("location", "String", "Output Location");
 
@@ -43,6 +45,49 @@ public enum CronjobConfigEnum {
 
     public String description() {
         return description;
+    }
+
+    public enum Execution {
+        HOURLY("hourly"),
+        MINUTES("minutes"),
+        DAILY("daily");
+
+        private final String value;
+
+        Execution(String value) {
+            this.value = value;
+        }
+
+        public String value() {
+            return value;
+        }
+
+        public static Execution fromValue(String raw) {
+            if (raw == null || raw.isBlank()) {
+                return null;
+            }
+            for (Execution execution : values()) {
+                if (execution.value().equals(raw)) {
+                    return execution;
+                }
+            }
+            return null;
+        }
+    }
+
+    public enum ExecutionMode {
+        /**
+         * Require current time to be on/after cutOffTime for HOURLY/MINUTES.
+         */
+        CUT_OFF,
+        /**
+         * Require current time to be inside [startTime, endTime] for HOURLY/MINUTES.
+         */
+        BETWEEN_TIME,
+        /**
+         * No extra time-window/cutoff constraint for HOURLY/MINUTES.
+         */
+        NONE
     }
 
     public enum Purpose {

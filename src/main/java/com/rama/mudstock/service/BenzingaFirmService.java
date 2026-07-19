@@ -7,7 +7,6 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -16,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import com.rama.mudstock.config.ApplicationProperties;
 import com.rama.mudstock.model.analyst.BenzingaAnalystListResponse;
 import com.rama.mudstock.model.analyst.BenzingaAnalystRatingListResponse;
 import com.rama.mudstock.model.analyst.BenzingaAnalystRatingResponse;
@@ -49,28 +49,13 @@ public class BenzingaFirmService {
 
     private final FirmRepository firmRepository;
     private final RestTemplate restTemplate;
+    private final ApplicationProperties applicationProperties;
 
-    @Value("${massive.benzinga-firm:}")
-    private String firmPath;
-
-    @Value("${massive.benzinga-firm-id:}")
-    private String firmByIdPath;
-
-    @Value("${massive.benzinga-analyst:}")
-    private String analystPath;
-
-    @Value("${massive.benzinga-analyst-rating:}")
-    private String analystRatingPath;
-
-    @Value("${massive.base-url}")
-    private String massiveBaseUrl;
-
-    @Value("${massive.apikey}")
-    private String massiveApiKey;
-
-    public BenzingaFirmService(FirmRepository firmRepository) {
+    public BenzingaFirmService(FirmRepository firmRepository,
+                               ApplicationProperties applicationProperties) {
         this.firmRepository = firmRepository;
         this.restTemplate = new RestTemplate();
+        this.applicationProperties = applicationProperties;
     }
 
     // -----------------------------------------------------------------------
@@ -164,8 +149,11 @@ public class BenzingaFirmService {
             log.warn("BenzingaFirmService.fetchAnalystById: benzingaId is blank, skipping");
             return null;
         }
-        String base = massiveBaseUrl.endsWith("/") ? massiveBaseUrl : massiveBaseUrl + "/";
-        String path = String.format(analystPath, benzingaId.trim(), massiveApiKey);
+        String baseUrl = applicationProperties.getMassive().getBaseUrl();
+        String base = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
+        String path = String.format(applicationProperties.getMassive().getBenzingaAnalyst(),
+            benzingaId.trim(),
+            applicationProperties.getMassive().getApikey());
         if (path.startsWith("/")) path = path.substring(1);
         String url = base + path;
         log.info("BenzingaFirmService.fetchAnalystById: fetching analyst {} from {}", benzingaId, url);
@@ -210,8 +198,12 @@ public class BenzingaFirmService {
             log.warn("BenzingaFirmService.fetchAnalystRatings: ratingDate is blank, skipping");
             return java.util.Collections.emptyList();
         }
-        String base = massiveBaseUrl.endsWith("/") ? massiveBaseUrl : massiveBaseUrl + "/";
-        String path = String.format(analystRatingPath, ticker.trim(), ratingDate.trim(), massiveApiKey);
+        String baseUrl = applicationProperties.getMassive().getBaseUrl();
+        String base = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
+        String path = String.format(applicationProperties.getMassive().getBenzingaAnalystRating(),
+            ticker.trim(),
+            ratingDate.trim(),
+            applicationProperties.getMassive().getApikey());
         if (path.startsWith("/")) path = path.substring(1);
         String url = base + path;
         log.info("BenzingaFirmService.fetchAnalystRatings: fetching ratings for ticker={} from {}", ticker, url);
@@ -343,8 +335,10 @@ public class BenzingaFirmService {
      * The path pattern from config may contain a {@code %s} placeholder for the API key.
      */
     private String buildFirmUrl() {
-        String base = massiveBaseUrl.endsWith("/") ? massiveBaseUrl : massiveBaseUrl + "/";
-        String path = String.format(firmPath, massiveApiKey);
+        String baseUrl = applicationProperties.getMassive().getBaseUrl();
+        String base = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
+        String path = String.format(applicationProperties.getMassive().getBenzingaFirm(),
+            applicationProperties.getMassive().getApikey());
         if (path.startsWith("/")) path = path.substring(1);
         return base + path;
     }
@@ -355,8 +349,11 @@ public class BenzingaFirmService {
      * Example pattern: {@code /benzinga/v1/firms?benzinga_id=%s&limit=1000&sort=name.asc&apiKey=%s}
      */
     private String buildFirmByIdUrl(String benzingaFirmId) {
-        String base = massiveBaseUrl.endsWith("/") ? massiveBaseUrl : massiveBaseUrl + "/";
-        String path = String.format(firmByIdPath, benzingaFirmId, massiveApiKey);
+        String baseUrl = applicationProperties.getMassive().getBaseUrl();
+        String base = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
+        String path = String.format(applicationProperties.getMassive().getBenzingaFirmId(),
+            benzingaFirmId,
+            applicationProperties.getMassive().getApikey());
         if (path.startsWith("/")) path = path.substring(1);
         return base + path;
     }

@@ -2,8 +2,9 @@ package com.rama.mudstock.service;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import com.rama.mudstock.config.ApplicationProperties;
 
 @Component
 public class MassiveRestApiCallLimiter {
@@ -12,8 +13,8 @@ public class MassiveRestApiCallLimiter {
     private final AtomicInteger callsThisWindow = new AtomicInteger(0);
     private volatile long windowStartMillis = System.currentTimeMillis();
 
-    public MassiveRestApiCallLimiter(@Value("${earnings.api.calls-per-minute:5}") int callsPerMinute) {
-        this.callsPerMinute = callsPerMinute;
+    public MassiveRestApiCallLimiter(ApplicationProperties applicationProperties) {
+        this.callsPerMinute = applicationProperties.getEarnings().getApi().getCallsPerMinute();
     }
 
     private synchronized boolean tryAcquire() {

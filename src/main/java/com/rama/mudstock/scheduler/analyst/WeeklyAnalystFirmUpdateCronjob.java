@@ -36,30 +36,21 @@ public class WeeklyAnalystFirmUpdateCronjob extends AbstractCronjob {
         this.benzingaFirmService = benzingaFirmService;
     }
 
-    @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
+    @Scheduled(cron = "${all-cronjob-schedule}", zone = com.rama.mudstock.config.ApplicationConfig.LISBON_ZONE)
     public void run() {
         String purpose = CronjobConfigEnum.Purpose.WEEKLY_ANALYST_FIRM_UPDATE_CRONJOB.value();
 
-        boolean enabled = isEnabled(purpose);
-
-        if (!enabled) {
-            log.info("WeeklyAnalystFirmUpdateCronjob: disabled by system_config (purpose={}, code={})",
-                purpose,
-                enabledCode());
+        if (!shouldExecuteBySchedule(purpose)) {
             return;
         }
 
-        if (!shouldExecuteSinceLastUpdated("WeeklyAnalystFirmUpdateCronjob", null, purpose, LISBON)) {
-            return;
-        }
-
-        log.info("WeeklyAnalystFirmUpdateCronjob: starting weekly analyst firm sync");
+        log.info("{}: starting weekly analyst firm sync", purpose);
         try {
             int updated = benzingaFirmService.fetchAndSaveSmart();
-            updateLastUpdatedNowUtc(purpose, lastUpdatedCode());
-            log.info("WeeklyAnalystFirmUpdateCronjob: completed — {} firm(s) inserted/updated", updated);
+            updateLastUpdatedNowUtc(purpose);
+            log.info("{}: completed - {} firm(s) inserted/updated", purpose, updated);
         } catch (Exception ex) {
-            log.error("WeeklyAnalystFirmUpdateCronjob: error during firm sync", ex);
+            log.error("{}: error during firm sync", purpose, ex);
         }
     }
 }

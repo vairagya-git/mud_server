@@ -18,39 +18,31 @@ import com.rama.mudstock.service.SystemConfigService;
  */
 @Component
 @Profile("cronjob")
-public class StockMovementCleanupScheduler extends AbstractCronjob {
+public class DayStockMovementCleanupCronjob extends AbstractCronjob {
     private final DayStockMovementService dayStockMovementService;
-    private final Logger log = LoggerFactory.getLogger(StockMovementCleanupScheduler.class);
+    private final Logger log = LoggerFactory.getLogger(DayStockMovementCleanupCronjob.class);
 
-    public StockMovementCleanupScheduler(DayStockMovementService dayStockMovementService,
-                                         SystemConfigService systemConfigService) {
+    public DayStockMovementCleanupCronjob(DayStockMovementService dayStockMovementService,
+                                          SystemConfigService systemConfigService) {
         super(systemConfigService);
         this.dayStockMovementService = dayStockMovementService;
     }
 
-    @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
+    @Scheduled(cron = "${all-cronjob-schedule}", zone = com.rama.mudstock.config.ApplicationConfig.LISBON_ZONE)
     public void cleanupRedundantKeys() {
         String purpose = CronjobConfigEnum.Purpose.DAY_STOCK_MOVEMENT_CLEANUP.value();
 
-        boolean enabled = isEnabled(purpose);
-
-        if (!enabled) {
-            log.info("StockMovementCleanupScheduler: disabled by system_config (purpose={}, code={})",
-                purpose, enabledCode());
+        if (!shouldExecuteBySchedule(purpose)) {
             return;
         }
 
-        if (!shouldExecuteSinceLastUpdated("StockMovementCleanupScheduler", null, purpose, LISBON)) {
-            return;
-        }
-
-        log.info("StockMovementCleanupScheduler: scanning for redundant every-day movement keys");
+        log.info("{}: scanning for redundant every-day movement keys", purpose);
         try {
             int removed = dayStockMovementService.cleanupRedundantMasters();
-            updateLastUpdatedNowUtc(purpose, lastUpdatedCode());
-            log.info("StockMovementCleanupScheduler: removed {} redundant key(s)", removed);
+            updateLastUpdatedNowUtc(purpose);
+            log.info("{}: removed {} redundant key(s)", purpose, removed);
         } catch (Exception ex) {
-            log.error("StockMovementCleanupScheduler: error during cleanup", ex);
+            log.error("{}: error during cleanup", purpose, ex);
         }
     }
 }

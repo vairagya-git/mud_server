@@ -41,7 +41,7 @@ public class EarningsDateScheduler {
     // cron is configured in application.yml: earnings.cron
     @Scheduled(cron = "${earnings.cron}")
     public void pollEarnings() {
-        log.info("EarningsDateScheduler: polling for NEW and PROCESSING entries");
+        log.info("polling for NEW and PROCESSING entries");
         List<EarningsDate> list = earningsRepo.findAll();
         for (EarningsDate ed : list) {
             if (ed.getStatus() == EarningsDate.Status.NEW || ed.getStatus() == EarningsDate.Status.PROCESSING) {

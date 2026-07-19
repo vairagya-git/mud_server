@@ -4,28 +4,27 @@ import java.time.LocalDate;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.rama.mudstock.config.ApplicationProperties;
 import com.rama.mudstock.util.MudDateUtil;
 
 @Service
 public class MassiveRestStockService extends AbstractMassiveRestService {
 
-    @Value("${massive.open-close:}")
-    private String openClosePattern;
-
-    @Value("${massive.ticker-aggregate:}")
-    private String tickerAggregatePattern;
+    private final ApplicationProperties applicationProperties;
 
     private static final Logger log = LoggerFactory.getLogger(MassiveRestStockService.class);
 
-    public MassiveRestStockService(MassiveRestApiCallLimiter apiCallLimiter) {
-        super(apiCallLimiter);
+    public MassiveRestStockService(MassiveRestApiCallLimiter apiCallLimiter,
+                                   ApplicationProperties applicationProperties) {
+        super(apiCallLimiter, applicationProperties);
+        this.applicationProperties = applicationProperties;
     }
 
     public String fetchOpenClose(String ticker, LocalDate date) {
         String dateStr = MudDateUtil.toIsoString(date);
+        String openClosePattern = applicationProperties.getMassive().getOpenClose();
         String path = String.format(openClosePattern, ticker, dateStr, massiveApiKey());
         return executeGet(
             path,
@@ -40,6 +39,7 @@ public class MassiveRestStockService extends AbstractMassiveRestService {
     public String fetchTickerAggregate(String ticker, LocalDate start, LocalDate end) {
         String startStr = MudDateUtil.toIsoString(start);
         String endStr = MudDateUtil.toIsoString(end);
+        String tickerAggregatePattern = applicationProperties.getMassive().getTickerAggregate();
         String path = String.format(tickerAggregatePattern, ticker, startStr, endStr, massiveApiKey());
         log.info("Constructed ticker-aggregate URL: {}", buildMassiveUrl(path));
         return executeGet(

@@ -10,27 +10,29 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import com.rama.mudstock.config.ApplicationProperties;
 
 @Service
 public class MysqlDumpService {
 
     private static final DateTimeFormatter FILE_TIMESTAMP = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
 
-    @Value("${spring.datasource.url}")
-    private String datasourceUrl;
+    private final ApplicationProperties applicationProperties;
 
-    @Value("${spring.datasource.username}")
-    private String datasourceUsername;
-
-    @Value("${spring.datasource.password:}")
-    private String datasourcePassword;
+    public MysqlDumpService(ApplicationProperties applicationProperties) {
+        this.applicationProperties = applicationProperties;
+    }
 
     public Path dumpToLocation(String outputLocation) throws IOException, InterruptedException {
         if (outputLocation == null || outputLocation.isBlank()) {
             throw new IllegalArgumentException("DailyMysqlDBDump location is blank");
         }
+
+        String datasourceUrl = applicationProperties.getSpring().getDatasource().getUrl();
+        String datasourceUsername = applicationProperties.getSpring().getDatasource().getUsername();
+        String datasourcePassword = applicationProperties.getSpring().getDatasource().getPassword();
 
         MysqlConnectionInfo connectionInfo = parseDatasourceUrl(datasourceUrl);
         Path outputDirectory = Path.of(outputLocation.trim());

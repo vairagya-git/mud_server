@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.rama.mudstock.config.ApplicationConfig;
 import com.rama.mudstock.enums.CronjobConfigEnum;
 import com.rama.mudstock.model.daystock.DayStockMovementKey;
 import com.rama.mudstock.model.stockwatchlist.Stock;
@@ -33,7 +34,7 @@ import com.rama.mudstock.util.MudDateUtil;
 @Service
 public class DayStockMovementService {
     private final Logger log = LoggerFactory.getLogger(DayStockMovementService.class);
-    private static final ZoneId LISBON = ZoneId.of("Europe/Lisbon");
+    private static final ZoneId LISBON = ApplicationConfig.LISBON;
 
     private final WatchlistRepository watchlistRepo;
     private final DayStockMovementKeyRepository masterRepo;

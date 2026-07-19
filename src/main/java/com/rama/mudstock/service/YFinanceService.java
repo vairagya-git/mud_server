@@ -2,11 +2,11 @@ package com.rama.mudstock.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import com.rama.mudstock.config.ApplicationProperties;
 import com.rama.mudstock.model.yfinance.YFinanceTickerResponse;
 
 /**
@@ -22,13 +22,12 @@ public class YFinanceService {
 
     private static final Logger log = LoggerFactory.getLogger(YFinanceService.class);
 
-    @Value("${python.yfinance-url}")
-    private String baseUrl;
-
-    @Value("${python.ticker}")
-    private String tickerPath;
-
     private final RestTemplate restTemplate = new RestTemplate();
+    private final ApplicationProperties applicationProperties;
+
+    public YFinanceService(ApplicationProperties applicationProperties) {
+        this.applicationProperties = applicationProperties;
+    }
 
     /**
      * Fetches ticker info from the yfinance Python service.
@@ -37,6 +36,8 @@ public class YFinanceService {
      * @return parsed response, or {@code null} if the call fails
      */
     public YFinanceTickerResponse getTicker(String ticker) {
+        String baseUrl = applicationProperties.getPython().getYfinanceUrl();
+        String tickerPath = applicationProperties.getPython().getTicker();
         String url = baseUrl + String.format(tickerPath, ticker);
         log.debug("YFinanceService: GET {}", url);
         try {

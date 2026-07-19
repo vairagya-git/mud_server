@@ -10,6 +10,8 @@ import java.time.format.DateTimeFormatter;
 
 import org.springframework.scheduling.support.CronExpression;
 
+import com.rama.mudstock.config.ApplicationConfig;
+
 public final class CronScheduleUtil {
 
     private CronScheduleUtil() {
@@ -30,7 +32,12 @@ public final class CronScheduleUtil {
                                                         String rawLastUpdated,
                                                         String rawCutOffTime,
                                                         ZoneId zoneId) {
-        return shouldExecuteSinceLastUpdated(rawCronExpression, rawLastUpdated, rawCutOffTime, "HH:mm", zoneId);
+        return shouldExecuteSinceLastUpdated(
+            rawCronExpression,
+            rawLastUpdated,
+            rawCutOffTime,
+            ApplicationConfig.TIME_FORMAT_HH_MM,
+            zoneId);
     }
 
     public static boolean shouldExecuteSinceLastUpdated(String rawCronExpression,
@@ -142,7 +149,7 @@ public final class CronScheduleUtil {
 
         String normalizedFormat = normalizeCronExpression(rawCutOffTimeFormat);
         if (normalizedFormat.isBlank()) {
-            normalizedFormat = "HH:mm";
+            normalizedFormat = ApplicationConfig.TIME_FORMAT_HH_MM;
         }
 
         try {

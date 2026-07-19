@@ -26,26 +26,21 @@ public class OptionSnapshotIVMetricsCronjob extends AbstractCronjob {
         this.optionSnapshotIVMetricsFacade = optionSnapshotIVMetricsFacade;
     }
 
-    @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
+    @Scheduled(cron = "${all-cronjob-schedule}", zone = com.rama.mudstock.config.ApplicationConfig.LISBON_ZONE)
     public void calculateMetrics() {
         String purpose = CronjobConfigEnum.Purpose.OPTION_SNAPSHOT_IV_METRICS.value();
 
-        if (!isEnabled(purpose)) {
-            log.info("OptionSnapshotIVMetricsCronjob: disabled by system_config (purpose={}, code={})", purpose, enabledCode());
-            return;
-        }
-
-        LocalDate metricsDate = resolveNextProcessingDate(purpose, LISBON);
-        if (!shouldExecuteSinceLastUpdated("OptionSnapshotIVMetricsCronjob", metricsDate, purpose, LISBON)) {
+        LocalDate metricsDate = LocalDate.now(com.rama.mudstock.config.ApplicationConfig.LISBON);
+        if (!shouldExecuteBySchedule(purpose)) {
             return;
         }
 
         try {
             int rows = optionSnapshotIVMetricsFacade.calculateForDate(metricsDate);
-            log.info("OptionSnapshotIVMetricsCronjob: completed ivDate={} rows={}", metricsDate, rows);
-            updateLastUpdatedForProcessingDate(purpose, lastUpdatedCode(), metricsDate, LISBON);
+            log.info("{}: completed ivDate={} rows={}", purpose, metricsDate, rows);
+            updateLastUpdatedNowUtc(purpose);
         } catch (Exception ex) {
-            log.error("OptionSnapshotIVMetricsCronjob: failed to calculate IV metrics", ex);
+            log.error("{}: failed to calculate IV metrics", purpose, ex);
         }
     }
 }

@@ -26,6 +26,17 @@ public final class DataConversionUtil {
         return value instanceof Number number ? number.longValue() : null;
     }
 
+    public static Integer toInteger(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(value.trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
     public static BigDecimal toBigDecimal(Object value) {
         if (value == null) {
             return null;

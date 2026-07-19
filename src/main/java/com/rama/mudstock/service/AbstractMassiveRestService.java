@@ -1,30 +1,30 @@
 package com.rama.mudstock.service;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import com.rama.mudstock.config.ApplicationProperties;
+
 public abstract class AbstractMassiveRestService {
 
-    @Value("${massive.base-url}")
-    private String baseUrl;
-
-    @Value("${massive.apikey}")
-    private String apiKey;
+    private final ApplicationProperties applicationProperties;
 
     private final MassiveRestApiCallLimiter apiCallLimiter;
 
-    protected AbstractMassiveRestService(MassiveRestApiCallLimiter apiCallLimiter) {
+    protected AbstractMassiveRestService(MassiveRestApiCallLimiter apiCallLimiter,
+                                         ApplicationProperties applicationProperties) {
         this.apiCallLimiter = apiCallLimiter;
+        this.applicationProperties = applicationProperties;
     }
 
     protected String massiveApiKey() {
-        return apiKey;
+        return applicationProperties.getMassive().getApikey();
     }
 
     protected String buildMassiveUrl(String path) {
+        String baseUrl = applicationProperties.getMassive().getBaseUrl();
         if (baseUrl.endsWith("/") && path.startsWith("/")) {
             return baseUrl + path.substring(1);
         }

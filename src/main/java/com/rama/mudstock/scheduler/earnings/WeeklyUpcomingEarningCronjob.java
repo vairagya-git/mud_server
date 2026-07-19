@@ -29,19 +29,19 @@ import com.rama.mudstock.util.WatchlistUtil;
  */
 @Component
 @Profile("cronjob")
-public class UpcomingEarningCronjob extends AbstractCronjob {
+public class WeeklyUpcomingEarningCronjob extends AbstractCronjob {
 
-    private static final Logger log = LoggerFactory.getLogger(UpcomingEarningCronjob.class);
+    private static final Logger log = LoggerFactory.getLogger(WeeklyUpcomingEarningCronjob.class);
 
     private final WatchlistRepository watchlistRepository;
     private final EarningsDateRepository earningsDateRepository;
     private final YFinanceService yFinanceService;
     private final SystemConfigService systemConfigService;
 
-    public UpcomingEarningCronjob(WatchlistRepository watchlistRepository,
-                                  EarningsDateRepository earningsDateRepository,
-                                  YFinanceService yFinanceService,
-                                  SystemConfigService systemConfigService) {
+    public WeeklyUpcomingEarningCronjob(WatchlistRepository watchlistRepository,
+                                        EarningsDateRepository earningsDateRepository,
+                                        YFinanceService yFinanceService,
+                                        SystemConfigService systemConfigService) {
         super(systemConfigService);
         this.watchlistRepository = watchlistRepository;
         this.earningsDateRepository = earningsDateRepository;
@@ -49,21 +49,12 @@ public class UpcomingEarningCronjob extends AbstractCronjob {
         this.systemConfigService = systemConfigService;
     }
 
-    @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
+    @Scheduled(cron = "${all-cronjob-schedule}", zone = com.rama.mudstock.config.ApplicationConfig.LISBON_ZONE)
     public void run() {
         var watchlistCfg = CronjobConfigEnum.WATCHLIST_CODES;
         String purpose = CronjobConfigEnum.Purpose.WEEKLY_UPCOMING_EARNING_CRONJOB.value();
 
-        boolean enabled = isEnabled(purpose);
-
-        if (!enabled) {
-            log.info("UpcomingEarningCronjob: disabled by system_config (purpose={}, code={})",
-                purpose,
-                enabledCode());
-            return;
-        }
-
-        if (!shouldExecuteSinceLastUpdated("UpcomingEarningCronjob", null, purpose, LISBON)) {
+        if (!shouldExecuteBySchedule(purpose)) {
             return;
         }
 
@@ -80,41 +71,48 @@ public class UpcomingEarningCronjob extends AbstractCronjob {
 
         String watchlistCodes = String.join(",", watchlistCodeList);
 
-        log.info("UpcomingEarningCronjob: starting for watchlists [{}]", watchlistCodes);
+        log.info("{}: starting for watchlists [{}]", purpose, watchlistCodes);
         Map<String, Stock> uniqueStocks = WatchlistUtil.collectUniqueStocksByTicker(
                 watchlistCodes,
                 watchlistRepository,
                 log,
-                "UpcomingEarningCronjob");
+                purpose);
 
-        log.info("UpcomingEarningCronjob: collected {} unique stock(s) from configured watchlists", uniqueStocks.size());
+        log.info("{}: collected {} unique stock(s) from configured watchlists", purpose, uniqueStocks.size());
         for (Stock stock : uniqueStocks.values()) {
             try {
                 processStock(stock);
             } catch (Exception ex) {
-                log.error("UpcomingEarningCronjob: error processing stock {}", stock.getTicker(), ex);
+                log.error("{}: error processing stock {}", purpose, stock.getTicker(), ex);
             }
         }
-        updateLastUpdatedNowUtc(purpose, lastUpdatedCode());
-        log.info("UpcomingEarningCronjob: finished");
+        updateLastUpdatedNowUtc(purpose);
+        log.info("{}: finished", purpose);
     }
 
     private void processStock(Stock stock) {
         YFinanceTickerResponse response = yFinanceService.getTicker(stock.getTicker());
         if (response == null) {
-            log.warn("UpcomingEarningCronjob: no response for ticker {}", stock.getTicker());
+            log.warn("{}: no response for ticker {}",
+                CronjobConfigEnum.Purpose.WEEKLY_UPCOMING_EARNING_CRONJOB.value(),
+                stock.getTicker());
             return;
         }
 
         List<LocalDate> earningsDates = extractEarningsDates(response);
         if (earningsDates.isEmpty()) {
-            log.info("UpcomingEarningCronjob: no earnings dates found for {}", stock.getTicker());
+            log.info("{}: no earnings dates found for {}",
+                CronjobConfigEnum.Purpose.WEEKLY_UPCOMING_EARNING_CRONJOB.value(),
+                stock.getTicker());
             return;
         }
 
         for (LocalDate date : earningsDates) {
             if (earningsDateRepository.existsByStockIdAndEarningsDate(stock.getId(), date)) {
-                log.debug("UpcomingEarningCronjob: earnings date {} already exists for {}, skipping", date, stock.getTicker());
+                log.debug("{}: earnings date {} already exists for {}, skipping",
+                    CronjobConfigEnum.Purpose.WEEKLY_UPCOMING_EARNING_CRONJOB.value(),
+                    date,
+                    stock.getTicker());
                 continue;
             }
             EarningsDate ed = new EarningsDate();
@@ -124,7 +122,11 @@ public class UpcomingEarningCronjob extends AbstractCronjob {
             ed.setStatus(EarningsDate.Status.UPCOMING);
             ed.setEarningsDate(date);
             earningsDateRepository.save(ed);
-            log.info("UpcomingEarningCronjob: saved {} earnings date {} ({})", stock.getTicker(), date, ed.getQuarter());
+            log.info("{}: saved {} earnings date {} ({})",
+                CronjobConfigEnum.Purpose.WEEKLY_UPCOMING_EARNING_CRONJOB.value(),
+                stock.getTicker(),
+                date,
+                ed.getQuarter());
         }
     }
 
@@ -163,7 +165,11 @@ public class UpcomingEarningCronjob extends AbstractCronjob {
     private LocalDate parseDateSafely(String s) {
         if (s == null || s.length() < 10) return null;
         LocalDate date = MudDateUtil.parseFlexible(s.substring(0, 10));
-        if (date == null) log.warn("UpcomingEarningCronjob: could not parse date string '{}'", s);
+        if (date == null) {
+            log.warn("{}: could not parse date string '{}'",
+                CronjobConfigEnum.Purpose.WEEKLY_UPCOMING_EARNING_CRONJOB.value(),
+                s);
+        }
         return date;
     }
 

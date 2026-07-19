@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.rama.mudstock.config.ApplicationConfig;
 import com.rama.mudstock.repository.daystock.DayStockMovementEntryRepository;
 import com.rama.mudstock.repository.daystock.DayStockMovementMapRepository;
 import com.rama.mudstock.service.DayStockMovementAggregateParser;
@@ -93,7 +94,9 @@ public class DayStockMovementFacade {
             return Optional.empty();
         }
 
-        String format = rawCutOffTimeFormat == null || rawCutOffTimeFormat.isBlank() ? "HH:mm" : rawCutOffTimeFormat.trim();
+        String format = rawCutOffTimeFormat == null || rawCutOffTimeFormat.isBlank()
+            ? ApplicationConfig.TIME_FORMAT_HH_MM
+            : rawCutOffTimeFormat.trim();
         try {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format);
             return Optional.of(LocalTime.parse(rawCutOffTime.trim(), formatter));

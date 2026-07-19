@@ -15,43 +15,38 @@ import com.rama.mudstock.service.SystemConfigService;
 
 @Component
 @Profile("cronjob")
-public class MysqlDBDumpScheduler extends AbstractCronjob {
+public class DailyMysqlDBDumpCronjob extends AbstractCronjob {
 
     private final MysqlDumpService mysqlDumpService;
-    private final Logger log = LoggerFactory.getLogger(MysqlDBDumpScheduler.class);
+    private final Logger log = LoggerFactory.getLogger(DailyMysqlDBDumpCronjob.class);
 
-    public MysqlDBDumpScheduler(MysqlDumpService mysqlDumpService,
-                                SystemConfigService systemConfigService) {
+    public DailyMysqlDBDumpCronjob(MysqlDumpService mysqlDumpService,
+                                   SystemConfigService systemConfigService) {
         super(systemConfigService);
         this.mysqlDumpService = mysqlDumpService;
     }
 
-    @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
+    @Scheduled(cron = "${all-cronjob-schedule}", zone = com.rama.mudstock.config.ApplicationConfig.LISBON_ZONE)
     public void dumpMysqlDatabase() {
         var locationCfg = CronjobConfigEnum.LOCATION;
         String purpose = CronjobConfigEnum.Purpose.DAILY_MY_SQL_DB_DUMP.value();
 
-        if (!isEnabled(purpose)) {
-            log.info("MysqlDBDumpScheduler: disabled by system_config (purpose={}, code={})", purpose, enabledCode());
-            return;
-        }
-
-        if (!shouldExecuteSinceLastUpdated("MysqlDBDumpScheduler", null, purpose, LISBON)) {
+        if (!shouldExecuteBySchedule(purpose)) {
             return;
         }
 
         String outputLocation = resolveStringValue(purpose, locationCfg.code());
         if (outputLocation.isBlank()) {
-            log.warn("MysqlDBDumpScheduler: missing dump location in system_config (purpose={}, code={})", purpose, locationCfg.code());
+            log.warn("{}: missing dump location in system_config (code={})", purpose, locationCfg.code());
             return;
         }
 
         try {
             Path outputFile = mysqlDumpService.dumpToLocation(outputLocation);
-            log.info("MysqlDBDumpScheduler: mysql dump completed at {}", outputFile);
-            updateLastUpdatedNowUtc(purpose, lastUpdatedCode());
+            log.info("{}: mysql dump completed at {}", purpose, outputFile);
+            updateLastUpdatedNowUtc(purpose);
         } catch (Exception ex) {
-            log.error("MysqlDBDumpScheduler: mysql dump failed", ex);
+            log.error("{}: mysql dump failed", purpose, ex);
         }
     }
 }

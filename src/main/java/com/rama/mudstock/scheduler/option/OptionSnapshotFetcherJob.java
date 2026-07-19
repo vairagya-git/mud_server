@@ -28,29 +28,20 @@ public class OptionSnapshotFetcherJob extends AbstractCronjob {
         this.optionSnapshotFetcherFacade = optionSnapshotFetcherFacade;
     }
 
-    @Scheduled(cron = "${all-cronjob-schedule}", zone = AbstractCronjob.LISBON_ZONE)
+    @Scheduled(cron = "${all-cronjob-schedule}", zone = com.rama.mudstock.config.ApplicationConfig.LISBON_ZONE)
     public void fetchSnapshots() {
         String purpose = CronjobConfigEnum.Purpose.OPTION_SNAPSHOT_FETCHER_JOB.value();
 
-        if (!isEnabled(purpose)) {
-            log.info("OptionSnapshotFetcherJob: disabled by system_config (purpose={}, code={})", purpose, enabledCode());
-            return;
-        }
-
-        if (!isWithinExecutionWindow("OptionSnapshotFetcherJob", purpose, LISBON)) {
-            return;
-        }
-
-        if (!shouldExecuteSinceLastUpdated("OptionSnapshotFetcherJob", null, purpose, LISBON)) {
+        if (!shouldExecuteBySchedule(purpose)) {
             return;
         }
 
         try {
             int inserted = optionSnapshotFetcherFacade.fetchAndStoreSnapshots();
-            log.info("OptionSnapshotFetcherJob: inserted {} option_snapshot row(s)", inserted);
-            updateLastUpdatedNowUtc(purpose, lastUpdatedCode());
+            log.info("{}: inserted {} option_snapshot row(s)", purpose, inserted);
+            updateLastUpdatedNowUtc(purpose);
         } catch (Exception ex) {
-            log.error("OptionSnapshotFetcherJob: snapshot fetch failed", ex);
+            log.error("{}: snapshot fetch failed", purpose, ex);
         }
     }
 }

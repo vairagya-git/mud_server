@@ -5,19 +5,23 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import com.rama.mudstock.config.ApplicationProperties;
+
 @Service
 public class AlphaVantageStockService {
 
-    @Value("${alphavantage.function}")
-    private String function;
-
-    @Value("${alphavantage.apikey}")
-    private String apiKey;
+    private final ApplicationProperties applicationProperties;
 
     private static final String BASE_URL = "https://www.alphavantage.co/query";
 
+    public AlphaVantageStockService(ApplicationProperties applicationProperties) {
+        this.applicationProperties = applicationProperties;
+    }
+
     public String fetchDailyTimeSeries(String ticker) {
         RestTemplate rest = new RestTemplate();
+        String function = applicationProperties.getAlphavantage().getFunction();
+        String apiKey = applicationProperties.getAlphavantage().getApikey();
         String url = String.format("%s?function=%s&symbol=%s&apikey=%s", BASE_URL, function, ticker, apiKey);
         try {
             return rest.getForObject(url, String.class);
