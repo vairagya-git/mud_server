@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Option Stimulation - MudStock</title></head>
+<body>
+<div id="page-content" th:fragment="content">
+    <style>
+        .trade-form-shell {
+            max-width: 1120px;
+        }
+
+        .trade-form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 14px;
+            margin-bottom: 12px;
+        }
+
+        .trade-legs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .trade-leg-card {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            background: #fafdf8;
+        }
+
+        .trade-leg-title {
+            font-size: .92rem;
+            font-weight: 700;
+            color: #285f28;
+            margin-bottom: 10px;
+        }
+
+        .trade-leg-meta {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .trade-empty {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: #fff7e6;
+            border: 1px solid #f4d39c;
+            color: #7b4e00;
+            font-size: .86rem;
+        }
+
+        @media (max-width: 640px) {
+            .trade-leg-meta {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <div class="page-header">
+        <h1>Option Stimulation</h1>
+        <div class="subtitle">Select strategy, ticker, and expiration then apply to render trade legs.</div>
+    </div>
+
+    <div class="card trade-form-shell" style="padding:16px 18px 14px;">
+        <h3 style="margin:0 0 10px">Option Stimulation Form</h3>
+
+        <div class="trade-form-grid">
+            <div class="form-group">
+                <label>Strategy</label>
+                <select id="tradeStrategyDefinition" required>
+                    <option value="" selected>-- select strategy --</option>
+                    <option th:each="d : ${strategyDefinitions}"
+                            th:value="${d.id}"
+                            th:text="${d.display_name}">
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Ticker</label>
+                <input id="tradeTickerInput" list="tradeTickerOptions" type="text" placeholder="Search ticker" autocomplete="off">
+                <datalist id="tradeTickerOptions">
+                    <option th:each="ticker : ${tradeTickers}" th:value="${ticker}"></option>
+                </datalist>
+            </div>
+
+            <div class="form-group">
+                <label>Expiration Date</label>
+                <select id="tradeExpirationDateSelect">
+                    <option value="" selected>-- select expiration --</option>
+                    <option th:each="d : ${tradeExpirationDates}" th:value="${d}" th:text="${d}"></option>
+                </select>
+            </div>
+
+            <div class="form-group" id="legCountGroup" style="display:none">
+                <label>Leg Count</label>
+                <select id="tradeLegCount"></select>
+            </div>
+
+            <div class="form-group" style="display:flex;align-items:end;">
+                <button id="applyTradeFiltersBtn" type="button" class="btn btn-primary" style="width:100%">Apply</button>
+            </div>
+        </div>
+
+        <div id="tradeDefinitionHint" class="subtitle"></div>
+        <div id="tradeLegsContainer" class="trade-legs"></div>
+        <div id="tradeEmptyState" class="trade-empty" style="display:none"></div>
+    </div>
+
+    <script th:inline="javascript">
+        (function () {
+            var tradeStrategyDefinition = document.getElementById('tradeStrategyDefinition');
+            var tradeTickerInput = document.getElementById('tradeTickerInput');
+            var tradeExpirationDateSelect = document.getElementById('tradeExpirationDateSelect');
+            var applyTradeFiltersBtn = document.getElementById('applyTradeFiltersBtn');
+            var tradeLegCount = document.getElementById('tradeLegCount');
+            var legCountGroup = document.getElementById('legCountGroup');
+            var tradeLegsContainer = document.getElementById('tradeLegsContainer');
+            var tradeDefinitionHint = document.getElementById('tradeDefinitionHint');
+            var tradeEmptyState = document.getElementById('tradeEmptyState');
+            var strategyDefinitions = /*[[${strategyDefinitions}]]*/ [];
+            var strategyDefinitionLegs = /*[[${strategyDefinitionLegs}]]*/ [];
+            var tradeContracts = /*[[${tradeContracts}]]*/ [];
+
+            function toInt(value) {
+                if (value === null || value === undefined || value === '') return null;
+                var parsed = parseInt(String(value), 10);
+                return Number.isNaN(parsed) ? null : parsed;
+            }
+
+            function normalizeDefinitions(definitions) {
+                return (definitions || []).map(function (d) {
+                    return {
+                        id: toInt(d.id),
+                        strategyCode: d.strategy_code || '',
+                        displayName: d.display_name || '',
+                        description: d.description || '',
+                        minimumLegs: toInt(d.minimum_legs) || 0,
+                        maximumLegs: toInt(d.maximum_legs) || 0,
+                        allowRoll: !!d.allow_roll,
+                        allowPartialClose: !!d.allow_partial_close,
+                        allowRebalance: !!d.allow_rebalance
+                    };
+                });
+            }
+
+            function normalizeLegs(legs) {
+                return (legs || []).map(function (l) {
+                    return {
+                        strategyDefinitionId: toInt(l.strategy_definition_id),
+                        legCode: l.leg_code || '',
+                        displayName: l.display_name || '',
+                        contractType: l.contract_type || '',
+                        positionSide: l.position_side || '',
+                        quantity: toInt(l.quantity) || 0,
+                        legOrder: toInt(l.leg_order) || 0,
+                        expirationGroup: toInt(l.expiration_group) || 0,
+                        required: !!l.required
+                    };
+                });
+            }
+
+            function normalizeContracts(contracts) {
+                return (contracts || []).map(function (c) {
+                    return {
+                        id: toInt(c.id),
+                        ticker: (c.ticker || '').trim().toUpperCase(),
+                        contractTicker: c.contract_ticker || '',
+                        contractType: (c.contract_type || '').trim().toUpperCase(),
+                        expirationDate: c.expiration_date ? String(c.expiration_date) : '',
+                        strikePrice: c.strike_price
+                    };
+                });
+            }
+
+            function escapeHtml(value) {
+                return String(value == null ? '' : value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            var defRows = normalizeDefinitions(strategyDefinitions);
+            var legRows = normalizeLegs(strategyDefinitionLegs);
+            var contractRows = normalizeContracts(tradeContracts);
+
+            function strategyById(definitionId) {
+                return defRows.find(function (d) { return d.id === definitionId; });
+            }
+
+            function legsByDefinitionId(definitionId) {
+                return legRows
+                    .filter(function (l) { return l.strategyDefinitionId === definitionId; })
+                    .sort(function (a, b) { return a.legOrder - b.legOrder; });
+            }
+
+            function buildLegCard(leg, index, matchingContracts) {
+                var sideLabel = (leg.positionSide === 'LONG' && leg.contractType === 'CALL')
+                    ? 'Long Call Side'
+                    : (leg.positionSide === 'LONG' && leg.contractType === 'PUT')
+                        ? 'Long Put Side'
+                        : leg.positionSide + ' ' + leg.contractType + ' Side';
+
+                var contractOptions = matchingContracts.map(function (contract) {
+                    var label = contract.contractTicker + ' | Strike: ' + contract.strikePrice;
+                    return '<option value="' + escapeHtml(contract.contractTicker) + '">' + escapeHtml(label) + '</option>';
+                }).join('');
+
+                return ''
+                    + '<div class="trade-leg-card">'
+                    + '<div class="trade-leg-title">Leg ' + (index + 1) + ': ' + escapeHtml(leg.displayName) + ' (' + escapeHtml(sideLabel) + ')</div>'
+                    + '<div class="trade-leg-meta">'
+                    + '<div class="form-group"><label>Leg Code</label><input type="text" value="' + escapeHtml(leg.legCode) + '" readonly></div>'
+                    + '<div class="form-group"><label>Contract Type</label><input type="text" value="' + escapeHtml(leg.contractType) + '" readonly></div>'
+                    + '<div class="form-group"><label>Position Side</label><input type="text" value="' + escapeHtml(leg.positionSide) + '" readonly></div>'
+                    + '<div class="form-group"><label>Quantity</label><input type="text" value="' + leg.quantity + '" readonly></div>'
+                    + '<div class="form-group"><label>Expiration Group</label><input type="text" value="' + leg.expirationGroup + '" readonly></div>'
+                    + '<div class="form-group"><label>Required</label><input type="text" value="' + (leg.required ? 'YES' : 'NO') + '" readonly></div>'
+                    + '<div class="form-group" style="grid-column:1 / -1">'
+                    + '<label>Available Contracts</label>'
+                    + '<select>'
+                    + '<option value="" selected>-- select contract --</option>'
+                    + contractOptions
+                    + '</select>'
+                    + '</div>'
+                    + '</div>'
+                    + '</div>';
+            }
+
+            function updateLegCountOptions(definition, availableLegs) {
+                tradeLegCount.innerHTML = '';
+                var minLegs = Math.max(0, definition.minimumLegs || 0);
+                var maxLegs = Math.max(minLegs, definition.maximumLegs || minLegs);
+                var boundedMax = Math.min(maxLegs, availableLegs.length);
+                var boundedMin = Math.min(minLegs, boundedMax);
+
+                if (boundedMin >= boundedMax) {
+                    legCountGroup.style.display = 'none';
+                    tradeLegCount.value = String(boundedMax);
+                    return boundedMax;
+                }
+
+                legCountGroup.style.display = '';
+                for (var c = boundedMin; c <= boundedMax; c++) {
+                    var option = document.createElement('option');
+                    option.value = String(c);
+                    option.textContent = String(c) + ' legs';
+                    tradeLegCount.appendChild(option);
+                }
+                tradeLegCount.value = String(boundedMin);
+                return boundedMin;
+            }
+
+            function renderTradeLegs() {
+                var definitionId = toInt(tradeStrategyDefinition.value);
+                if (!definitionId) {
+                    tradeDefinitionHint.textContent = 'Select a strategy to render the trade form.';
+                    tradeLegsContainer.innerHTML = '';
+                    tradeEmptyState.style.display = 'none';
+                    legCountGroup.style.display = 'none';
+                    return;
+                }
+
+                var definition = strategyById(definitionId);
+                var legs = legsByDefinitionId(definitionId);
+                var selectedTicker = (tradeTickerInput.value || '').trim().toUpperCase();
+                var selectedExpiration = (tradeExpirationDateSelect.value || '').trim();
+
+                if (!definition) {
+                    tradeDefinitionHint.textContent = 'Selected strategy definition not found.';
+                    tradeLegsContainer.innerHTML = '';
+                    tradeEmptyState.style.display = '';
+                    tradeEmptyState.textContent = 'Unable to load strategy definition details.';
+                    legCountGroup.style.display = 'none';
+                    return;
+                }
+
+                if (!selectedTicker || !selectedExpiration) {
+                    tradeLegsContainer.innerHTML = '';
+                    tradeEmptyState.style.display = '';
+                    tradeEmptyState.textContent = 'Select both ticker and expiration date, then click Apply.';
+                    legCountGroup.style.display = 'none';
+                    return;
+                }
+
+                var detailParts = [
+                    'Strategy: ' + definition.displayName + ' (' + definition.strategyCode + ')',
+                    'Min Legs: ' + definition.minimumLegs,
+                    'Max Legs: ' + definition.maximumLegs
+                ];
+                if (selectedTicker) {
+                    detailParts.push('Ticker: ' + selectedTicker);
+                }
+                if (selectedExpiration) {
+                    detailParts.push('Expiration: ' + selectedExpiration);
+                }
+
+                tradeDefinitionHint.textContent = detailParts.join(' | ');
+
+                if (!legs.length) {
+                    tradeLegsContainer.innerHTML = '';
+                    tradeEmptyState.style.display = '';
+                    tradeEmptyState.textContent = 'No leg definition rows found for this strategy.';
+                    legCountGroup.style.display = 'none';
+                    return;
+                }
+
+                tradeEmptyState.style.display = 'none';
+                var chosenLegCount = updateLegCountOptions(definition, legs);
+                var explicitLegCount = toInt(tradeLegCount.value);
+                var legCount = explicitLegCount || chosenLegCount;
+                var selectedLegs = legs.slice(0, Math.max(0, legCount));
+
+                var filteredContracts = contractRows.filter(function (contract) {
+                    return contract.ticker === selectedTicker && contract.expirationDate === selectedExpiration;
+                });
+
+                if (!filteredContracts.length) {
+                    tradeLegsContainer.innerHTML = '';
+                    tradeEmptyState.style.display = '';
+                    tradeEmptyState.textContent = 'No option contracts found for selected ticker and expiration date.';
+                    return;
+                }
+
+                tradeLegsContainer.innerHTML = selectedLegs.map(function (leg, index) {
+                    var matchingContracts = filteredContracts.filter(function (contract) {
+                        return contract.contractType === leg.contractType;
+                    });
+                    return buildLegCard(leg, index, matchingContracts);
+                }).join('');
+            }
+
+            tradeStrategyDefinition.addEventListener('change', function () {
+                tradeLegsContainer.innerHTML = '';
+                tradeEmptyState.style.display = 'none';
+                tradeDefinitionHint.textContent = 'Click Apply to render legs for selected filters.';
+            });
+            tradeLegCount.addEventListener('change', renderTradeLegs);
+            applyTradeFiltersBtn.addEventListener('click', renderTradeLegs);
+            tradeDefinitionHint.textContent = 'Select filters and click Apply.';
+        })();
+    </script>
+</div>
+</body>
+</html>

@@ -30,6 +30,25 @@ public class OptionStrategyRepository {
         return jdbc.queryForList(sql);
     }
 
+    public List<Map<String, Object>> listActiveStrategyDefinitions() {
+        String sql = "SELECT id, strategy_code, display_name, description, minimum_legs, maximum_legs, "
+            + "allow_roll, allow_partial_close, allow_rebalance, display_order "
+            + "FROM option_strategy_definition "
+            + "WHERE active = TRUE "
+            + "ORDER BY display_order, display_name";
+        return jdbc.queryForList(sql);
+    }
+
+    public List<Map<String, Object>> listActiveStrategyDefinitionLegs() {
+        String sql = "SELECT l.id, l.strategy_definition_id, l.leg_code, l.display_name, l.contract_type, "
+            + "l.position_side, l.quantity, l.leg_order, l.expiration_group, l.required "
+            + "FROM option_strategy_definition_leg l "
+            + "JOIN option_strategy_definition d ON d.id = l.strategy_definition_id "
+            + "WHERE d.active = TRUE "
+            + "ORDER BY l.strategy_definition_id, l.leg_order";
+        return jdbc.queryForList(sql);
+    }
+
     public int insert(Long stockId,
                       Long previousStrategyId,
                       String strategyName,

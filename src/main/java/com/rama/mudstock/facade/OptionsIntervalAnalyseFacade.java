@@ -40,6 +40,32 @@ public class OptionsIntervalAnalyseFacade {
         this.optionContractRepository = optionContractRepository;
     }
 
+    public int completeExpiredActiveEntries() {
+        List<OptionsInternalAnalyseEntity> activeEntries = optionToAnalyseRepository
+            .getOptionsInternalAnalyseByStatus(OptionToAnalyseRepository.STATUS_ACTIVE);
+
+        int completedCount = 0;
+        LocalDate today = LocalDate.now();
+        for (OptionsInternalAnalyseEntity entry : activeEntries) {
+            Long entryId = entry.id();
+            LocalDate expirationDate = entry.expirationDate();
+            if (entryId == null || expirationDate == null) {
+                continue;
+            }
+
+            if (expirationDate.isBefore(today)) {
+                optionToAnalyseRepository.updateStatusById(entryId, OptionToAnalyseRepository.STATUS_COMPLETED);
+                completedCount++;
+                log.info("OptionsIntervalAnalyseFacade: entry id={} moved ACTIVE -> COMPLETED (expirationDate={} < today={})",
+                    entryId,
+                    expirationDate,
+                    today);
+            }
+        }
+
+        return completedCount;
+    }
+
     public int analyseDaily() {
         List<OptionsInternalAnalyseEntity> entries = optionToAnalyseRepository
             .getOptionsInternalAnalyseByStatus(OptionToAnalyseRepository.STATUS_CREATE_CONTRACT);

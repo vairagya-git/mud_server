@@ -85,6 +85,58 @@ public class OptionContractRepository {
         return jdbc.queryForList(sql.toString());
     }
 
+    public List<String> listDistinctTickersByStatus(String status) {
+        StringBuilder sql = new StringBuilder()
+            .append("SELECT DISTINCT s.ticker ")
+            .append("FROM option_contract o ")
+            .append("JOIN stock s ON s.id = o.stock_id ")
+            .append("WHERE s.ticker IS NOT NULL AND s.ticker <> '' ");
+
+        boolean hasStatus = status != null && !status.isBlank();
+        if (hasStatus) {
+            sql.append("AND UPPER(o.status) = UPPER(?) ");
+        }
+
+        sql.append("ORDER BY s.ticker");
+
+        if (hasStatus) {
+            return jdbc.queryForList(sql.toString(), String.class, status);
+        }
+        return jdbc.queryForList(sql.toString(), String.class);
+    }
+
+    public List<LocalDate> listDistinctExpirationDatesByStatus(String status) {
+        StringBuilder sql = new StringBuilder()
+            .append("SELECT DISTINCT o.expiration_date ")
+            .append("FROM option_contract o ")
+            .append("JOIN stock s ON s.id = o.stock_id ")
+            .append("WHERE o.expiration_date IS NOT NULL ")
+            .append("AND s.ticker IS NOT NULL AND s.ticker <> '' ");
+
+        boolean hasStatus = status != null && !status.isBlank();
+        if (hasStatus) {
+            sql.append("AND UPPER(o.status) = UPPER(?) ");
+        }
+
+        sql.append("ORDER BY o.expiration_date");
+
+        if (hasStatus) {
+            return jdbc.queryForList(sql.toString(), LocalDate.class, status);
+        }
+        return jdbc.queryForList(sql.toString(), LocalDate.class);
+    }
+
+    public List<Map<String, Object>> listActiveContractsForSimulator() {
+        String sql = "SELECT o.id, s.ticker, o.contract_ticker, o.contract_type, o.expiration_date, o.strike_price "
+            + "FROM option_contract o "
+            + "JOIN stock s ON s.id = o.stock_id "
+            + "WHERE UPPER(o.status) = UPPER(?) "
+            + "AND s.ticker IS NOT NULL AND s.ticker <> '' "
+            + "AND o.expiration_date IS NOT NULL "
+            + "ORDER BY s.ticker, o.expiration_date, o.contract_type, o.strike_price";
+        return jdbc.queryForList(sql, STATUS_ACTIVE);
+    }
+
     public int markContractsCompletedForInterval(Long stockId,
                                                  String contractType,
                                                  LocalDate expirationDate,

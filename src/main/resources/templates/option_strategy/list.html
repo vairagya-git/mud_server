@@ -63,6 +63,7 @@
             color: var(--text-muted);
             font-size: .84rem;
         }
+
     </style>
 
     <div class="page-header">
@@ -182,7 +183,7 @@
         </div>
     </div>
 
-    <script>
+    <script th:inline="javascript">
         (function () {
             var tabButtons = Array.from(document.querySelectorAll('.mapping-tab-btn[data-tab-target]'));
             var tabPanes = Array.from(document.querySelectorAll('.mapping-tab-pane'));

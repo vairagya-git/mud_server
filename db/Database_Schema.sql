@@ -328,7 +328,7 @@ CREATE TABLE options_interval_analyse (
     id  bigint unsigned NOT NULL AUTO_INCREMENT,
     stock_id bigint unsigned NOT NULL,
     contract_type ENUM('CALL', 'PUT', 'BOTH') NOT NULL,
-    status ENUM('CREATE_CONTRACT', 'ACTIVE', 'CLOSE', 'COMPLETED') NOT NULL default 'CREATE_CONTRACT',
+    status ENUM('CREATE_CONTRACT', 'ACTIVE', 'CLOSE', 'PARTIALLY_COMPLETED', 'COMPLETED') NOT NULL default 'CREATE_CONTRACT',
     expiration_date DATE NOT NULL,
     strike_from DECIMAL(12,4) NOT NULL,
     strike_to DECIMAL(12,4) NOT NULL,
@@ -341,9 +341,9 @@ CREATE TABLE options_interval_analyse (
   CONSTRAINT `unique_ota_option_to_analyse` UNIQUE (`stock_id`, contract_type,`expiration_date`,strike_from,strike_to)
 );
 
-ALTER TABLE option_contract
-    ADD COLUMN status ENUM('ACTIVE', 'COMPLETED')
-    NOT NULL DEFAULT 'ACTIVE';
+ALTER TABLE options_interval_analyse
+    modify COLUMN
+    status ENUM('CREATE_CONTRACT', 'ACTIVE', 'CLOSE', 'PARTIALLY_COMPLETED','COMPLETED') NOT NULL default 'CREATE_CONTRACT';
 
 select * from option_contract;
 
@@ -445,32 +445,325 @@ CREATE TABLE option_snapshot (
 );
 
 
+CREATE TABLE option_strategy_definition (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+    strategy_code VARCHAR(50) NOT NULL,
+    display_name VARCHAR(100) NOT NULL,
+    description TEXT,
+
+    minimum_legs SMALLINT NOT NULL,
+    maximum_legs SMALLINT NOT NULL,
+
+    allow_roll BOOLEAN NOT NULL DEFAULT TRUE,
+    allow_partial_close BOOLEAN NOT NULL DEFAULT TRUE,
+    allow_rebalance BOOLEAN NOT NULL DEFAULT TRUE,
+
+    display_order SMALLINT NOT NULL DEFAULT 0,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_strategy_definition_code (strategy_code)
+);
+
+INSERT INTO option_strategy_definition
+(
+    strategy_code,
+    display_name,
+    description,
+    minimum_legs,
+    maximum_legs,
+    allow_roll,
+    allow_partial_close,
+    allow_rebalance,
+    display_order,
+    active
+)
+VALUES
+('LONG_CALL',             'Long Call',             'Buy a single call option.',                                        1, 1, TRUE, TRUE, TRUE,  1, TRUE),
+('LONG_PUT',              'Long Put',              'Buy a single put option.',                                         1, 1, TRUE, TRUE, TRUE,  2, TRUE),
+('LONG_STRADDLE',         'Long Straddle',         'Buy a call and put with the same strike.',                         2, 2, TRUE, TRUE, TRUE,  3, TRUE),
+('LONG_STRANGLE',         'Long Strangle',         'Buy a call and put with different strikes.',                       2, 2, TRUE, TRUE, TRUE,  4, TRUE),
+('BULL_CALL_SPREAD',      'Bull Call Spread',      'Bullish debit spread using calls.',                               2, 2, TRUE, TRUE, TRUE,  5, TRUE),
+('BEAR_CALL_SPREAD',      'Bear Call Spread',      'Bearish credit spread using calls.',                              2, 2, TRUE, TRUE, TRUE,  6, TRUE),
+('BULL_PUT_SPREAD',       'Bull Put Spread',       'Bullish credit spread using puts.',                               2, 2, TRUE, TRUE, TRUE,  7, TRUE),
+('BEAR_PUT_SPREAD',       'Bear Put Spread',       'Bearish debit spread using puts.',                                2, 2, TRUE, TRUE, TRUE,  8, TRUE),
+('IRON_CONDOR',           'Iron Condor',           'Neutral four-leg premium strategy.',                              4, 4, TRUE, TRUE, TRUE,  9, TRUE),
+('IRON_BUTTERFLY',        'Iron Butterfly',        'Neutral four-leg strategy centered around one strike.',           4, 4, TRUE, TRUE, TRUE, 10, TRUE),
+('REVERSE_IRON_CONDOR',   'Reverse Iron Condor',   'Debit version of an Iron Condor.',                                4, 4, TRUE, TRUE, TRUE, 11, TRUE),
+('CUSTOM',                'Custom Strategy',       'User-defined option strategy.',                                   1, 20, TRUE, TRUE, TRUE, 99, TRUE);
+
+
+CREATE TABLE option_strategy_definition_leg (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+    strategy_definition_id BIGINT UNSIGNED NOT NULL,
+
+    leg_code VARCHAR(50) NOT NULL,
+    display_name VARCHAR(100) NOT NULL,
+
+    contract_type ENUM(
+        'CALL',
+        'PUT'
+    ) NOT NULL,
+
+    position_side ENUM(
+        'LONG',
+        'SHORT'
+    ) NOT NULL,
+
+    quantity SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+
+    leg_order SMALLINT UNSIGNED NOT NULL,
+
+    expiration_group SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+
+    required BOOLEAN NOT NULL DEFAULT TRUE,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    CONSTRAINT fk_strategy_definition_leg
+        FOREIGN KEY (strategy_definition_id)
+        REFERENCES option_strategy_definition (id),
+
+    UNIQUE KEY uk_strategy_definition_leg_code (
+        strategy_definition_id,
+        leg_code
+    ),
+
+    UNIQUE KEY uk_strategy_definition_leg_order (
+        strategy_definition_id,
+        leg_order
+    )
+);
+
+-- ============================================================
+-- LONG CALL
+-- ============================================================
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'LONG_CALL', 'Long Call', 'CALL', 'LONG', 1, 1
+FROM option_strategy_definition
+WHERE strategy_code = 'LONG_CALL';
+
+
+-- ============================================================
+-- LONG PUT
+-- ============================================================
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'LONG_PUT', 'Long Put', 'PUT', 'LONG', 1, 1
+FROM option_strategy_definition
+WHERE strategy_code = 'LONG_PUT';
+
+
+-- ============================================================
+-- LONG STRADDLE
+-- ============================================================
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'LONG_CALL', 'Long Call', 'CALL', 'LONG', 1, 1
+FROM option_strategy_definition
+WHERE strategy_code = 'LONG_STRADDLE';
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'LONG_PUT', 'Long Put', 'PUT', 'LONG', 1, 2
+FROM option_strategy_definition
+WHERE strategy_code = 'LONG_STRADDLE';
+
+
+-- ============================================================
+-- LONG STRANGLE
+-- ============================================================
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'LONG_CALL', 'Long Call', 'CALL', 'LONG', 1, 1
+FROM option_strategy_definition
+WHERE strategy_code = 'LONG_STRANGLE';
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'LONG_PUT', 'Long Put', 'PUT', 'LONG', 1, 2
+FROM option_strategy_definition
+WHERE strategy_code = 'LONG_STRANGLE';
+
+
+-- ============================================================
+-- BULL CALL SPREAD
+-- ============================================================
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'LONG_CALL', 'Long Call', 'CALL', 'LONG', 1, 1
+FROM option_strategy_definition
+WHERE strategy_code = 'BULL_CALL_SPREAD';
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'SHORT_CALL', 'Short Call', 'CALL', 'SHORT', 1, 2
+FROM option_strategy_definition
+WHERE strategy_code = 'BULL_CALL_SPREAD';
+
+
+-- ============================================================
+-- BEAR CALL SPREAD
+-- ============================================================
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'SHORT_CALL', 'Short Call', 'CALL', 'SHORT', 1, 1
+FROM option_strategy_definition
+WHERE strategy_code = 'BEAR_CALL_SPREAD';
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'LONG_CALL', 'Long Call', 'CALL', 'LONG', 1, 2
+FROM option_strategy_definition
+WHERE strategy_code = 'BEAR_CALL_SPREAD';
+
+
+-- ============================================================
+-- BULL PUT SPREAD
+-- ============================================================
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'SHORT_PUT', 'Short Put', 'PUT', 'SHORT', 1, 1
+FROM option_strategy_definition
+WHERE strategy_code = 'BULL_PUT_SPREAD';
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'LONG_PUT', 'Long Put', 'PUT', 'LONG', 1, 2
+FROM option_strategy_definition
+WHERE strategy_code = 'BULL_PUT_SPREAD';
+
+
+-- ============================================================
+-- BEAR PUT SPREAD
+-- ============================================================
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'LONG_PUT', 'Long Put', 'PUT', 'LONG', 1, 1
+FROM option_strategy_definition
+WHERE strategy_code = 'BEAR_PUT_SPREAD';
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'SHORT_PUT', 'Short Put', 'PUT', 'SHORT', 1, 2
+FROM option_strategy_definition
+WHERE strategy_code = 'BEAR_PUT_SPREAD';
+
+
+-- ============================================================
+-- IRON CONDOR
+-- ============================================================
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'LONG_PUT', 'Long Put', 'PUT', 'LONG', 1, 1
+FROM option_strategy_definition
+WHERE strategy_code = 'IRON_CONDOR';
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'SHORT_PUT', 'Short Put', 'PUT', 'SHORT', 1, 2
+FROM option_strategy_definition
+WHERE strategy_code = 'IRON_CONDOR';
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'SHORT_CALL', 'Short Call', 'CALL', 'SHORT', 1, 3
+FROM option_strategy_definition
+WHERE strategy_code = 'IRON_CONDOR';
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'LONG_CALL', 'Long Call', 'CALL', 'LONG', 1, 4
+FROM option_strategy_definition
+WHERE strategy_code = 'IRON_CONDOR';
+
+
+-- ============================================================
+-- IRON BUTTERFLY
+-- ============================================================
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'LONG_PUT', 'Long Put', 'PUT', 'LONG', 1, 1
+FROM option_strategy_definition
+WHERE strategy_code = 'IRON_BUTTERFLY';
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'SHORT_PUT', 'Short Put', 'PUT', 'SHORT', 1, 2
+FROM option_strategy_definition
+WHERE strategy_code = 'IRON_BUTTERFLY';
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'SHORT_CALL', 'Short Call', 'CALL', 'SHORT', 1, 3
+FROM option_strategy_definition
+WHERE strategy_code = 'IRON_BUTTERFLY';
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'LONG_CALL', 'Long Call', 'CALL', 'LONG', 1, 4
+FROM option_strategy_definition
+WHERE strategy_code = 'IRON_BUTTERFLY';
+
+
+-- ============================================================
+-- REVERSE IRON CONDOR
+-- ============================================================
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'SHORT_PUT', 'Short Put', 'PUT', 'SHORT', 1, 1
+FROM option_strategy_definition
+WHERE strategy_code = 'REVERSE_IRON_CONDOR';
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'LONG_PUT', 'Long Put', 'PUT', 'LONG', 1, 2
+FROM option_strategy_definition
+WHERE strategy_code = 'REVERSE_IRON_CONDOR';
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'LONG_CALL', 'Long Call', 'CALL', 'LONG', 1, 3
+FROM option_strategy_definition
+WHERE strategy_code = 'REVERSE_IRON_CONDOR';
+
+INSERT INTO option_strategy_definition_leg
+(strategy_definition_id, leg_code, display_name, contract_type, position_side, quantity, leg_order)
+SELECT id, 'SHORT_CALL', 'Short Call', 'CALL', 'SHORT', 1, 4
+FROM option_strategy_definition
+WHERE strategy_code = 'REVERSE_IRON_CONDOR';
+
+
+
 CREATE TABLE option_strategy (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 
+    strategy_definition_id BIGINT UNSIGNED NOT NULL,
+
     stock_id BIGINT UNSIGNED NOT NULL,
 
-    previous_strategy_id BIGINT UNSIGNED NULL,
-
-    strategy_name VARCHAR(150),
-
-    strategy_type ENUM(
-        'LONG_CALL',
-        'LONG_PUT',
-        'LONG_STRADDLE',
-        'LONG_STRANGLE',
-        'BULL_CALL_SPREAD',
-        'BEAR_CALL_SPREAD',
-        'BULL_PUT_SPREAD',
-        'BEAR_PUT_SPREAD',
-        'IRON_CONDOR',
-        'IRON_BUTTERFLY',
-        'REVERSE_IRON_CONDOR',
-        'CUSTOM'
-    ) NOT NULL,
-
-    strategy_mode ENUM(
-        'LIVE_TRADE',
+    trade_mode ENUM(
+        'LIVE',
         'SIMULATION'
     ) NOT NULL,
 
@@ -486,39 +779,35 @@ CREATE TABLE option_strategy (
         'CANCELLED'
     ) NOT NULL DEFAULT 'OPEN',
 
-    opened_at DATETIME(6) NOT NULL,
-    closed_at DATETIME(6) NULL,
+    previous_strategy_id BIGINT UNSIGNED NULL,
 
-    entry_underlying_price DECIMAL(14,4),
-    exit_underlying_price DECIMAL(14,4),
+    entry_time DATETIME(6) NOT NULL,
+    exit_time DATETIME(6) NULL,
 
-    realized_pnl DECIMAL(18,4),
+    entry_underlying_price DECIMAL(18,6) NULL,
+    exit_underlying_price DECIMAL(18,6) NULL,
 
-    notes TEXT,
+    realized_pnl DECIMAL(18,6) NULL,
 
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP
         ON UPDATE CURRENT_TIMESTAMP,
 
     PRIMARY KEY (id),
 
+    CONSTRAINT fk_option_strategy_definition
+        FOREIGN KEY (strategy_definition_id)
+        REFERENCES option_strategy_definition (id),
+
     CONSTRAINT fk_option_strategy_stock
         FOREIGN KEY (stock_id)
-        REFERENCES stock(id),
+        REFERENCES stock (id),
 
     CONSTRAINT fk_option_strategy_previous
         FOREIGN KEY (previous_strategy_id)
-        REFERENCES option_strategy(id),
-
-    INDEX idx_option_strategy_stock_status (
-        stock_id,
-        status
-    ),
-
-    INDEX idx_option_strategy_previous (
-        previous_strategy_id
-    )
+        REFERENCES option_strategy (id)
 );
+
 
 CREATE TABLE option_strategy_leg (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -568,8 +857,6 @@ CREATE TABLE option_strategy_leg (
     CONSTRAINT uk_strategy_leg_number
         UNIQUE (option_strategy_id, leg_number)
 );
-
-drop table option_strategy_snapshot;
 
 CREATE TABLE option_strategy_snapshot (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

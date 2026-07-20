@@ -37,6 +37,9 @@ public class OptionsIntervalAnalyseJob extends AbstractCronjob {
         }
 
         try {
+            int completedExpired = optionsIntervalAnalyseFacade.completeExpiredActiveEntries();
+            log.info("{}: completed {} expired ACTIVE options_interval_analyse row(s)", purpose, completedExpired);
+
             int processed = optionsIntervalAnalyseFacade.analyseDaily();
             log.info("{}: processed {} option contract(s)", purpose, processed);
             updateLastUpdatedNowUtc(purpose);
