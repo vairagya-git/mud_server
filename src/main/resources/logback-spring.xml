@@ -12,6 +12,7 @@
     <springProperty scope="context" name="DAY_STOCK_MOVEMENT_KEY_MAP_ENTRY_LOG_FILE" source="logging.cronjob.files.dayStockMovementKeyMapEntry" defaultValue="${LOG_PATH}/day-stock-movement-key-map-entry.log" />
     <springProperty scope="context" name="WEEKLY_UPCOMING_EARNINGS_LOG_FILE" source="logging.cronjob.files.weeklyUpcomingEarning" defaultValue="${LOG_PATH}/weekly-upcoming-earnings.log" />
     <springProperty scope="context" name="DAILY_ANALYST_RATING_LOG_FILE" source="logging.cronjob.files.dailyAnalystRating" defaultValue="${LOG_PATH}/daily-analyst-rating.log" />
+    <springProperty scope="context" name="OPTION_SNAPSHOT_FETCHER_LOG_FILE" source="logging.cronjob.files.optionSnapshotFetcher" defaultValue="${LOG_PATH}/option-snapshot-fetcher.log" />
 
     <appender name="EARNINGS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${EARNINGS_LOG_FILE}</file>
@@ -91,6 +92,19 @@
         </rollingPolicy>
     </appender>
 
+    <appender name="OPTION_SNAPSHOT_FETCHER_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${OPTION_SNAPSHOT_FETCHER_LOG_FILE}</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${OPTION_SNAPSHOT_FETCHER_LOG_FILE}.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>200MB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
     <springProfile name="cronjob">
         <logger name="com.rama.mudstock.scheduler.EarningsDateScheduler" level="INFO" additivity="false">
             <appender-ref ref="EARNINGS_FILE" />
@@ -124,6 +138,16 @@
 
         <logger name="com.rama.mudstock.facade.AnalystRatingFacade" level="INFO" additivity="false">
             <appender-ref ref="DAILY_ANALYST_RATING_FILE" />
+            <appender-ref ref="CONSOLE" />
+        </logger>
+
+        <logger name="com.rama.mudstock.scheduler.option.OptionSnapshotFetcherJob" level="INFO" additivity="false">
+            <appender-ref ref="OPTION_SNAPSHOT_FETCHER_FILE" />
+            <appender-ref ref="CONSOLE" />
+        </logger>
+
+        <logger name="com.rama.mudstock.facade.OptionSnapshotFetcherFacade" level="INFO" additivity="false">
+            <appender-ref ref="OPTION_SNAPSHOT_FETCHER_FILE" />
             <appender-ref ref="CONSOLE" />
         </logger>
 

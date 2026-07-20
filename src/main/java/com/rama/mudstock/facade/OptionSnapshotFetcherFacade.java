@@ -22,6 +22,7 @@ import com.rama.mudstock.util.TypeConverstionUtil;
 public class OptionSnapshotFetcherFacade {
 
     private static final Logger log = LoggerFactory.getLogger(OptionSnapshotFetcherFacade.class);
+    private static final boolean TEMP_LOG = true;
     private final OptionContractRepository optionContractRepository;
     private final OptionSnapshotRepository optionSnapshotRepository;
     private final MassiveRestOptionSnapshotService massiveRestOptionSnapshotService;
@@ -87,15 +88,33 @@ public class OptionSnapshotFetcherFacade {
         BigDecimal gamma = TypeConverstionUtil.round(snapshot.gamma(), 3);
         BigDecimal theta = TypeConverstionUtil.round(snapshot.theta(), 3);
         BigDecimal vega = TypeConverstionUtil.round(snapshot.vega(), 3);
+        Timestamp fetchedAt = Timestamp.from(Instant.now());
+        Timestamp quoteLastUpdatedTs = TypeConverstionUtil.toTimestampFromEpochNanos(snapshot.quoteLastUpdated());
+        Timestamp tradeSipTimestampTs = TypeConverstionUtil.toTimestampFromEpochNanos(snapshot.tradeSipTimestamp());
+        Timestamp underlyingLastUpdatedTs = TypeConverstionUtil.toTimestampFromEpochNanos(snapshot.underlyingLastUpdated());
+
+        if (TEMP_LOG) {
+            log.info(
+                "TEMP_LOG OptionSnapshotFetcherFacade timestamp check: option_contract_id={} contract_ticker={} fetched_at={} quote_last_updated_nanos={} quote_last_updated_ts={} trade_sip_timestamp_nanos={} trade_sip_timestamp_ts={} underlying_last_updated_nanos={} underlying_last_updated_ts={}",
+                optionContractId,
+                contractTicker,
+                fetchedAt,
+                snapshot.quoteLastUpdated(),
+                quoteLastUpdatedTs,
+                snapshot.tradeSipTimestamp(),
+                tradeSipTimestampTs,
+                snapshot.underlyingLastUpdated(),
+                underlyingLastUpdatedTs);
+        }
 
         try {
             optionSnapshotRepository.insert(
                 optionContractId,
                 stockId,
-                Timestamp.from(Instant.now()),
-                TypeConverstionUtil.toTimestampFromEpochNanos(snapshot.quoteLastUpdated()),
-                TypeConverstionUtil.toTimestampFromEpochNanos(snapshot.tradeSipTimestamp()),
-                TypeConverstionUtil.toTimestampFromEpochNanos(snapshot.underlyingLastUpdated()),
+                fetchedAt,
+                quoteLastUpdatedTs,
+                tradeSipTimestampTs,
+                underlyingLastUpdatedTs,
                 snapshot.underlyingPrice(),
                 snapshot.breakEvenPrice(),
                 snapshot.changeToBreakEven(),

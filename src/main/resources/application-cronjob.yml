@@ -19,5 +19,6 @@ logging:
       dayStockMovementKeyMapEntry: logs/day-stock-movement-key-map-entry.log
       weeklyUpcomingEarning: logs/weekly-upcoming-earnings.log
       dailyAnalystRating: logs/daily-analyst-rating.log
+      optionSnapshotFetcher: logs/option-snapshot-fetcher.log
 
 

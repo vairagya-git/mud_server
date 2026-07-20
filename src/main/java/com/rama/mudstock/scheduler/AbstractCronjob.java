@@ -18,6 +18,7 @@ import com.rama.mudstock.util.TypeConverstionUtil;
 public abstract class AbstractCronjob {
 
     private static final Logger log = LoggerFactory.getLogger(AbstractCronjob.class);
+    private static final boolean TEMP_LOG = true;
 
     private final SystemConfigService systemConfigService;
     private String currentPurpose;
@@ -91,11 +92,26 @@ public abstract class AbstractCronjob {
             LocalTime now = LocalTime.now(ApplicationConfig.LISBON);
 
             boolean withinWindow;
+            String comparisonMode;
             if (endTime.isBefore(startTime)) {
                 // Supports windows that cross midnight, e.g. 23:00 to 05:00.
                 withinWindow = !now.isBefore(startTime) || !now.isAfter(endTime);
+                comparisonMode = "CROSS_MIDNIGHT";
             } else {
                 withinWindow = !now.isBefore(startTime) && !now.isAfter(endTime);
+                comparisonMode = "SAME_DAY";
+            }
+
+            if (TEMP_LOG) {
+                log.info(
+                    "TEMP_LOG {} BETWEEN_TIME check: now_lisbon={} start={} end={} comparison_mode={} within_window={} now_utc={}",
+                    purpose,
+                    now,
+                    startTime,
+                    endTime,
+                    comparisonMode,
+                    withinWindow,
+                    Instant.now());
             }
 
             if (!withinWindow) {
