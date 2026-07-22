@@ -16,7 +16,7 @@
             <input id="contractTickerSearchInput" class="table-filter-input-uppercase" list="contractTickerOptions" type="text" placeholder="Search ticker" aria-label="Search ticker">
             <button id="addContractTickerFilterBtn" type="button" class="btn btn-sm btn-secondary">Add ticker</button>
             <datalist id="contractTickerOptions">
-                <option th:each="c : ${contracts}" th:value="${c.ticker}"></option>
+                <option th:each="ticker : ${contractTickers}" th:value="${ticker}"></option>
             </datalist>
         </div>
 

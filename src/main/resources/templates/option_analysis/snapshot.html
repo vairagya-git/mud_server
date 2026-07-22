@@ -124,7 +124,7 @@
                         <div class="table-filter-input">
                             <input id="contractTabTickerInput" class="table-filter-input-uppercase" list="contractTabTickerOptions" type="text" placeholder="Ticker" aria-label="Filter contracts by ticker">
                             <datalist id="contractTabTickerOptions">
-                                <option th:each="c : ${activeContracts}" th:value="${c.ticker}"></option>
+                                <option th:each="ticker : ${activeContractTickers}" th:value="${ticker}"></option>
                             </datalist>
                         </div>
 
@@ -1113,21 +1113,7 @@
             }
 
             function dedupeContractTabOptions() {
-                var tickerOptions = document.getElementById('contractTabTickerOptions');
                 var expirationOptions = document.getElementById('contractTabExpirationOptions');
-
-                if (tickerOptions) {
-                    var seenTickers = new Set();
-                    Array.from(tickerOptions.querySelectorAll('option')).forEach(function (opt) {
-                        var value = normalizeValue('ticker', opt.value);
-                        if (!value || seenTickers.has(value)) {
-                            opt.remove();
-                            return;
-                        }
-                        seenTickers.add(value);
-                        opt.value = value;
-                    });
-                }
 
                 if (expirationOptions) {
                     var seenExpirations = new Set();

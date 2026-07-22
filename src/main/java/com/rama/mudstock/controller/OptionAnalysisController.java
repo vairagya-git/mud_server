@@ -200,6 +200,7 @@ public class OptionAnalysisController {
     public String contractList(Model model,
                                @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         model.addAttribute("contracts", optionContractRepository.getOptionContractsWithTickerByStatus(null, false));
+        model.addAttribute("contractTickers", listDistinctContractTickers(null));
         return hxRequest != null ? "option_analysis/contract :: content" : "option_analysis/contract";
     }
 
@@ -209,6 +210,7 @@ public class OptionAnalysisController {
         model.addAttribute("activeContracts", optionContractRepository.getOptionContractsWithTickerByStatus(
             OptionContractRepository.STATUS_ACTIVE,
             false));
+        model.addAttribute("activeContractTickers", listDistinctContractTickers(OptionContractRepository.STATUS_ACTIVE));
         model.addAttribute("snapshotRefreshIntervalMs", applicationProperties.getSnapshotRefreshMs());
         return hxRequest != null ? "option_analysis/snapshot :: content" : "option_analysis/snapshot";
     }
@@ -228,5 +230,9 @@ public class OptionAnalysisController {
             "option_quote_time",
             MudDateUtil.utcToLocalDateTimeMinuteString(row.get("option_quote_time"))));
         return rows;
+    }
+
+    private List<String> listDistinctContractTickers(String status) {
+        return optionContractRepository.listDistinctTickersByStatus(status);
     }
 }

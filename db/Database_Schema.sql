@@ -376,6 +376,8 @@ drop table option_snapshot;
 drop table option_strategy_leg;
 drop table option_strategy_leg_snapshot;
 
+select * from option_snapshot;
+
 CREATE TABLE option_snapshot (
     id bigint unsigned NOT NULL AUTO_INCREMENT,
 
@@ -405,7 +407,7 @@ CREATE TABLE option_snapshot (
 
 # Greek
     implied_volatility DECIMAL(6,2),
-  open_interest INT,
+    open_interest INT,
     day_volume INT,
 
 # Greek
@@ -414,14 +416,15 @@ CREATE TABLE option_snapshot (
     theta DECIMAL(12,3),
     vega DECIMAL(12,3),
 
-  quote_timeframe ENUM('DELAYED', 'REAL-TIME') NOT NULL default 'DELAYED',
+    quote_timeframe ENUM('DELAYED', 'REAL-TIME') NOT NULL default 'DELAYED',
     underlying_timeframe ENUM('DELAYED', 'REAL-TIME') NOT NULL default 'DELAYED',
     trade_timeframe ENUM('DELAYED', 'REAL-TIME') NOT NULL DEFAULT 'DELAYED',
     
     bid_exchange INT,
-  ask_exchange INT,
-  last_trade_exchange INT,
+    ask_exchange INT,
+    last_trade_exchange INT,
 
+    snapshot_version bigint unsigned NOT NULL;
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
@@ -444,6 +447,9 @@ CREATE TABLE option_snapshot (
     )
 );
 
+ALTER TABLE option_snapshot
+    ADD COLUMN `snapshot_version` bigint unsigned NOT NULL
+    AFTER `last_trade_exchange`;
 
 CREATE TABLE option_strategy_definition (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
