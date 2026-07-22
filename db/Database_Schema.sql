@@ -447,6 +447,78 @@ CREATE TABLE option_snapshot (
     )
 );
 
+
+SELECT
+  id,
+  created_at,
+  UNIX_TIMESTAMP(DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:00')) AS derived_snapshot_version
+FROM option_snapshot
+ORDER BY created_at
+LIMIT 50;
+
+
+-- MySQL 8.0+ (uses window functions)
+-- Rule: start a new group only when gap from previous row is > 120 seconds.
+-- snapshot_version = UNIX timestamp of first created_at in that group.
+
+START TRANSACTION;
+
+DROP TEMPORARY TABLE IF EXISTS tmp_snapshot_group;
+CREATE TEMPORARY TABLE tmp_snapshot_group AS
+SELECT
+    t.id,
+    t.created_at,
+    SUM(t.is_new_group) OVER (ORDER BY t.created_at, t.id) AS grp_id
+FROM (
+    SELECT
+        os.id,
+        os.created_at,
+        CASE
+            WHEN LAG(os.created_at) OVER (ORDER BY os.created_at, os.id) IS NULL THEN 1
+            WHEN TIMESTAMPDIFF(
+                    SECOND,
+                    LAG(os.created_at) OVER (ORDER BY os.created_at, os.id),
+                    os.created_at
+                 ) > 120 THEN 1
+            ELSE 0
+        END AS is_new_group
+    FROM option_snapshot os
+    WHERE os.created_at IS NOT NULL
+) t;
+
+DROP TEMPORARY TABLE IF EXISTS tmp_snapshot_version;
+CREATE TEMPORARY TABLE tmp_snapshot_version AS
+SELECT
+    g.id,
+    UNIX_TIMESTAMP(s.group_start_time) AS new_snapshot_version
+FROM tmp_snapshot_group g
+JOIN (
+    SELECT
+        grp_id,
+        MIN(created_at) AS group_start_time
+    FROM tmp_snapshot_group
+    GROUP BY grp_id
+) s
+ON s.grp_id = g.grp_id;
+
+UPDATE option_snapshot os
+JOIN tmp_snapshot_version v ON v.id = os.id
+SET os.snapshot_version = v.new_snapshot_version;
+
+COMMIT;
+
+-- Validation: one snapshot_version per computed group
+SELECT
+    g.grp_id,
+    MIN(g.created_at) AS group_start,
+    MAX(g.created_at) AS group_end,
+    COUNT(*) AS rows_in_group,
+    COUNT(DISTINCT os.snapshot_version) AS distinct_versions
+FROM tmp_snapshot_group g
+JOIN option_snapshot os ON os.id = g.id
+GROUP BY g.grp_id
+HAVING COUNT(DISTINCT os.snapshot_version) > 1;
+
 ALTER TABLE option_snapshot
     ADD COLUMN `snapshot_version` bigint unsigned NOT NULL
     AFTER `last_trade_exchange`;
