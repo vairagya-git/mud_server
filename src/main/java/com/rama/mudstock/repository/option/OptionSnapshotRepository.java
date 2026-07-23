@@ -19,6 +19,7 @@ public class OptionSnapshotRepository {
 
     public int insert(Long optionContractId,
                       Long stockId,
+                      Long snapshotVersion,
                       Timestamp snapshotTime,
                       Timestamp optionQuoteTime,
                       Timestamp optionTradeTime,
@@ -43,15 +44,16 @@ public class OptionSnapshotRepository {
                       String quoteTimeframe,
                       String underlyingTimeframe) {
         String sql = "INSERT INTO option_snapshot "
-            + "(option_contract_id, stock_id, snapshot_time, option_quote_time, option_trade_time, underlying_time, "
+            + "(option_contract_id, stock_id, snapshot_version, snapshot_time, option_quote_time, option_trade_time, underlying_time, "
             + "underlying_price, break_even_price, change_to_break_even, bid, ask, midpoint, last_trade_price, "
             + "bid_size, ask_size, last_trade_size, implied_volatility, delta, gamma, theta, vega, "
             + "open_interest, day_volume, quote_timeframe, underlying_timeframe) "
-            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         return jdbc.update(sql,
             optionContractId,
             stockId,
+            snapshotVersion,
             snapshotTime,
             optionQuoteTime,
             optionTradeTime,

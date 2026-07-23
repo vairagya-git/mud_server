@@ -424,7 +424,7 @@ CREATE TABLE option_snapshot (
     ask_exchange INT,
     last_trade_exchange INT,
 
-    snapshot_version bigint unsigned NOT NULL;
+    snapshot_version bigint unsigned NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     

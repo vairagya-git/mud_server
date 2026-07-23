@@ -38,7 +38,7 @@ public class OptionSnapshotFetcherFacade {
         this.optionSnapshotParser = optionSnapshotParser;
     }
 
-    public int fetchAndStoreSnapshots() {
+    public int fetchAndStoreSnapshots(long snapshotVersion) {
         List<Map<String, Object>> contracts = optionContractRepository.getOptionContractsWithTickerByStatus(
             OptionContractRepository.STATUS_ACTIVE,
             true);
@@ -46,7 +46,7 @@ public class OptionSnapshotFetcherFacade {
 
         for (Map<String, Object> contract : contracts) {
             try {
-                inserted += processContract(contract);
+                inserted += processContract(contract, snapshotVersion);
             } catch (Exception ex) {
                 log.error("OptionSnapshotFetcherFacade: failed processing contract {}", contract, ex);
             }
@@ -55,7 +55,7 @@ public class OptionSnapshotFetcherFacade {
         return inserted;
     }
 
-    private int processContract(Map<String, Object> contract) throws Exception {
+    private int processContract(Map<String, Object> contract, long snapshotVersion) throws Exception {
         Long optionContractId = TypeConverstionUtil.toLong(contract.get("id"));
         Long stockId = TypeConverstionUtil.toLong(contract.get("stock_id"));
         String stockTicker = toString(contract.get("ticker"));
@@ -111,6 +111,7 @@ public class OptionSnapshotFetcherFacade {
             optionSnapshotRepository.insert(
                 optionContractId,
                 stockId,
+                snapshotVersion,
                 fetchedAt,
                 quoteLastUpdatedTs,
                 tradeSipTimestampTs,

@@ -1,5 +1,7 @@
 package com.rama.mudstock.scheduler.option;
 
+import java.time.Instant;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
@@ -37,8 +39,9 @@ public class OptionSnapshotFetcherJob extends AbstractCronjob {
         }
 
         try {
-            int inserted = optionSnapshotFetcherFacade.fetchAndStoreSnapshots();
-            log.info("{}: inserted {} option_snapshot row(s)", purpose, inserted);
+            long snapshotVersion = Instant.now().toEpochMilli();
+            int inserted = optionSnapshotFetcherFacade.fetchAndStoreSnapshots(snapshotVersion);
+            log.info("{}: inserted {} option_snapshot row(s), snapshotVersion={}", purpose, inserted, snapshotVersion);
             updateLastUpdatedNowUtc(purpose);
         } catch (Exception ex) {
             log.error("{}: snapshot fetch failed", purpose, ex);
