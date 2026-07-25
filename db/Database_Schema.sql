@@ -165,7 +165,7 @@ CREATE TABLE `day_stock_movement_map` (
 ) ENGINE=InnoDB;
 
 select * from day_stock_movement_entry
-order by id desc
+order by id desc;
 
 ALTER TABLE day_stock_movement_entry
   ADD COLUMN `earnings` boolean not null default false after `change_percent`;
@@ -191,7 +191,7 @@ CREATE TABLE `day_stock_movement_entry` (
   `cur_day_vol_weight` decimal(20,2) NOT NULL,
   `cur_day_volume` bigint unsigned NOT NULL,
   `change_percent` decimal(20,2) DEFAULT NULL,
-  `earnings` boolean not null default false;  
+  `earnings` boolean not null default false,
   `day_opening_change_percent` decimal(20,2) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
