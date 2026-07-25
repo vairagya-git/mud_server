@@ -28,6 +28,8 @@ public class EarningsDetailCronjob extends AbstractCronjob {
             return;
         }
 
+        
+
         try {
             log.info("{}: stub execution started", purpose);
             // TODO: Implement earnings detail population logic.

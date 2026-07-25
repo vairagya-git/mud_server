@@ -80,13 +80,21 @@ CREATE TABLE `firm_analyst_stock_rating` (
 
 select * from earnings_date;
 
+ALTER TABLE earnings_date
+MODIFY COLUMN status ENUM('NEW', 'UPCOMING', 'PROCESSING', 'PROCESSED', 'PAST')
+NOT NULL DEFAULT 'NEW';
+
+ALTER TABLE earnings_date
+  ADD COLUMN no_of_days INT DEFAULT 10 AFTER earnings_date;
+
 CREATE TABLE `earnings_date` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `stock_id` bigint unsigned NOT NULL,
   `quarter` varchar(64) DEFAULT NULL,
   `releaseTime` ENUM('AFTER_MARKET', 'BEFORE_MARKET') NOT NULL,
-  `status` ENUM('NEW', 'UPCOMING', 'PROCESSING', 'PROCESSED') NOT NULL DEFAULT 'NEW',
+  `status` ENUM('NEW', 'PAST', 'UPCOMING', 'PROCESSING', 'PROCESSED') NOT NULL DEFAULT 'NEW',
   `earnings_date` date DEFAULT NULL,
+  `no_of_days` INT DEFAULT 10,
   PRIMARY KEY (`id`),
   KEY `fk_earnings_date` (`stock_id`),
   CONSTRAINT `fk_earnings_date` FOREIGN KEY (`stock_id`) REFERENCES `stock` (`id`),
@@ -159,9 +167,22 @@ CREATE TABLE `day_stock_movement_map` (
 select * from day_stock_movement_entry
 order by id desc
 
+ALTER TABLE day_stock_movement_entry
+  ADD COLUMN `earnings` boolean not null default false after `change_percent`;
+
+ALTER TABLE day_stock_movement_entry
+  ADD COLUMN earnings_date_id BIGINT UNSIGNED NULL AFTER day_stock_movement_map_id,
+  ADD KEY fk_dsme_earnings_date (earnings_date_id),
+  ADD CONSTRAINT fk_dsme_earnings_date
+    FOREIGN KEY (earnings_date_id) REFERENCES earnings_date (id);
+
+ALTER TABLE day_stock_movement_entry
+  MODIFY COLUMN day_stock_movement_map_id BIGINT UNSIGNED NULL;
+
 CREATE TABLE `day_stock_movement_entry` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `day_stock_movement_map_id` bigint unsigned NOT NULL,
+  `day_stock_movement_map_id` bigint unsigned DEFAULT NULL,
+  `earnings_date_id` bigint unsigned DEFAULT NULL,
   `pre_day_close` decimal(20,2) NOT NULL,
   `cur_day_open` decimal(20,2) NOT NULL,
   `cur_day_close` decimal(20,2) NOT NULL,
@@ -170,14 +191,18 @@ CREATE TABLE `day_stock_movement_entry` (
   `cur_day_vol_weight` decimal(20,2) NOT NULL,
   `cur_day_volume` bigint unsigned NOT NULL,
   `change_percent` decimal(20,2) DEFAULT NULL,
+  `earnings` boolean not null default false;  
   `day_opening_change_percent` decimal(20,2) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `fk_dsme_day_stock_movement_map` (`day_stock_movement_map_id`),
+  KEY `fk_dsme_earnings_date` (`earnings_date_id`),
   CONSTRAINT `fk_dsme_day_stock_movement_map` FOREIGN KEY (`day_stock_movement_map_id`) REFERENCES `day_stock_movement_map` (`id`),
+  CONSTRAINT `fk_dsme_earnings_date` FOREIGN KEY (`earnings_date_id`) REFERENCES `earnings_date` (`id`),
   CONSTRAINT `unique_day_stock_movement_entry` UNIQUE (`day_stock_movement_map_id`)
 ) ENGINE=InnoDB;
+
 
 /****** MASTER TABLE ********/
 
@@ -317,7 +342,15 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('execution', 'daily', 'String', 'OptionSnapshotIVMetrics', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'OptionSnapshotIVMetrics', 'Create and Close Optoin Contract entry'),
 ('dailyCutOffTime', '22:00', 'DateTime', 'OptionSnapshotIVMetrics', 'Record should only be fetched after the cutoffTime'),
-('forceExecute', 'false', 'boolean', 'OptionSnapshotIVMetrics', 'Set this flag if you want to execute this cronjob by overriding all the other flag');
+('forceExecute', 'false', 'boolean', 'OptionSnapshotIVMetrics', 'Set this flag if you want to execute this cronjob by overriding all the other flag')
+
+/*EarningsDetailCronjob Settings*/
+('useage', 'useage', 'String', 'EarningsDetailCronjob', 'Calculate Option IV Metrics after end of the day'),
+('enabled', 'true', 'boolean', 'EarningsDetailCronjob', 'EarningsDetailCronjob Enable property'),
+('execution', 'daily', 'String', 'EarningsDetailCronjob', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'EarningsDetailCronjob', 'Create and Close Optoin Contract entry'),
+('dailyCutOffTime', '22:00', 'DateTime', 'EarningsDetailCronjob', 'Record should only be fetched after the cutoffTime'),
+('forceExecute', 'false', 'boolean', 'EarningsDetailCronjob', 'Set this flag if you want to execute this cronjob by overriding all the other flag');
 
 
 /**** OPTION CONTRACT START ****/
