@@ -7,6 +7,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.rama.mudstock.enums.CronjobConfigEnum;
+import com.rama.mudstock.facade.DayStockMovementFacade;
 import com.rama.mudstock.scheduler.AbstractCronjob;
 import com.rama.mudstock.service.SystemConfigService;
 
@@ -15,9 +16,12 @@ import com.rama.mudstock.service.SystemConfigService;
 public class EarningsDetailCronjob extends AbstractCronjob {
 
     private static final Logger log = LoggerFactory.getLogger(EarningsDetailCronjob.class);
+    private final DayStockMovementFacade dayStockMovementFacade;
 
-    public EarningsDetailCronjob(SystemConfigService systemConfigService) {
+    public EarningsDetailCronjob(SystemConfigService systemConfigService,
+                                 DayStockMovementFacade dayStockMovementFacade) {
         super(systemConfigService);
+        this.dayStockMovementFacade = dayStockMovementFacade;
     }
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = com.rama.mudstock.config.ApplicationConfig.LISBON_ZONE)
@@ -31,12 +35,12 @@ public class EarningsDetailCronjob extends AbstractCronjob {
         
 
         try {
-            log.info("{}: stub execution started", purpose);
-            // TODO: Implement earnings detail population logic.
+            log.info("{}: execution started", purpose);
+            dayStockMovementFacade.fetchAggregatesForPastEarningsWindow();
             updateLastUpdatedNowUtc(purpose);
-            log.info("{}: stub execution finished", purpose);
+            log.info("{}: execution finished", purpose);
         } catch (Exception ex) {
-            log.error("{}: stub execution failed", purpose, ex);
+            log.error("{}: execution failed", purpose, ex);
         }
     }
 }
