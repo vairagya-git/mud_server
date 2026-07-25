@@ -262,7 +262,7 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('enabled', 'true', 'boolean', 'DayStockMovementData', 'Day Stock Movement Data > cronjob Enabled'),
 ('execution', 'daily', 'String', 'DayStockMovementData', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'DayStockMovementData', 'LastUpdated dateTime'),
-('cutOffTime', '22:00', 'DateTime', 'DayStockMovementData', 'Record should only be fetched after the cutoffTime'),
+('dailyCutOffTime', '22:00', 'DateTime', 'DayStockMovementData', 'Record should only be fetched after the cutoffTime'),
 ('forceExecute', 'false', 'boolean', 'DayStockMovementData', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
 
 
@@ -271,7 +271,7 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('enabled', 'true', 'boolean', 'DayStockMovementCleanup', 'Day Stock Movement Cleanup > cronjob Enabled'),
 ('execution', 'daily', 'String', 'DayStockMovementCleanup', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'DayStockMovementCleanup', 'LastUpdated dateTime'),
-('cutOffTime', '23:00', 'DateTime', 'DayStockMovementCleanup', 'Record should only be fetched after the cutoffTime'),
+('dailyCutOffTime', '23:00', 'DateTime', 'DayStockMovementCleanup', 'Record should only be fetched after the cutoffTime'),
 ('forceExecute', 'false', 'boolean', 'DayStockMovementCleanup', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
 
 /*DayStockMovementKeyMapEntry Settings*/
@@ -280,7 +280,7 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('watchlist-codes', 'MOVING_STOCK,SEMI_WATCHLIST', 'StringArray', 'DayStockMovementKeyMapEntry', 'Day Stock Movement Key Map Entry > Watchlist Codes'),
 ('execution', 'daily', 'String', 'DayStockMovementKeyMapEntry', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'DayStockMovementKeyMapEntry', 'LastUpdated dateTime'),
-('cutOffTime', '19:00', 'DateTime', 'DayStockMovementKeyMapEntry', 'Record should only be fetched after the cutoffTime'),
+('dailyCutOffTime', '19:00', 'DateTime', 'DayStockMovementKeyMapEntry', 'Record should only be fetched after the cutoffTime'),
 ('minuteHourlyFrequency', '1', 'DateTime', 'DayStockMovementKeyMapEntry', 'Incase want to push date temporarily. Change execution to minutes'),
 ('forceExecute', 'false', 'boolean', 'DayStockMovementKeyMapEntry', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
 
@@ -290,7 +290,7 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('location', '/Users/rama/Library/Mobile Documents/com~apple~CloudDocs/TechExamples/mysql', 'String', 'DailyMysqlDBDump', 'Day Stock Movement Key Map Entry > Watchlist Codes'),
 ('execution', 'daily', 'String', 'DailyMysqlDBDump', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'DailyMysqlDBDump', 'LastUpdated dateTime'),
-('cutOffTime', '22:00', 'DateTime', 'DailyMysqlDBDump', 'Record should only be fetched after the cutoffTime'),
+('dailyCutOffTime', '22:00', 'DateTime', 'DailyMysqlDBDump', 'Record should only be fetched after the cutoffTime'),
 ('forceExecute', 'false', 'boolean', 'DailyMysqlDBDump', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
 
 /*OptionsIntervalAnalyseDailyJob Settings*/
@@ -316,7 +316,7 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('enabled', 'true', 'boolean', 'OptionSnapshotIVMetrics', 'OptionSnapshotIVMetrics Enable property'),
 ('execution', 'daily', 'String', 'OptionSnapshotIVMetrics', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'OptionSnapshotIVMetrics', 'Create and Close Optoin Contract entry'),
-('cutOffTime', '22:00', 'DateTime', 'OptionSnapshotIVMetrics', 'Record should only be fetched after the cutoffTime'),
+('dailyCutOffTime', '22:00', 'DateTime', 'OptionSnapshotIVMetrics', 'Record should only be fetched after the cutoffTime'),
 ('forceExecute', 'false', 'boolean', 'OptionSnapshotIVMetrics', 'Set this flag if you want to execute this cronjob by overriding all the other flag');
 
 
@@ -372,9 +372,6 @@ join option_contract oc on os.option_contract_id = oc.id
 where oc.contract_ticker = "O:INTC260717C00100000";
 
 delete from option_snapshot;
-drop table option_snapshot;
-drop table option_strategy_leg;
-drop table option_strategy_leg_snapshot;
 
 select * from option_snapshot;
 
@@ -447,7 +444,6 @@ CREATE TABLE option_snapshot (
     )
 );
 
-
 SELECT
   id,
   created_at,
@@ -456,72 +452,8 @@ FROM option_snapshot
 ORDER BY created_at
 LIMIT 50;
 
+select * from option_snapshot;
 
--- MySQL 8.0+ (uses window functions)
--- Rule: start a new group only when gap from previous row is > 120 seconds.
--- snapshot_version = UNIX timestamp of first created_at in that group.
-
-START TRANSACTION;
-
-DROP TEMPORARY TABLE IF EXISTS tmp_snapshot_group;
-CREATE TEMPORARY TABLE tmp_snapshot_group AS
-SELECT
-    t.id,
-    t.created_at,
-    SUM(t.is_new_group) OVER (ORDER BY t.created_at, t.id) AS grp_id
-FROM (
-    SELECT
-        os.id,
-        os.created_at,
-        CASE
-            WHEN LAG(os.created_at) OVER (ORDER BY os.created_at, os.id) IS NULL THEN 1
-            WHEN TIMESTAMPDIFF(
-                    SECOND,
-                    LAG(os.created_at) OVER (ORDER BY os.created_at, os.id),
-                    os.created_at
-                 ) > 120 THEN 1
-            ELSE 0
-        END AS is_new_group
-    FROM option_snapshot os
-    WHERE os.created_at IS NOT NULL
-) t;
-
-DROP TEMPORARY TABLE IF EXISTS tmp_snapshot_version;
-CREATE TEMPORARY TABLE tmp_snapshot_version AS
-SELECT
-    g.id,
-    UNIX_TIMESTAMP(s.group_start_time) AS new_snapshot_version
-FROM tmp_snapshot_group g
-JOIN (
-    SELECT
-        grp_id,
-        MIN(created_at) AS group_start_time
-    FROM tmp_snapshot_group
-    GROUP BY grp_id
-) s
-ON s.grp_id = g.grp_id;
-
-UPDATE option_snapshot os
-JOIN tmp_snapshot_version v ON v.id = os.id
-SET os.snapshot_version = v.new_snapshot_version;
-
-COMMIT;
-
--- Validation: one snapshot_version per computed group
-SELECT
-    g.grp_id,
-    MIN(g.created_at) AS group_start,
-    MAX(g.created_at) AS group_end,
-    COUNT(*) AS rows_in_group,
-    COUNT(DISTINCT os.snapshot_version) AS distinct_versions
-FROM tmp_snapshot_group g
-JOIN option_snapshot os ON os.id = g.id
-GROUP BY g.grp_id
-HAVING COUNT(DISTINCT os.snapshot_version) > 1;
-
-ALTER TABLE option_snapshot
-    ADD COLUMN `snapshot_version` bigint unsigned NOT NULL
-    AFTER `last_trade_exchange`;
 
 CREATE TABLE option_strategy_definition (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

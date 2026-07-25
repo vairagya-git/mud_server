@@ -9,7 +9,7 @@ public enum CronjobConfigEnum {
     EXECUTION("execution", "String", "Execution"),
     MINUTE_HOURLY_FREQUENCY("minuteHourlyFrequency", "Integer", "Minute/Hourly Frequency"),
     LAST_UPDATED("lastUpdated", "DateTime", "Last Updated"),
-    CUTOFF_TIME("cutOffTime", "Time", ApplicationConfig.TIME_FORMAT_HH_MM, "Cutoff Time"),
+    DAILY_CUTT_OFF_TIME("dailyCutOffTime", "Time", ApplicationConfig.TIME_FORMAT_HH_MM, "Cutoff Time"),
     START_TIME("startTime", "Time", ApplicationConfig.TIME_FORMAT_HH_MM, "Start Time"),
     END_TIME("endTime", "Time", ApplicationConfig.TIME_FORMAT_HH_MM, "End Time"),
     WATCHLIST_CODES("watchlist-codes", "StringArray", "Watchlist Codes"),
@@ -77,13 +77,13 @@ public enum CronjobConfigEnum {
 
     public enum ExecutionMode {
         /**
-         * Require current time to be on/after cutOffTime for HOURLY/MINUTES.
+         * Require current time to be on/after dailyCutOffTime for HOURLY/MINUTES.
          */
-        CUT_OFF,
+        DAILY_CUT_OFF,
         /**
          * Require current time to be inside [startTime, endTime] for HOURLY/MINUTES.
          */
-        BETWEEN_TIME,
+        START_END_TIME,
         /**
          * No extra time-window/cutoff constraint for HOURLY/MINUTES.
          */

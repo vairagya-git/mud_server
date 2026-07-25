@@ -68,7 +68,7 @@ public abstract class AbstractCronjob {
      * Evaluates [startTime, endTime] window in Lisbon timezone.
      * Supports windows that cross midnight.
      */
-    protected boolean isWithinExecutionWindow(String purpose) {
+    protected boolean isWithinStartEndWindow(String purpose) {
         String startRaw = TypeConverstionUtil.toString(getConfigValue(CronjobConfigEnum.START_TIME.code()));
         String endRaw = TypeConverstionUtil.toString(getConfigValue(CronjobConfigEnum.END_TIME.code()));
 
@@ -104,7 +104,7 @@ public abstract class AbstractCronjob {
 
             if (TEMP_LOG) {
                 log.info(
-                    "TEMP_LOG {} BETWEEN_TIME check: now_lisbon={} start={} end={} comparison_mode={} within_window={} now_utc={}",
+                    "TEMP_LOG {} START_END_TIME check: now_lisbon={} start={} end={} comparison_mode={} within_window={} now_utc={}",
                     purpose,
                     now,
                     startTime,
@@ -129,8 +129,8 @@ public abstract class AbstractCronjob {
         }
     }
 
-    private boolean shouldExecuteDailyByLastUpdatedAndCutoff(String purpose,
-                                                             String rawLastUpdated) {
+    private boolean hasItBeenExecutedToday(String purpose,
+                                           String rawLastUpdated) {
         LocalDate today = LocalDate.now(ApplicationConfig.LISBON);
         LocalDate lastUpdatedDate = null;
         if (rawLastUpdated != null && !rawLastUpdated.isBlank()) {
@@ -148,22 +148,24 @@ public abstract class AbstractCronjob {
             }
         }
 
-        if (lastUpdatedDate != null && lastUpdatedDate.isEqual(today)) {
-            log.info("{}: already executed today {}; skipping", purpose, today);
-            return false;
+        if (lastUpdatedDate != null) {
+            if (lastUpdatedDate.isEqual(today)) {
+                log.info("{}: already executed today {}; skipping", purpose, today);
+                return true;
+            }
+
+            if (lastUpdatedDate.isAfter(today)) {
+                log.info("{}: lastUpdated {} is after today {}; skipping", purpose, lastUpdatedDate, today);
+                return true;
+            }
         }
 
-        if (lastUpdatedDate != null && lastUpdatedDate.isAfter(today)) {
-            log.info("{}: lastUpdated {} is after today {}; skipping", purpose, lastUpdatedDate, today);
-            return false;
-        }
-
-        return isOnOrAfterCutoff(purpose);
+        return false;
     }
 
-    private boolean isOnOrAfterCutoff(String purpose) {
-        String cutOffTimeCode = CronjobConfigEnum.CUTOFF_TIME.code();
-        String cutOffTimeFormat = CronjobConfigEnum.CUTOFF_TIME.format();
+    private boolean isOnOrAfterDailyCutOff(String purpose) {
+        String cutOffTimeCode = CronjobConfigEnum.DAILY_CUTT_OFF_TIME.code();
+        String cutOffTimeFormat = CronjobConfigEnum.DAILY_CUTT_OFF_TIME.format();
 
         String rawCutOffTime = TypeConverstionUtil.toString(getConfigValue(cutOffTimeCode));
         if (rawCutOffTime.isBlank()) {
@@ -188,6 +190,48 @@ public abstract class AbstractCronjob {
         }
     }
 
+    private boolean hasMinuteHourlyIntervalElapsed(String purpose,
+                                                   CronjobConfigEnum.Execution execution) {
+        Integer frequency = TypeConverstionUtil.toInteger(
+            getConfigValue(CronjobConfigEnum.MINUTE_HOURLY_FREQUENCY.code()));
+        if (frequency == null || frequency <= 0) {
+            log.warn("{}: invalid or missing {} for execution={}",
+                purpose,
+                CronjobConfigEnum.MINUTE_HOURLY_FREQUENCY.code(),
+                execution);
+            return false;
+        }
+
+        String rawLastUpdated = TypeConverstionUtil.toString(getConfigValue(CronjobConfigEnum.LAST_UPDATED.code()));
+        if (rawLastUpdated.isBlank()) {
+            return true;
+        }
+
+        Instant lastUpdated;
+        try {
+            lastUpdated = Instant.parse(rawLastUpdated);
+        } catch (Exception ex) {
+            log.warn("{}: invalid lastUpdated value='{}'; allowing execution", purpose, rawLastUpdated, ex);
+            return true;
+        }
+
+        long intervalSeconds = execution == CronjobConfigEnum.Execution.MINUTES
+            ? frequency.longValue() * 60L
+            : frequency.longValue() * 3600L;
+        Instant nextEligibleAt = lastUpdated.plusSeconds(intervalSeconds);
+        boolean intervalElapsed = !Instant.now().isBefore(nextEligibleAt);
+
+        if (!intervalElapsed) {
+            log.info("{}: interval not elapsed yet (execution={}, frequency={}, lastUpdated={}, nextEligibleAt={})",
+                purpose,
+                execution,
+                frequency,
+                lastUpdated,
+                nextEligibleAt);
+        }
+        return intervalElapsed;
+    }
+
     protected void updateLastUpdatedNowUtc(String purpose) {
         String nowUtc = Instant.now().toString();
         String lastUpdatedCode = CronjobConfigEnum.LAST_UPDATED.code();
@@ -210,16 +254,16 @@ public abstract class AbstractCronjob {
     }
 
     /**
-     * Dynamically derives execution mode from available schedule details in system_config.
-     * Priority: cutOffTime property exists -> CUT_OFF,
-     * startTime property exists -> BETWEEN_TIME, otherwise NONE.
+      * Dynamically derives execution mode from available schedule details in system_config.
+      * Priority: dailyCutOffTime property exists -> DAILY_CUT_OFF,
+    * startTime property exists -> START_END_TIME, otherwise NONE.
      */
     protected CronjobConfigEnum.ExecutionMode fetchExecutionModeByDetails(String purpose) {
-        if (hasSystemConfigProperty(purpose, CronjobConfigEnum.CUTOFF_TIME)) {
-            return CronjobConfigEnum.ExecutionMode.CUT_OFF;
+        if (hasSystemConfigProperty(purpose, CronjobConfigEnum.DAILY_CUTT_OFF_TIME)) {
+            return CronjobConfigEnum.ExecutionMode.DAILY_CUT_OFF;
         }
         if (hasSystemConfigProperty(purpose, CronjobConfigEnum.START_TIME)) {
-            return CronjobConfigEnum.ExecutionMode.BETWEEN_TIME;
+            return CronjobConfigEnum.ExecutionMode.START_END_TIME;
         }
         return CronjobConfigEnum.ExecutionMode.NONE;
     }
@@ -230,11 +274,10 @@ public abstract class AbstractCronjob {
      * Decision order:
      * 1) forceExecute=true -> allow immediately.
      * 2) enabled=false -> block.
-     * 3) execution=hourly/minutes -> derive extra mode from config details:
-     *    - CUT_OFF: current time on/after cutoff
-     *    - BETWEEN_TIME: current time inside configured window
-     *    - NONE: no extra time gate
-     * 4) execution=daily -> enforce: not already executed today AND cutoff passed.
+      * 3) execution=daily -> enforce: current time on/after dailyCutOffTime
+      *    and it has not been executed today.
+    * 4) execution=hourly/minutes -> START_END_TIME gate (if configured),
+    *    then minuteHourlyFrequency interval check against lastUpdated.
      */
     protected boolean shouldExecuteBySchedule(String purpose) {
         loadPurposeConfig(purpose);
@@ -260,16 +303,29 @@ public abstract class AbstractCronjob {
         }
 
         if (execution == CronjobConfigEnum.Execution.DAILY) {
+            if (!isOnOrAfterDailyCutOff(purpose)) {
+                return false;
+            }
+
             String lastUpdated = TypeConverstionUtil.toString(getConfigValue(CronjobConfigEnum.LAST_UPDATED.code()));
-            return shouldExecuteDailyByLastUpdatedAndCutoff(purpose, lastUpdated);
+            return !hasItBeenExecutedToday(purpose, lastUpdated);
         }
 
         if (execution == CronjobConfigEnum.Execution.HOURLY
             || execution == CronjobConfigEnum.Execution.MINUTES) {
             return switch (executionMode) {
-                case CUT_OFF -> isOnOrAfterCutoff(purpose);
-                case BETWEEN_TIME -> isWithinExecutionWindow(purpose);
-                case NONE -> true;
+                case START_END_TIME -> isWithinStartEndWindow(purpose)
+                    && hasMinuteHourlyIntervalElapsed(purpose, execution);
+                case NONE -> hasMinuteHourlyIntervalElapsed(purpose, execution);
+                case DAILY_CUT_OFF -> {
+                    String message = String.format(
+                        "%s: invalid execution mode %s for execution=%s; expected START_END_TIME or NONE",
+                        purpose,
+                        executionMode,
+                        execution);
+                    log.error(message);
+                    throw new IllegalStateException(message);
+                }
             };
         }
 
