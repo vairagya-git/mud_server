@@ -37,9 +37,9 @@ public class EarningsDateService {
         if (isNew && e.getStatus() == null) e.setStatus(EarningsDate.Status.NEW);
         EarningsDate saved = repo.save(e);
         // create earnings_date_entry rows for each period when a new earnings_date is created
-        if (isNew) {
-            if (entryRepository != null) entryRepository.createEntriesForEarningsDate(saved.getId(), saved.getStockId());
-        }
+        // if (isNew) {
+        //     if (entryRepository != null) entryRepository.createEntriesForEarningsDate(saved.getId(), saved.getStockId());
+        // }
         return saved;
     }
 

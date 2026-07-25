@@ -94,6 +94,7 @@ public enum CronjobConfigEnum {
         WEEKLY_ANALYST_FIRM_UPDATE_CRONJOB("WeeklyAnalystFirmUpdateCronjob"),
         DAILY_ANALYST_RATING_CRONJOB("DailyAnalystRatingCronjob"),
         WEEKLY_UPCOMING_EARNING_CRONJOB("WeeklyUpcomingEarningCronjob"),
+        EARNINGS_DETAIL_CRONJOB("EarningsDetailCronjob"),
         DAY_STOCK_MOVEMENT_DATA("DayStockMovementData"),
         DAY_STOCK_MOVEMENT_CLEANUP("DayStockMovementCleanup"),
         DAY_STOCK_MOVEMENT_KEY_MAP_ENTRY("DayStockMovementKeyMapEntry"),

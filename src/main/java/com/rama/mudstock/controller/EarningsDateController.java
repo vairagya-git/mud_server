@@ -3,6 +3,7 @@ package com.rama.mudstock.controller;
 import java.time.LocalDate;
 
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -69,6 +70,7 @@ public class EarningsDateController {
     public String createForm(Model model,
             @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         EarningsDate ed = new EarningsDate();
+        ed.setNoOfDays(10);
         model.addAttribute("ed", ed);
         model.addAttribute("stocks", service.allStocks());
         model.addAttribute("releaseOptions", EarningsDate.ReleaseTime.values());
@@ -80,6 +82,9 @@ public class EarningsDateController {
                        @RequestParam(required = false) Long stockId,
                        @RequestParam(required = false) String quarter,
                        @RequestParam(required = false) EarningsDate.ReleaseTime releaseTime,
+                       @RequestParam(required = false) EarningsDate.Status status,
+                       @RequestParam(required = false) Integer noOfDays,
+                       Model model,
                        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate earningsDate) {
 
         // Single entry flow
@@ -88,9 +93,19 @@ public class EarningsDateController {
         ed.setStockId(stockId);
         ed.setQuarter(quarter);
         ed.setReleaseTime(releaseTime);
-        ed.setStatus(EarningsDate.Status.NEW); // status is always NEW on save; ignore form value
+        ed.setStatus(status == null ? EarningsDate.Status.NEW : status);
+        ed.setNoOfDays(noOfDays == null ? 10 : noOfDays);
         ed.setEarningsDate(earningsDate);
-        service.save(ed);
+        try {
+            service.save(ed);
+        } catch (DuplicateKeyException ex) {
+            model.addAttribute("error", "Entry already exists.");
+            model.addAttribute("ed", ed);
+            model.addAttribute("stocks", service.allStocks());
+            model.addAttribute("releaseOptions", EarningsDate.ReleaseTime.values());
+            model.addAttribute("stateOptions", EarningsDate.Status.values());
+            return "earnings/form";
+        }
         return "redirect:/earnings";
     }
 

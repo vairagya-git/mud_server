@@ -8,10 +8,11 @@ public class EarningsDate {
     private String quarter;
     private ReleaseTime releaseTime;
     private Status status;
+    private Integer noOfDays = 10;
     private LocalDate earningsDate;
 
     public enum ReleaseTime { AFTER_MARKET, BEFORE_MARKET }
-    public enum Status { UPCOMING, NEW, PROCESSING, PROCESSED }
+    public enum Status { UPCOMING, NEW, PROCESSING, PROCESSED, PAST }
 
     public EarningsDate() {}
 
@@ -31,6 +32,9 @@ public class EarningsDate {
 
     public Status getStatus() { return status; }
     public void setStatus(Status status) { this.status = status; }
+
+    public Integer getNoOfDays() { return noOfDays; }
+    public void setNoOfDays(Integer noOfDays) { this.noOfDays = noOfDays; }
 
     public LocalDate getEarningsDate() { return earningsDate; }
     public void setEarningsDate(LocalDate earningsDate) { this.earningsDate = earningsDate; }

@@ -1,9 +1,7 @@
 package com.rama.mudstock.model.earnings;
 
 public enum EarningsDateEnum {
-    TwoWeekBefore("TwoWeekBefore", -14),
     OneWeekBefore("OneWeekBefore", -7),
-    _5DaysBefore("5DaysBefore", -5),
     _4DaysBefore("4DaysBefore", -4),
     _3DaysBefore("3DaysBefore", -3),
     _2DaysBefore("2DaysBefore", -2),
@@ -13,7 +11,6 @@ public enum EarningsDateEnum {
     _2DaysAfter("2DaysAfter", 2),
     _3DaysAfter("3DaysAfter", 3),
     _4DaysAfter("4DaysAfter", 4),
-    _5DaysAfter("5DaysAfter", 5),
     OneWeekAfter("OneWeekAfter", 7),
     TwoWeekAfter("TwoWeekAfter", 14);
 
