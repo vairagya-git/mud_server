@@ -45,27 +45,77 @@ public class DayStockMovementFacade {
     }
 
     public void fetchAggregatesForPastEarningsWindow() {
-        List<Map<String, Object>> pastEntries = earningsDateRepository.listByStatusWithTicker(EarningsDate.Status.PAST);
+        List<Map<String, Object>> pastEntries = earningsDateRepository.listPastWindowCandidatesWithTicker();
         if (pastEntries == null || pastEntries.isEmpty()) {
-            log.info("No earnings_date rows with status 'PAST' found.");
+            log.info("No earnings_date rows with status 'PAST' or 'PROCESSING' found.");
             return;
         }
 
+        LocalDate today = LocalDate.now();
+        LocalDate maxProcessDate = today.minusDays(1);
+
         for (Map<String, Object> entry : pastEntries) {
+            Long earningsDateId = TypeConverstionUtil.toLong(entry.get("id"));
             String ticker = TypeConverstionUtil.toString(entry.get("ticker"));
             LocalDate earningsDate = TypeConverstionUtil.toLocalDate(entry.get("earnings_date"));
+            LocalDate processedTill = TypeConverstionUtil.toLocalDate(entry.get("processed_till"));
+            String statusRaw = TypeConverstionUtil.toString(entry.get("status"));
             Integer noOfDays = TypeConverstionUtil.toInteger(entry.get("no_of_days"));
             int windowDays = (noOfDays == null || noOfDays <= 0) ? 10 : noOfDays;
 
-            if (ticker == null || ticker.isBlank() || earningsDate == null) {
+            if (earningsDateId == null || ticker == null || ticker.isBlank() || earningsDate == null) {
                 log.warn("Skipping earnings_date row due to missing ticker/date: {}", entry);
                 continue;
             }
 
-            for (int offset = -windowDays; offset <= windowDays; offset++) {
-                LocalDate eventDate = earningsDate.plusDays(offset);
-                processEarningsDateWindow(ticker.trim().toUpperCase(), eventDate, earningsDate, windowDays);
+            LocalDate windowStart = earningsDate.minusDays(windowDays);
+            LocalDate windowEnd = earningsDate.plusDays(windowDays);
+            LocalDate effectiveEnd = windowEnd.isAfter(maxProcessDate) ? maxProcessDate : windowEnd;
+
+            LocalDate startDate = processedTill == null ? windowStart : processedTill.plusDays(1);
+            if (startDate.isBefore(windowStart)) {
+                startDate = windowStart;
             }
+
+            if (startDate.isAfter(windowEnd)) {
+                updateStatusIfChanged(earningsDateId, statusRaw, EarningsDate.Status.PROCESSED);
+                log.info("PAST window already fully processed for earningsDateId={} ticker={} (processedTill={}, windowEnd={})",
+                    earningsDateId, ticker, processedTill, windowEnd);
+                continue;
+            }
+
+            LocalDate latestProcessed = processedTill;
+            for (LocalDate eventDate = startDate; !eventDate.isAfter(effectiveEnd); eventDate = eventDate.plusDays(1)) {
+                processEarningsDateWindow(ticker.trim().toUpperCase(), eventDate, earningsDate, windowDays);
+                latestProcessed = eventDate;
+            }
+
+            if (latestProcessed != null && !latestProcessed.equals(processedTill)) {
+                earningsDateRepository.updateProcessedTill(earningsDateId, latestProcessed);
+                log.info("Updated earnings_date id={} processed_till={} (ticker={}, baseEarningsDate={})",
+                    earningsDateId, latestProcessed, ticker, earningsDate);
+            }
+
+            boolean isComplete = latestProcessed != null && !latestProcessed.isBefore(windowEnd);
+            EarningsDate.Status targetStatus = isComplete ? EarningsDate.Status.PROCESSED : EarningsDate.Status.PROCESSING;
+            updateStatusIfChanged(earningsDateId, statusRaw, targetStatus);
+        }
+    }
+
+    private void updateStatusIfChanged(Long earningsDateId, String currentStatusRaw, EarningsDate.Status targetStatus) {
+        EarningsDate.Status currentStatus = null;
+        if (currentStatusRaw != null) {
+            try {
+                currentStatus = EarningsDate.Status.valueOf(currentStatusRaw.trim().toUpperCase());
+            } catch (IllegalArgumentException ex) {
+                log.warn("Unknown earnings_date status '{}' for id={}; forcing status update to {}",
+                    currentStatusRaw, earningsDateId, targetStatus);
+            }
+        }
+
+        if (currentStatus != targetStatus) {
+            earningsDateRepository.updateStatus(earningsDateId, targetStatus);
+            log.info("Updated earnings_date id={} status {} -> {}", earningsDateId, currentStatus, targetStatus);
         }
     }
 

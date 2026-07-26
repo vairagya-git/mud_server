@@ -64,6 +64,7 @@ public class EarningsDateRepository {
                        ed.stock_id,
                        s.ticker,
                        ed.earnings_date,
+                      ed.processed_till,
                        ed.no_of_days,
                        ed.status
                 FROM earnings_date ed
@@ -72,6 +73,37 @@ public class EarningsDateRepository {
                 ORDER BY ed.earnings_date DESC, s.ticker ASC
                 """;
         return jdbc.queryForList(sql, status == null ? null : status.name());
+    }
+
+    public List<java.util.Map<String, Object>> listPastWindowCandidatesWithTicker() {
+        String sql = """
+                SELECT ed.id,
+                       ed.stock_id,
+                       s.ticker,
+                       ed.earnings_date,
+                      ed.processed_till,
+                       ed.no_of_days,
+                       ed.status
+                FROM earnings_date ed
+                JOIN stock s ON ed.stock_id = s.id
+                WHERE ed.status IN ('PAST', 'PROCESSING')
+                ORDER BY ed.earnings_date DESC, s.ticker ASC
+                """;
+        return jdbc.queryForList(sql);
+    }
+
+    public int updateProcessedTill(Long earningsDateId, LocalDate processedTill) {
+        String sql = "UPDATE earnings_date SET processed_till = ? WHERE id = ?";
+        return jdbc.update(sql,
+            processedTill == null ? null : java.sql.Date.valueOf(processedTill),
+            earningsDateId);
+    }
+
+    public int updateStatus(Long earningsDateId, EarningsDate.Status status) {
+        String sql = "UPDATE earnings_date SET status = ? WHERE id = ?";
+        return jdbc.update(sql,
+            status == null ? null : status.name(),
+            earningsDateId);
     }
 
     public Optional<EarningsDate> findById(Long id) {

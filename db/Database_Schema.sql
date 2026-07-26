@@ -87,6 +87,10 @@ NOT NULL DEFAULT 'NEW';
 ALTER TABLE earnings_date
   ADD COLUMN no_of_days INT DEFAULT 10 AFTER earnings_date;
 
+ALTER TABLE earnings_date
+  ADD COLUMN `processed_till` date DEFAULT NULL AFTER `earnings_date`;
+
+
 CREATE TABLE `earnings_date` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `stock_id` bigint unsigned NOT NULL,
@@ -94,6 +98,7 @@ CREATE TABLE `earnings_date` (
   `releaseTime` ENUM('AFTER_MARKET', 'BEFORE_MARKET') NOT NULL,
   `status` ENUM('NEW', 'PAST', 'UPCOMING', 'PROCESSING', 'PROCESSED') NOT NULL DEFAULT 'NEW',
   `earnings_date` date DEFAULT NULL,
+  `processed_till` date DEFAULT NULL,
   `no_of_days` INT DEFAULT 10,
   PRIMARY KEY (`id`),
   KEY `fk_earnings_date` (`stock_id`),
@@ -165,7 +170,7 @@ CREATE TABLE `day_stock_movement_map` (
 ) ENGINE=InnoDB;
 
 select * from day_stock_movement_entry
-order by id desc;
+order by id desc
 
 ALTER TABLE day_stock_movement_entry
   ADD COLUMN `earnings` boolean not null default false after `change_percent`;
@@ -191,7 +196,7 @@ CREATE TABLE `day_stock_movement_entry` (
   `cur_day_vol_weight` decimal(20,2) NOT NULL,
   `cur_day_volume` bigint unsigned NOT NULL,
   `change_percent` decimal(20,2) DEFAULT NULL,
-  `earnings` boolean not null default false,
+  `earnings` boolean not null default false;  
   `day_opening_change_percent` decimal(20,2) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
