@@ -24,27 +24,25 @@ public class OptionsIntervalAnalyseJob extends AbstractCronjob {
 
     public OptionsIntervalAnalyseJob(OptionsIntervalAnalyseFacade optionsIntervalAnalyseFacade,
                                      SystemConfigService systemConfigService) {
-        super(systemConfigService);
+        super(systemConfigService, CronjobConfigEnum.Purpose.OPTIONS_INTERVAL_ANALYSE_DAILY_JOB.value());
         this.optionsIntervalAnalyseFacade = optionsIntervalAnalyseFacade;
     }
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = com.rama.mudstock.config.ApplicationConfig.LISBON_ZONE)
     public void analyseOptionContracts() {
-        String purpose = CronjobConfigEnum.Purpose.OPTIONS_INTERVAL_ANALYSE_DAILY_JOB.value();
-
-        if (!shouldExecuteBySchedule(purpose)) {
+        if (!shouldExecuteBySchedule(getPurpose())) {
             return;
         }
 
         try {
             int completedExpired = optionsIntervalAnalyseFacade.completeExpiredActiveEntries();
-            log.info("{}: completed {} expired ACTIVE options_interval_analyse row(s)", purpose, completedExpired);
+            log.info("{}: completed {} expired ACTIVE options_interval_analyse row(s)", getPurpose(), completedExpired);
 
             int processed = optionsIntervalAnalyseFacade.analyseDaily();
-            log.info("{}: processed {} option contract(s)", purpose, processed);
-            updateLastUpdatedNowUtc(purpose);
+            log.info("{}: processed {} option contract(s)", getPurpose(), processed);
+            updateLastUpdatedNowUtc(getPurpose());
         } catch (Exception ex) {
-            log.error("{}: option contract analysis failed", purpose, ex);
+            log.error("{}: option contract analysis failed", getPurpose(), ex);
         }
     }
 }

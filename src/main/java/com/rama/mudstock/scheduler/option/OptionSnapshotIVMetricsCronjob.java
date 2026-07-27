@@ -22,25 +22,23 @@ public class OptionSnapshotIVMetricsCronjob extends AbstractCronjob {
 
     public OptionSnapshotIVMetricsCronjob(OptionSnapshotIVMetricsFacade optionSnapshotIVMetricsFacade,
                                           SystemConfigService systemConfigService) {
-        super(systemConfigService);
+        super(systemConfigService, CronjobConfigEnum.Purpose.OPTION_SNAPSHOT_IV_METRICS.value());
         this.optionSnapshotIVMetricsFacade = optionSnapshotIVMetricsFacade;
     }
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = com.rama.mudstock.config.ApplicationConfig.LISBON_ZONE)
     public void calculateMetrics() {
-        String purpose = CronjobConfigEnum.Purpose.OPTION_SNAPSHOT_IV_METRICS.value();
-
         LocalDate metricsDate = LocalDate.now(com.rama.mudstock.config.ApplicationConfig.LISBON);
-        if (!shouldExecuteBySchedule(purpose)) {
+        if (!shouldExecuteBySchedule(getPurpose())) {
             return;
         }
 
         try {
             int rows = optionSnapshotIVMetricsFacade.calculateForDate(metricsDate);
-            log.info("{}: completed ivDate={} rows={}", purpose, metricsDate, rows);
-            updateLastUpdatedNowUtc(purpose);
+            log.info("{}: completed ivDate={} rows={}", getPurpose(), metricsDate, rows);
+            updateLastUpdatedNowUtc(getPurpose());
         } catch (Exception ex) {
-            log.error("{}: failed to calculate IV metrics", purpose, ex);
+            log.error("{}: failed to calculate IV metrics", getPurpose(), ex);
         }
     }
 }

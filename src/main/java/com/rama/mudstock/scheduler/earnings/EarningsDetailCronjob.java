@@ -20,27 +20,23 @@ public class EarningsDetailCronjob extends AbstractCronjob {
 
     public EarningsDetailCronjob(SystemConfigService systemConfigService,
                                  DayStockMovementFacade dayStockMovementFacade) {
-        super(systemConfigService);
+        super(systemConfigService, CronjobConfigEnum.Purpose.EARNINGS_DETAIL_CRONJOB.value());
         this.dayStockMovementFacade = dayStockMovementFacade;
     }
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = com.rama.mudstock.config.ApplicationConfig.LISBON_ZONE)
     public void run() {
-        String purpose = CronjobConfigEnum.Purpose.EARNINGS_DETAIL_CRONJOB.value();
-
-        if (!shouldExecuteBySchedule(purpose)) {
+        if (!shouldExecuteBySchedule(getPurpose())) {
             return;
         }
 
-        
-
         try {
-            log.info("{}: execution started", purpose);
+            log.info("{}: execution started", getPurpose());
             dayStockMovementFacade.fetchAggregatesForPastEarningsWindow();
-            updateLastUpdatedNowUtc(purpose);
-            log.info("{}: execution finished", purpose);
+            updateLastUpdatedNowUtc(getPurpose());
+            log.info("{}: execution finished", getPurpose());
         } catch (Exception ex) {
-            log.error("{}: execution failed", purpose, ex);
+            log.error("{}: execution failed", getPurpose(), ex);
         }
     }
 }

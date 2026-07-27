@@ -10,9 +10,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.rama.mudstock.model.earnings.EarningsDate;
+import com.rama.mudstock.model.stockwatchlist.Stock;
 import com.rama.mudstock.repository.daystock.DayStockMovementEntryRepository;
-import com.rama.mudstock.repository.daystock.DayStockMovementMapRepository;
 import com.rama.mudstock.repository.earnings.EarningsDateRepository;
+import com.rama.mudstock.repository.stockwatchlist.StockRepository;
 import com.rama.mudstock.service.DayStockMovementAggregateParser;
 import com.rama.mudstock.service.MarketCalendarService;
 import com.rama.mudstock.service.MassiveRestStockService;
@@ -24,22 +25,22 @@ public class DayStockMovementFacade {
     private static final Logger log = LoggerFactory.getLogger(DayStockMovementFacade.class);
 
     private final MassiveRestStockService massiveRestStockService;
-    private final DayStockMovementMapRepository mappingRepository;
     private final DayStockMovementEntryRepository dayStockMovementEntryRepository;
     private final EarningsDateRepository earningsDateRepository;
+    private final StockRepository stockRepository;
     private final MarketCalendarService marketCalendarService;
     private final DayStockMovementAggregateParser aggregateParser;
 
     public DayStockMovementFacade(MassiveRestStockService massiveRestStockService,
-                                  DayStockMovementMapRepository mappingRepository,
                                   DayStockMovementEntryRepository dayStockMovementEntryRepository,
                                   EarningsDateRepository earningsDateRepository,
+                                  StockRepository stockRepository,
                                   MarketCalendarService marketCalendarService,
                                   DayStockMovementAggregateParser aggregateParser) {
         this.massiveRestStockService = massiveRestStockService;
-        this.mappingRepository = mappingRepository;
         this.dayStockMovementEntryRepository = dayStockMovementEntryRepository;
         this.earningsDateRepository = earningsDateRepository;
+        this.stockRepository = stockRepository;
         this.marketCalendarService = marketCalendarService;
         this.aggregateParser = aggregateParser;
     }
@@ -86,7 +87,7 @@ public class DayStockMovementFacade {
 
             LocalDate latestProcessed = processedTill;
             for (LocalDate eventDate = startDate; !eventDate.isAfter(effectiveEnd); eventDate = eventDate.plusDays(1)) {
-                processEarningsDateWindow(ticker.trim().toUpperCase(), eventDate, earningsDate, windowDays);
+                processEarningsDateWindow(ticker.trim().toUpperCase(), eventDate, earningsDate, earningsDateId, windowDays);
                 latestProcessed = eventDate;
             }
 
@@ -119,48 +120,39 @@ public class DayStockMovementFacade {
         }
     }
 
-    public void fetchAggregatesForNewMappings() {
-        List<Map<String, Object>> mappings = mappingRepository.listMappingsByStatus("new");
-        if (mappings == null || mappings.isEmpty()) {
-            log.info("No day-event mappings with status 'new' found.");
+    public void fetchAggregatesForWatchlist(List<Stock> allowedStocks, LocalDate targetDate) {
+        if (allowedStocks == null || allowedStocks.isEmpty()) {
+            log.info("No allowed stocks configured for day-stock movement watchlist fetch.");
             return;
         }
 
-        for (Map<String, Object> mapping : mappings) {
-            processMapping(mapping);
+        log.info("Fetching day-stock movement aggregates for {} stock(s) on date={}", allowedStocks.size(), targetDate);
+        for (Stock stock : allowedStocks) {
+            processWatchlistStock(stock, targetDate);
         }
     }
 
-    private void processMapping(Map<String, Object> mapping) {
+    private void processWatchlistStock(Stock stock, LocalDate eventDate) {
         try {
-            String ticker = (String) mapping.get("ticker");
-            LocalDate eventDate = TypeConverstionUtil.toLocalDate(mapping.get("date"));
-            if (ticker == null || eventDate == null) {
-                log.warn("Skipping mapping with missing ticker or eventDate: {}", mapping);
+            if (stock == null || stock.getTicker() == null || stock.getTicker().isBlank() || eventDate == null) {
+                log.warn("Skipping stock with missing ticker or eventDate: {}", stock);
                 return;
             }
 
-            Long mappingId = TypeConverstionUtil.toLong(mapping.get("map_id"));
             Optional<DayStockMovementAggregateParser.AggregateSnapshot> snapshot =
-                fetchAggregateSnapshotForEventDate(ticker, eventDate, "mapping");
+                fetchAggregateSnapshotForEventDate(stock.getTicker().trim().toUpperCase(), eventDate, "watchlist");
 
             if (snapshot.isEmpty()) {
-                if (mappingId != null && marketCalendarService.isMarketClosed(eventDate)) {
-                    mappingRepository.updateStatus(mappingId, "MARKET_CLOSED");
-                    log.info("Marked mapping id={} as MARKET_CLOSED for date={} (weekend or holiday)", mappingId, eventDate);
-                }
-                log.warn("Could not find both previous and current day bars in aggregate results for mapping {}", mapping);
-                return;
-            }
-
-            if (mappingId == null) {
-                log.warn("Missing map_id to save day_stock_movement_entry for mapping {}", mapping);
+                log.warn("Could not find both previous and current day bars in aggregate results for stock {} on date {}", stock.getTicker(), eventDate);
                 return;
             }
 
             DayStockMovementAggregateParser.AggregateSnapshot data = snapshot.get();
             dayStockMovementEntryRepository.upsertDayStockMovementEntry(
-                mappingId,
+                stock.getId(),
+                null,
+                data.dayStockMovementDate(),
+                null,
                 data.preDayClose(),
                 data.curDayOpen(),
                 data.curDayClose(),
@@ -170,20 +162,9 @@ public class DayStockMovementFacade {
                 data.curDayVolume(),
                 data.changePercent(),
                 data.dayOpeningChangePercent());
-            log.info("Saved day_stock_movement_entry for mappingId={} eventDate={}", mappingId, eventDate);
-
-            try {
-                int updated = mappingRepository.updateStatus(mappingId, "processed");
-                if (updated > 0) {
-                    log.info("Marked day_stock_movement_map id={} as processed", mappingId);
-                } else {
-                    log.warn("No day_stock_movement_map row updated for id={}", mappingId);
-                }
-            } catch (Exception ex) {
-                log.error("Failed to update day_stock_movement_map status for id={}", mappingId, ex);
-            }
+            log.info("Saved day_stock_movement_entry for stock={} eventDate={}", stock.getTicker(), eventDate);
         } catch (Exception ex) {
-            log.error("Failed to fetch aggregate for mapping {}", mapping, ex);
+            log.error("Failed to fetch aggregate for stock {} on date {}", stock != null ? stock.getTicker() : null, eventDate, ex);
         }
     }
 
@@ -195,7 +176,7 @@ public class DayStockMovementFacade {
         return current;
     }
 
-    private void processEarningsDateWindow(String ticker, LocalDate eventDate, LocalDate baseEarningsDate, int windowDays) {
+    private void processEarningsDateWindow(String ticker, LocalDate eventDate, LocalDate baseEarningsDate, Long earningsDateId, int windowDays) {
         try {
             Optional<DayStockMovementAggregateParser.AggregateSnapshot> snapshot =
                 fetchAggregateSnapshotForEventDate(ticker, eventDate, "past-earnings-window");
@@ -207,8 +188,21 @@ public class DayStockMovementFacade {
             }
 
             DayStockMovementAggregateParser.AggregateSnapshot data = snapshot.get();
+            Long stockId = stockRepository.findByTicker(ticker)
+                .map(stock -> stock.getId())
+                .orElse(null);
+
+            if (stockId == null) {
+                log.warn("Missing stock_id for ticker={} eventDate={} (base={}, windowDays={})",
+                    ticker, eventDate, baseEarningsDate, windowDays);
+                return;
+            }
+
             boolean earnings = true;
             dayStockMovementEntryRepository.insertEarningsEntry(
+                stockId,
+                data.dayStockMovementDate(),
+                earningsDateId,
                 data.preDayClose(),
                 data.curDayOpen(),
                 data.curDayClose(),

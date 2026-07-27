@@ -78,19 +78,8 @@
         </div>
 
         <div class="dsm-filter-input">
-            <input id="dateSearchInput" list="dateOptions" type="text" placeholder="YYYY-MM-DD" aria-label="Search date">
+            <input id="dateSearchInput" type="date" aria-label="Search date">
             <button id="addDateFilterBtn" type="button" class="btn btn-sm btn-secondary">Add date</button>
-            <datalist id="dateOptions">
-                <option th:each="d : ${dates}" th:value="${d}"></option>
-            </datalist>
-        </div>
-
-        <div class="dsm-filter-input">
-            <input id="dayCodeSearchInput" list="dayCodeOptions" type="text" placeholder="Search day code" aria-label="Search day code">
-            <button id="addDayCodeFilterBtn" type="button" class="btn btn-sm btn-secondary">Add day code</button>
-            <datalist id="dayCodeOptions">
-                <option th:each="c : ${dayCodes}" th:value="${c}"></option>
-            </datalist>
         </div>
 
         <div class="dsm-filter-input">
@@ -129,11 +118,6 @@
                         </button>
                     </th>
                     <th>
-                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="dayCode" style="padding:2px 8px;line-height:1.2;background:#dff5df;border:1px solid #9dd59d;color:#1f5d1f;">
-                            Day Code <span class="sort-indicator" data-for="dayCode"></span>
-                        </button>
-                    </th>
-                    <th>
                         <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="date" style="padding:2px 8px;line-height:1.2;background:#dff5df;border:1px solid #9dd59d;color:#1f5d1f;">
                             Date <span class="sort-indicator" data-for="date"></span>
                         </button>
@@ -164,10 +148,6 @@
                         <span class="badge badge-grey" th:text="${e.ticker}"></span>
                         <button type="button" class="filter-btn" data-field="ticker" th:data-value="${e.ticker}" title="Filter by ticker">&#x2295;</button>
                     </td>
-                    <td th:attr="data-sort-value=${e.day_code}">
-                        <code th:text="${e.day_code}"></code>
-                        <button type="button" class="filter-btn" data-field="dayCode" th:data-value="${e.day_code}" title="Filter by day code">&#x2295;</button>
-                    </td>
                     <td th:attr="data-sort-value=${e.master_event_date}">
                         <span th:text="${e.master_event_date}"></span>
                         <button type="button" class="filter-btn" data-field="date" th:data-value="${e.master_event_date}" title="Filter by date">&#x2295;</button>
@@ -197,8 +177,6 @@
             var addTickerFilterBtn = document.getElementById('addTickerFilterBtn');
             var dateSearchInput = document.getElementById('dateSearchInput');
             var addDateFilterBtn = document.getElementById('addDateFilterBtn');
-            var dayCodeSearchInput = document.getElementById('dayCodeSearchInput');
-            var addDayCodeFilterBtn = document.getElementById('addDayCodeFilterBtn');
             var changePercentSearchInput = document.getElementById('changePercentSearchInput');
             var addChangePercentFilterBtn = document.getElementById('addChangePercentFilterBtn');
             var openChangePercentSearchInput = document.getElementById('openChangePercentSearchInput');
@@ -206,7 +184,7 @@
             var earningsOnlyCheckbox = document.getElementById('earningsOnlyCheckbox');
             var filterStorageKey = 'day-stock-movement/entries#filters';
             var sortState = { key: null, dir: 'asc' };
-            var filters = { ticker: [], dayCode: [], date: [], changePercent: [], openChangePercent: [], earnings: false };
+            var filters = { ticker: [], date: [], changePercent: [], openChangePercent: [], earnings: false };
 
             if (!table) {
                 return;
@@ -214,7 +192,7 @@
 
             function renderActiveFilters() {
                 activeFiltersWrap.innerHTML = '';
-                ['ticker', 'dayCode', 'date', 'changePercent', 'openChangePercent'].forEach(function (field) {
+                ['ticker', 'date', 'changePercent', 'openChangePercent'].forEach(function (field) {
                     filters[field].forEach(function (value) {
                         var chip = document.createElement('span');
                         chip.className = 'chip';
@@ -244,7 +222,7 @@
                     });
                 });
 
-                var hasAny = filters.ticker.length > 0 || filters.dayCode.length > 0 || filters.date.length > 0 || filters.changePercent.length > 0 || filters.openChangePercent.length > 0 || filters.earnings;
+                var hasAny = filters.ticker.length > 0 || filters.date.length > 0 || filters.changePercent.length > 0 || filters.openChangePercent.length > 0 || filters.earnings;
                 filterHint.style.display = hasAny ? 'none' : '';
             }
 
@@ -299,15 +277,13 @@
                 var rows = Array.from(table.querySelectorAll('tbody tr'));
                 rows.forEach(function (row) {
                     var rowTicker = ((row.cells[0] && (row.cells[0].dataset.sortValue || row.cells[0].textContent)) || '').trim().toUpperCase();
-                    var rowDayCode = ((row.cells[1] && (row.cells[1].dataset.sortValue || row.cells[1].textContent)) || '').trim().toUpperCase();
-                    var rowDate = ((row.cells[2] && (row.cells[2].dataset.sortValue || row.cells[2].textContent)) || '').trim();
+                    var rowDate = ((row.cells[1] && (row.cells[1].dataset.sortValue || row.cells[1].textContent)) || '').trim();
                     var rowEarnings = String(row.dataset.earnings || '').toLowerCase() === 'true';
 
-                    var changePercentRaw = row.children[8] ? row.children[8].dataset.sortValue : '';
-                    var openChangePercentRaw = row.children[9] ? row.children[9].dataset.sortValue : '';
+                    var changePercentRaw = row.children[7] ? row.children[7].dataset.sortValue : '';
+                    var openChangePercentRaw = row.children[8] ? row.children[8].dataset.sortValue : '';
 
                     var tickerMatch = filters.ticker.length === 0 || filters.ticker.includes(rowTicker);
-                    var dayCodeMatch = filters.dayCode.length === 0 || filters.dayCode.includes(rowDayCode);
                     var dateMatch = filters.date.length === 0 || filters.date.includes(rowDate);
                     var changePercentMatch = filters.changePercent.length === 0 || filters.changePercent.every(function (expr) {
                         return numericMatches(changePercentRaw, expr);
@@ -317,7 +293,7 @@
                     });
                     var earningsMatch = !filters.earnings || rowEarnings;
 
-                    row.style.display = tickerMatch && dayCodeMatch && dateMatch && changePercentMatch && openChangePercentMatch && earningsMatch ? '' : 'none';
+                    row.style.display = tickerMatch && dateMatch && changePercentMatch && openChangePercentMatch && earningsMatch ? '' : 'none';
                 });
             }
 
@@ -341,7 +317,7 @@
                         return;
                     }
 
-                    ['ticker', 'dayCode', 'date', 'changePercent', 'openChangePercent'].forEach(function (field) {
+                    ['ticker', 'date', 'changePercent', 'openChangePercent'].forEach(function (field) {
                         if (!Array.isArray(saved[field])) {
                             return;
                         }
@@ -363,7 +339,7 @@
                 var normalized = (value || '').trim();
                 if (!normalized) return;
 
-                if (field === 'ticker' || field === 'dayCode') {
+                if (field === 'ticker') {
                     normalized = normalized.toUpperCase();
                 }
                 if (field === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
@@ -421,23 +397,6 @@
                         e.preventDefault();
                         addFilter('date', dateSearchInput.value);
                         dateSearchInput.value = '';
-                    }
-                });
-            }
-
-            if (addDayCodeFilterBtn) {
-                addDayCodeFilterBtn.addEventListener('click', function () {
-                    addFilter('dayCode', dayCodeSearchInput ? dayCodeSearchInput.value : '');
-                    if (dayCodeSearchInput) dayCodeSearchInput.value = '';
-                });
-            }
-
-            if (dayCodeSearchInput) {
-                dayCodeSearchInput.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addFilter('dayCode', dayCodeSearchInput.value);
-                        dayCodeSearchInput.value = '';
                     }
                 });
             }
@@ -519,9 +478,7 @@
                     sortState.dir = 'asc';
                 }
 
-                var indexByKey = { ticker: 0, dayCode: 1, date: 2, changePercent: 7, openChangePercent: 8 };
-                indexByKey.changePercent = 8;
-                indexByKey.openChangePercent = 9;
+                var indexByKey = { ticker: 0, date: 1, changePercent: 7, openChangePercent: 8 };
                 var colIndex = indexByKey[sortKey];
                 var rows = Array.from(tbody.querySelectorAll('tr'));
 
@@ -558,7 +515,6 @@
             if (clearBtn) {
                 clearBtn.addEventListener('click', function () {
                     filters.ticker = [];
-                    filters.dayCode = [];
                     filters.date = [];
                     filters.changePercent = [];
                     filters.openChangePercent = [];

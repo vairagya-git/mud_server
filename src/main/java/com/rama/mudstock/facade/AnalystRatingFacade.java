@@ -17,8 +17,8 @@ import com.rama.mudstock.repository.analyst.FirmAnalystStockRatingRepository;
 import com.rama.mudstock.repository.analyst.FirmRepository;
 import com.rama.mudstock.repository.stockwatchlist.StockRepository;
 import com.rama.mudstock.service.BenzingaFirmService;
-import com.rama.mudstock.util.TypeConverstionUtil;
 import com.rama.mudstock.util.MudDateUtil;
+import com.rama.mudstock.util.TypeConverstionUtil;
 
 /**
  * Facade that fetches analyst stock ratings from the Benzinga API and persists
@@ -63,18 +63,37 @@ public class AnalystRatingFacade {
      * Fetches analyst ratings for the given ticker and persists each result.
      *
      * @param ticker the stock ticker to fetch ratings for
+     * @param ratingDate center date (yyyy-MM-dd); fetch runs for 2 days before and 2 days after
      * @return number of ratings successfully upserted
      */
     public int fetchAndSaveForTicker(String ticker, String ratingDate) {
-        List<BenzingaAnalystRatingResponse> ratings = benzingaFirmService.fetchAnalystRatings(ticker, ratingDate);
+        if (ratingDate == null || ratingDate.isBlank()) {
+            log.warn("AnalystRatingFacade: ratingDate is blank for ticker={}, skipping", ticker);
+            return 0;
+        }
+
+        LocalDate centerDate;
+        try {
+            centerDate = MudDateUtil.parseIso(ratingDate.trim());
+        } catch (Exception ex) {
+            log.warn("AnalystRatingFacade: invalid ratingDate='{}' for ticker={}, skipping", ratingDate, ticker);
+            return 0;
+        }
+
         int saved = 0;
-        for (BenzingaAnalystRatingResponse rating : ratings) {
-            try {
-                save(rating);
-                saved++;
-            } catch (Exception ex) {
-                log.error("AnalystRatingFacade: error saving rating for ticker={} date={}: {}",
-                        ticker, rating.getDate(), ex.getMessage());
+        for (int offset = -2; offset <= 2; offset++) {
+            LocalDate fetchDate = centerDate.plusDays(offset);
+            List<BenzingaAnalystRatingResponse> ratings =
+                benzingaFirmService.fetchAnalystRatings(ticker, fetchDate.toString());
+
+            for (BenzingaAnalystRatingResponse rating : ratings) {
+                try {
+                    save(rating);
+                    saved++;
+                } catch (Exception ex) {
+                    log.error("AnalystRatingFacade: error saving rating for ticker={} date={}: {}",
+                            ticker, rating.getDate(), ex.getMessage());
+                }
             }
         }
         return saved;

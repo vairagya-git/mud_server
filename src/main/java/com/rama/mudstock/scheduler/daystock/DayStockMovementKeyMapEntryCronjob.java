@@ -27,16 +27,14 @@ public class DayStockMovementKeyMapEntryCronjob extends AbstractCronjob {
     public DayStockMovementKeyMapEntryCronjob(DayStockMovementService dayStockMovementService,
                                               SystemConfigService systemConfigService,
                                               ApplicationProperties applicationProperties) {
-        super(systemConfigService);
+        super(systemConfigService, CronjobConfigEnum.Purpose.DAY_STOCK_MOVEMENT_KEY_MAP_ENTRY.value());
         this.dayStockMovementService = dayStockMovementService;
         this.applicationProperties = applicationProperties;
     }
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = com.rama.mudstock.config.ApplicationConfig.LISBON_ZONE)
     public void runDayStockMovementKeyMapEntry() {
-        String purpose = CronjobConfigEnum.Purpose.DAY_STOCK_MOVEMENT_KEY_MAP_ENTRY.value();
-
-        if (!shouldExecuteBySchedule(purpose)) {
+        if (!shouldExecuteBySchedule(getPurpose())) {
             return;
         }
 
@@ -45,7 +43,7 @@ public class DayStockMovementKeyMapEntryCronjob extends AbstractCronjob {
         DayStockMovementService.KeyPreparationResult preparation =
             dayStockMovementService.prepareDayStockMovementKeys(today);
         if (preparation.marketClosed()) {
-            log.info("{}: market is closed on {} (weekend or holiday), skipping", purpose, today);
+            log.info("{}: market is closed on {} (weekend or holiday), skipping", getPurpose(), today);
             return;
         }
 
@@ -53,21 +51,20 @@ public class DayStockMovementKeyMapEntryCronjob extends AbstractCronjob {
             dayStockMovementService.createMappingsForPreparedKeys(today, preparation);
 
         if (!mappingResult.watchlistFound()) {
-            log.info("{}: no watchlist found/configured for day-stock mapping; skipping lastUpdated update", purpose);
+            log.info("{}: no watchlist found/configured for day-stock mapping; skipping lastUpdated update", getPurpose());
             return;
         }
 
-        updateLastUpdatedNowUtc(purpose);
+        updateLastUpdatedNowUtc(getPurpose());
     }
 
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
-        String purpose = CronjobConfigEnum.Purpose.DAY_STOCK_MOVEMENT_KEY_MAP_ENTRY.value();
         String dayStockMovementKeyMapEntryCron = applicationProperties.getDayStockMovementKeyMapEntry().getCron();
         if (dayStockMovementKeyMapEntryCron == null || dayStockMovementKeyMapEntryCron.isBlank()) {
-            log.warn("{}: dayStockMovementKeyMapEntry.cron is not set or empty. @Scheduled may not be active.", purpose);
+            log.warn("{}: dayStockMovementKeyMapEntry.cron is not set or empty. @Scheduled may not be active.", getPurpose());
         } else {
-            log.info("{}: initialized with cron='{}'", purpose, dayStockMovementKeyMapEntryCron);
+            log.info("{}: initialized with cron='{}'", getPurpose(), dayStockMovementKeyMapEntryCron);
         }
     }
 }

@@ -210,8 +210,6 @@ public class DayStockMovementController {
             @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         model.addAttribute("entries", entryRepo.listAllEntriesWithMeta());
         model.addAttribute("tickers", entryRepo.listDistinctEntryTickers());
-        model.addAttribute("dayCodes", entryRepo.listDistinctEntryCodes());
-        model.addAttribute("dates", entryRepo.listDistinctEntryDates());
         return hxRequest != null ? "day_stock_movement/day_stock_movement_entries :: content" : "day_stock_movement/day_stock_movement_entries";
     }
 

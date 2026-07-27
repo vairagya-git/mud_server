@@ -2,6 +2,7 @@ package com.rama.mudstock.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -58,6 +59,7 @@ public class DayStockMovementAggregateParser {
         double curDayLow = currentDayNode.has("l") ? currentDayNode.get("l").asDouble() : 0.0;
         double curDayVolWeight = currentDayNode.has("vw") ? currentDayNode.get("vw").asDouble() : 0.0;
         long curDayVolume = currentDayNode.has("v") ? currentDayNode.get("v").asLong() : 0L;
+        Timestamp dayStockMovementDate = Timestamp.from(Instant.ofEpochMilli(currentDayNode.get("t").asLong()));
 
         Double changePercent = null;
         Double dayOpeningChangePercent = null;
@@ -74,6 +76,7 @@ public class DayStockMovementAggregateParser {
             curDayLow,
             curDayVolWeight,
             curDayVolume,
+            dayStockMovementDate,
             changePercent,
             dayOpeningChangePercent));
     }
@@ -103,6 +106,7 @@ public class DayStockMovementAggregateParser {
                                     double curDayLow,
                                     double curDayVolWeight,
                                     long curDayVolume,
+                                    Timestamp dayStockMovementDate,
                                     Double changePercent,
                                     Double dayOpeningChangePercent) {
     }

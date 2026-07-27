@@ -170,10 +170,13 @@ CREATE TABLE `day_stock_movement_map` (
 ) ENGINE=InnoDB;
 
 select * from day_stock_movement_entry
-order by id desc
+order by id desc;
 
 ALTER TABLE day_stock_movement_entry
   ADD COLUMN `earnings` boolean not null default false after `change_percent`;
+  
+ ALTER TABLE day_stock_movement_entry
+  ADD COLUMN  `day_stock_movement_date` timestamp DEFAULT NULL after `created_at`;
 
 ALTER TABLE day_stock_movement_entry
   ADD COLUMN earnings_date_id BIGINT UNSIGNED NULL AFTER day_stock_movement_map_id,
@@ -184,8 +187,44 @@ ALTER TABLE day_stock_movement_entry
 ALTER TABLE day_stock_movement_entry
   MODIFY COLUMN day_stock_movement_map_id BIGINT UNSIGNED NULL;
 
+ALTER TABLE day_stock_movement_entry
+  ADD COLUMN `stock_id` bigint unsigned NULL after `id`,
+   ADD KEY fk_dsme_stock (stock_id),
+  ADD CONSTRAINT fk_dsme_stock
+    FOREIGN KEY (stock_id) REFERENCES stock (id);
+    
+ALTER TABLE day_stock_movement_entry
+    MODIFY COLUMN stock_id BIGINT UNSIGNED NOT NULL,
+    ADD KEY fk_dsme_stock (stock_id),
+    ADD CONSTRAINT fk_dsme_stock
+    FOREIGN KEY (stock_id) REFERENCES stock (id);
+    
+UPDATE day_stock_movement_entry dsme
+JOIN day_stock_movement_map dsmm
+    ON dsme.day_stock_movement_map_id = dsmm.id
+SET dsme.stock_id = dsmm.stock_id;
+
+UPDATE day_stock_movement_entry dsme
+JOIN day_stock_movement_map dsmm
+    ON dsme.day_stock_movement_map_id = dsmm.id
+JOIN day_stock_movement_key dsmk 
+	ON dsmm.day_stock_movement_key_id = dsmk.id
+SET dsme.day_stock_movement_date = dsmk.date;
+    
+alter table day_stock_movement_entry drop column `stock_id`;
+  
+select created_at, count(*) from day_stock_movement_entry
+where day_stock_movement_map_id is null
+group by created_at;
+
+delete from day_stock_movement_entry where day_stock_movement_map_id  is null;
+
+select count(*) from day_stock_movement_entry
+where day_stock_movement_date IS NULL;
+
 CREATE TABLE `day_stock_movement_entry` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `stock_id` bigint unsigned NOT NULL,
   `day_stock_movement_map_id` bigint unsigned DEFAULT NULL,
   `earnings_date_id` bigint unsigned DEFAULT NULL,
   `pre_day_close` decimal(20,2) NOT NULL,
@@ -196,8 +235,9 @@ CREATE TABLE `day_stock_movement_entry` (
   `cur_day_vol_weight` decimal(20,2) NOT NULL,
   `cur_day_volume` bigint unsigned NOT NULL,
   `change_percent` decimal(20,2) DEFAULT NULL,
-  `earnings` boolean not null default false;  
+  `earnings` boolean not null default false,
   `day_opening_change_percent` decimal(20,2) DEFAULT NULL,
+  `day_stock_movement_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -290,11 +330,12 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 /*DayStockMovementData Settings*/
 ('useage', 'useage', 'String', 'DayStockMovementData', 'Populated the day stock movment data for the current day'),
 ('enabled', 'true', 'boolean', 'DayStockMovementData', 'Day Stock Movement Data > cronjob Enabled'),
+('watchlist-codes', 'MOVING_STOCK,SEMI_WATCHLIST', 'StringArray', 'DayStockMovementData', 'fetch for teh configured watchlist'),
 ('execution', 'daily', 'String', 'DayStockMovementData', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'DayStockMovementData', 'LastUpdated dateTime'),
 ('dailyCutOffTime', '22:00', 'DateTime', 'DayStockMovementData', 'Record should only be fetched after the cutoffTime'),
 ('forceExecute', 'false', 'boolean', 'DayStockMovementData', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
-
+('forceExecuteDailyDate', '', 'DateTime', 'DayStockMovementData', 'Set the date for forceExecute'),
 
 /*DayStockMovementCleanup Settings*/
 ('useage', 'useage', 'String', 'DayStockMovementCleanup', 'Cleanup the day stock movement data for the current day'),
@@ -347,7 +388,7 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('execution', 'daily', 'String', 'OptionSnapshotIVMetrics', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'OptionSnapshotIVMetrics', 'Create and Close Optoin Contract entry'),
 ('dailyCutOffTime', '22:00', 'DateTime', 'OptionSnapshotIVMetrics', 'Record should only be fetched after the cutoffTime'),
-('forceExecute', 'false', 'boolean', 'OptionSnapshotIVMetrics', 'Set this flag if you want to execute this cronjob by overriding all the other flag')
+('forceExecute', 'false', 'boolean', 'OptionSnapshotIVMetrics', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
 
 /*EarningsDetailCronjob Settings*/
 ('useage', 'useage', 'String', 'EarningsDetailCronjob', 'Calculate Option IV Metrics after end of the day'),

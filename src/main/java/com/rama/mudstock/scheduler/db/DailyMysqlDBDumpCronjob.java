@@ -23,31 +23,30 @@ public class DailyMysqlDBDumpCronjob extends AbstractCronjob {
 
     public DailyMysqlDBDumpCronjob(MysqlDumpService mysqlDumpService,
                                    SystemConfigService systemConfigService) {
-        super(systemConfigService);
+        super(systemConfigService, CronjobConfigEnum.Purpose.DAILY_MY_SQL_DB_DUMP.value());
         this.mysqlDumpService = mysqlDumpService;
     }
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = com.rama.mudstock.config.ApplicationConfig.LISBON_ZONE)
     public void dumpMysqlDatabase() {
         var locationCfg = CronjobConfigEnum.LOCATION;
-        String purpose = CronjobConfigEnum.Purpose.DAILY_MY_SQL_DB_DUMP.value();
 
-        if (!shouldExecuteBySchedule(purpose)) {
+        if (!shouldExecuteBySchedule(getPurpose())) {
             return;
         }
 
         String outputLocation = TypeConverstionUtil.toString(getConfigValue(locationCfg.code()));
         if (outputLocation.isBlank()) {
-            log.warn("{}: missing dump location in system_config (code={})", purpose, locationCfg.code());
+            log.warn("{}: missing dump location in system_config (code={})", getPurpose(), locationCfg.code());
             return;
         }
 
         try {
             Path outputFile = mysqlDumpService.dumpToLocation(outputLocation);
-            log.info("{}: mysql dump completed at {}", purpose, outputFile);
-            updateLastUpdatedNowUtc(purpose);
+            log.info("{}: mysql dump completed at {}", getPurpose(), outputFile);
+            updateLastUpdatedNowUtc(getPurpose());
         } catch (Exception ex) {
-            log.error("{}: mysql dump failed", purpose, ex);
+            log.error("{}: mysql dump failed", getPurpose(), ex);
         }
     }
 }

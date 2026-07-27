@@ -2,6 +2,7 @@ package com.rama.mudstock.util;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -20,7 +21,7 @@ public final class WatchlistUtil {
 
     /**
      * Splits a comma-separated list of watchlist codes, fetches each watchlist,
-     * and returns a deduplicated map of stocks keyed by upper-cased ticker symbol.
+    * and returns a deduplicated list of stocks ordered by first encounter.
      * Stocks with a blank ticker are silently skipped.
      * Missing watchlists emit a WARN log but do not fail.
      *
@@ -28,9 +29,9 @@ public final class WatchlistUtil {
      * @param repository          {@link WatchlistRepository} used to fetch each watchlist with its stocks
      * @param log                 caller's logger (used for WARN messages on missing watchlists)
      * @param callerName          simple name of the caller, used in log messages
-     * @return insertion-ordered map: ticker → {@link Stock}, duplicates across watchlists removed
+     * @return insertion-ordered list of unique {@link Stock} entries, duplicates across watchlists removed
      */
-    public static Map<String, Stock> collectUniqueStocksByTicker(
+    public static List<Stock> collectUniqueStocksByTicker(
             String commaSeparatedCodes,
             WatchlistRepository repository,
             Logger log,
@@ -38,7 +39,7 @@ public final class WatchlistUtil {
 
         Map<String, Stock> uniqueStocks = new LinkedHashMap<>();
         if (commaSeparatedCodes == null || commaSeparatedCodes.isBlank()) {
-            return uniqueStocks;
+            return List.of();
         }
         for (String code : commaSeparatedCodes.split(",")) {
             String trimmed = code.trim();
@@ -49,7 +50,7 @@ public final class WatchlistUtil {
                     () -> log.warn("{}: watchlist not found: {}", callerName, trimmed)
                 );
         }
-        return uniqueStocks;
+            return List.copyOf(uniqueStocks.values());
     }
 
     private static void collectFromWatchlist(Collection<Stock> stocks, Map<String, Stock> uniqueStocks) {

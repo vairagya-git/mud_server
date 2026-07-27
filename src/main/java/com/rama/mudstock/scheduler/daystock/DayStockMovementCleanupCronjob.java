@@ -24,25 +24,23 @@ public class DayStockMovementCleanupCronjob extends AbstractCronjob {
 
     public DayStockMovementCleanupCronjob(DayStockMovementService dayStockMovementService,
                                           SystemConfigService systemConfigService) {
-        super(systemConfigService);
+        super(systemConfigService, CronjobConfigEnum.Purpose.DAY_STOCK_MOVEMENT_CLEANUP.value());
         this.dayStockMovementService = dayStockMovementService;
     }
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = com.rama.mudstock.config.ApplicationConfig.LISBON_ZONE)
     public void cleanupRedundantKeys() {
-        String purpose = CronjobConfigEnum.Purpose.DAY_STOCK_MOVEMENT_CLEANUP.value();
-
-        if (!shouldExecuteBySchedule(purpose)) {
+        if (!shouldExecuteBySchedule(getPurpose())) {
             return;
         }
 
-        log.info("{}: scanning for redundant every-day movement keys", purpose);
+        log.info("{}: scanning for redundant every-day movement keys", getPurpose());
         try {
             int removed = dayStockMovementService.cleanupRedundantMasters();
-            updateLastUpdatedNowUtc(purpose);
-            log.info("{}: removed {} redundant key(s)", purpose, removed);
+            updateLastUpdatedNowUtc(getPurpose());
+            log.info("{}: removed {} redundant key(s)", getPurpose(), removed);
         } catch (Exception ex) {
-            log.error("{}: error during cleanup", purpose, ex);
+            log.error("{}: error during cleanup", getPurpose(), ex);
         }
     }
 }

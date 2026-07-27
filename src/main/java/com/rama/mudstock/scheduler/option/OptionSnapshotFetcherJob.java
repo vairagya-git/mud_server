@@ -26,25 +26,23 @@ public class OptionSnapshotFetcherJob extends AbstractCronjob {
 
     public OptionSnapshotFetcherJob(OptionSnapshotFetcherFacade optionSnapshotFetcherFacade,
                                     SystemConfigService systemConfigService) {
-        super(systemConfigService);
+        super(systemConfigService, CronjobConfigEnum.Purpose.OPTION_SNAPSHOT_FETCHER_JOB.value());
         this.optionSnapshotFetcherFacade = optionSnapshotFetcherFacade;
     }
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = com.rama.mudstock.config.ApplicationConfig.LISBON_ZONE)
     public void fetchSnapshots() {
-        String purpose = CronjobConfigEnum.Purpose.OPTION_SNAPSHOT_FETCHER_JOB.value();
-
-        if (!shouldExecuteBySchedule(purpose)) {
+        if (!shouldExecuteBySchedule(getPurpose())) {
             return;
         }
 
         try {
             long snapshotVersion = Instant.now().toEpochMilli();
             int inserted = optionSnapshotFetcherFacade.fetchAndStoreSnapshots(snapshotVersion);
-            log.info("{}: inserted {} option_snapshot row(s), snapshotVersion={}", purpose, inserted, snapshotVersion);
-            updateLastUpdatedNowUtc(purpose);
+            log.info("{}: inserted {} option_snapshot row(s), snapshotVersion={}", getPurpose(), inserted, snapshotVersion);
+            updateLastUpdatedNowUtc(getPurpose());
         } catch (Exception ex) {
-            log.error("{}: snapshot fetch failed", purpose, ex);
+            log.error("{}: snapshot fetch failed", getPurpose(), ex);
         }
     }
 }

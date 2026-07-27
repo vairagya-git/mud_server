@@ -3,8 +3,11 @@ package com.rama.mudstock.scheduler;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -12,8 +15,10 @@ import org.slf4j.LoggerFactory;
 
 import com.rama.mudstock.config.ApplicationConfig;
 import com.rama.mudstock.enums.CronjobConfigEnum;
+import com.rama.mudstock.repository.stockwatchlist.WatchlistRepository;
 import com.rama.mudstock.service.SystemConfigService;
 import com.rama.mudstock.util.TypeConverstionUtil;
+import com.rama.mudstock.util.WatchlistUtil;
 
 public abstract class AbstractCronjob {
 
@@ -24,8 +29,9 @@ public abstract class AbstractCronjob {
     private String currentPurpose;
     private Map<String, Object> currentPurposeConfig = new HashMap<>();
 
-    protected AbstractCronjob(SystemConfigService systemConfigService) {
+    protected AbstractCronjob(SystemConfigService systemConfigService, String purpose) {
         this.systemConfigService = systemConfigService;
+        loadPurposeConfig(purpose);
     }
 
     /**
@@ -36,8 +42,31 @@ public abstract class AbstractCronjob {
         this.currentPurposeConfig = new HashMap<>(systemConfigService.findAllByPurpose(purpose));
     }
 
+    protected String getPurpose() {
+        return currentPurpose;
+    }
+
     protected Object getConfigValue(String code) {
         return currentPurposeConfig.get(code);
+    }
+
+    protected List<String> resolveConfiguredWatchlistCodes(String purpose, String code) {
+        return systemConfigService
+            .findByPurposeAndCode(purpose, code)
+            .filter(List.class::isInstance)
+            .map(v -> ((List<?>) v).stream()
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .toList())
+            .orElse(List.of());
+    }
+
+    protected List<com.rama.mudstock.model.stockwatchlist.Stock> collectUniqueStocksByTicker(String purpose,
+                                                                                            String watchlistCodes,
+                                                                                            WatchlistRepository watchlistRepository) {
+        return WatchlistUtil.collectUniqueStocksByTicker(watchlistCodes, watchlistRepository, log, purpose);
     }
 
     protected boolean isEnabled(String purpose) {
@@ -249,7 +278,52 @@ public abstract class AbstractCronjob {
         return Boolean.TRUE.equals(TypeConverstionUtil.toBoolean(getConfigValue(CronjobConfigEnum.FORCE_EXECUTE.code())));
     }
 
-    private boolean hasSystemConfigProperty(String purpose, CronjobConfigEnum config) {
+    /**
+     * Resolves execution target date from force execute config.
+     * If forceExecute=false, returns current date in Lisbon.
+     * If forceExecute=true, uses forceExecuteDailyDate when valid, otherwise current Lisbon date.
+     */
+    protected LocalDate resolveTargetDate(String purpose) {
+        LocalDate today = LocalDate.now(ApplicationConfig.LISBON);
+        if (!isForceExecuteEnabled(purpose)) {
+            return today;
+        }
+
+        String rawDate = TypeConverstionUtil.toString(getConfigValue(CronjobConfigEnum.FORCE_EXECUTE_DAILY_DATE.code()));
+        if (rawDate == null || rawDate.isBlank()) {
+            log.warn("{}: forceExecute is enabled but {} is empty; using current date {}",
+                purpose,
+                CronjobConfigEnum.FORCE_EXECUTE_DAILY_DATE.code(),
+                today);
+            return today;
+        }
+
+        String value = rawDate.trim();
+        try {
+            return Instant.parse(value).atZone(ApplicationConfig.LISBON).toLocalDate();
+        } catch (Exception ignored) {
+        }
+        try {
+            return OffsetDateTime.parse(value).atZoneSameInstant(ApplicationConfig.LISBON).toLocalDate();
+        } catch (Exception ignored) {
+        }
+        try {
+            return ZonedDateTime.parse(value).withZoneSameInstant(ApplicationConfig.LISBON).toLocalDate();
+        } catch (Exception ignored) {
+        }
+        try {
+            return LocalDate.parse(value.substring(0, Math.min(value.length(), 10)));
+        } catch (Exception ignored) {
+            log.warn("{}: unable to parse {}='{}'; using current date {}",
+                purpose,
+                CronjobConfigEnum.FORCE_EXECUTE_DAILY_DATE.code(),
+                rawDate,
+                today);
+            return today;
+        }
+    }
+
+    private boolean hasSystemConfigProperty(CronjobConfigEnum config) {
         return currentPurposeConfig.containsKey(config.code());
     }
 
@@ -259,17 +333,17 @@ public abstract class AbstractCronjob {
     * startTime property exists -> START_END_TIME, otherwise NONE.
      */
     protected CronjobConfigEnum.ExecutionMode fetchExecutionModeByDetails(String purpose) {
-        if (hasSystemConfigProperty(purpose, CronjobConfigEnum.DAILY_CUTT_OFF_TIME)) {
+        if (hasSystemConfigProperty(CronjobConfigEnum.DAILY_CUTT_OFF_TIME)) {
             return CronjobConfigEnum.ExecutionMode.DAILY_CUT_OFF;
         }
-        if (hasSystemConfigProperty(purpose, CronjobConfigEnum.START_TIME)) {
+        if (hasSystemConfigProperty(CronjobConfigEnum.START_TIME)) {
             return CronjobConfigEnum.ExecutionMode.START_END_TIME;
         }
         return CronjobConfigEnum.ExecutionMode.NONE;
     }
 
     /**
-     * Unified scheduler gate.
+     * Unified scheduler gate.––
      *
      * Decision order:
      * 1) forceExecute=true -> allow immediately.
@@ -280,7 +354,13 @@ public abstract class AbstractCronjob {
     *    then minuteHourlyFrequency interval check against lastUpdated.
      */
     protected boolean shouldExecuteBySchedule(String purpose) {
-        loadPurposeConfig(purpose);
+        if (!purpose.equals(currentPurpose)) {
+            log.warn("{}: constructor-loaded purpose '{}' does not match runtime purpose '{}'; skipping execution",
+                purpose,
+                currentPurpose,
+                purpose);
+            return false;
+        }
 
         boolean forceExecuteEnabled = isForceExecuteEnabled(purpose);
         if (forceExecuteEnabled) {
