@@ -92,13 +92,45 @@
             var clearFiltersBtn = document.getElementById('clearDsmFiltersBtn');
             var sortState = { key: null, dir: 'asc' };
             var filters = { ticker: [], date: [] };
+            var storageKey = 'dsmFiltersState';
 
             function normalizeValue(field, value) {
                 var normalized = (value || '').trim();
                 if (field === 'ticker') {
                     normalized = normalized.toUpperCase();
                 }
+                if (field === 'date') {
+                    var dateMatch = normalized.match(/^(\d{4}-\d{2}-\d{2})/);
+                    if (dateMatch) {
+                        return dateMatch[1];
+                    }
+                    var parsedDate = new Date(normalized);
+                    if (!Number.isNaN(parsedDate.getTime())) {
+                        return parsedDate.toISOString().slice(0, 10);
+                    }
+                }
                 return normalized;
+            }
+
+            function loadFiltersFromStorage() {
+                try {
+                    var stored = sessionStorage.getItem(storageKey);
+                    if (!stored) return;
+                    var parsed = JSON.parse(stored);
+                    if (parsed && Array.isArray(parsed.ticker) && Array.isArray(parsed.date)) {
+                        filters = parsed;
+                    }
+                } catch (e) {
+                    filters = { ticker: [], date: [] };
+                }
+            }
+
+            function saveFiltersToStorage() {
+                try {
+                    sessionStorage.setItem(storageKey, JSON.stringify(filters));
+                } catch (e) {
+                    // Ignore storage errors and keep using in-memory filters.
+                }
             }
 
             function renderFilterChips() {
@@ -142,10 +174,10 @@
                     var date = normalizeValue('date', row.children[1].dataset.filterValue || '');
                     var show = true;
 
-                    if (filters.ticker.length > 0 && !filters.ticker.some(function (value) { return ticker.includes(value); })) {
+                    if (filters.ticker.length > 0 && !filters.ticker.some(function (value) { return ticker === value; })) {
                         show = false;
                     }
-                    if (show && filters.date.length > 0 && !filters.date.some(function (value) { return date.includes(value); })) {
+                    if (show && filters.date.length > 0 && !filters.date.some(function (value) { return date === normalizeValue('date', value); })) {
                         show = false;
                     }
 
@@ -160,6 +192,7 @@
                     filters[field].push(normalized);
                     renderFilterChips();
                     applyFilters();
+                    saveFiltersToStorage();
                 }
             }
 
@@ -167,6 +200,7 @@
                 filters[field] = filters[field].filter(function (entry) { return entry !== value; });
                 renderFilterChips();
                 applyFilters();
+                saveFiltersToStorage();
             }
 
             function parseSortValue(row, key) {
@@ -238,6 +272,7 @@
                 filters = { ticker: [], date: [] };
                 renderFilterChips();
                 applyFilters();
+                saveFiltersToStorage();
             });
 
             document.addEventListener('click', function (e) {
@@ -260,6 +295,7 @@
                 });
             });
 
+            loadFiltersFromStorage();
             renderFilterChips();
             applyFilters();
         })();
