@@ -97,8 +97,6 @@ public enum CronjobConfigEnum {
         WEEKLY_UPCOMING_EARNING_CRONJOB("WeeklyUpcomingEarningCronjob"),
         EARNINGS_DETAIL_CRONJOB("EarningsDetailCronjob"),
         DAY_STOCK_MOVEMENT_DATA("DayStockMovementData"),
-        DAY_STOCK_MOVEMENT_CLEANUP("DayStockMovementCleanup"),
-        DAY_STOCK_MOVEMENT_KEY_MAP_ENTRY("DayStockMovementKeyMapEntry"),
         DAILY_MY_SQL_DB_DUMP("DailyMysqlDBDump"),
         OPTIONS_INTERVAL_ANALYSE_DAILY_JOB("OptionsIntervalAnalyseDailyJob"),
         OPTION_SNAPSHOT_IV_METRICS("OptionSnapshotIVMetrics"),

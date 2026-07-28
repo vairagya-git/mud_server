@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 
 import com.rama.mudstock.model.earnings.EarningsDate;
 import com.rama.mudstock.model.stockwatchlist.Stock;
-import com.rama.mudstock.repository.daystock.DayStockMovementEntryRepository;
 import com.rama.mudstock.repository.earnings.EarningsDateRepository;
 import com.rama.mudstock.repository.stockwatchlist.StockRepository;
 import com.rama.mudstock.service.DayStockMovementAggregateParser;
@@ -25,20 +24,17 @@ public class DayStockMovementFacade {
     private static final Logger log = LoggerFactory.getLogger(DayStockMovementFacade.class);
 
     private final MassiveRestStockService massiveRestStockService;
-    private final DayStockMovementEntryRepository dayStockMovementEntryRepository;
     private final EarningsDateRepository earningsDateRepository;
     private final StockRepository stockRepository;
     private final MarketCalendarService marketCalendarService;
     private final DayStockMovementAggregateParser aggregateParser;
 
     public DayStockMovementFacade(MassiveRestStockService massiveRestStockService,
-                                  DayStockMovementEntryRepository dayStockMovementEntryRepository,
                                   EarningsDateRepository earningsDateRepository,
                                   StockRepository stockRepository,
                                   MarketCalendarService marketCalendarService,
                                   DayStockMovementAggregateParser aggregateParser) {
         this.massiveRestStockService = massiveRestStockService;
-        this.dayStockMovementEntryRepository = dayStockMovementEntryRepository;
         this.earningsDateRepository = earningsDateRepository;
         this.stockRepository = stockRepository;
         this.marketCalendarService = marketCalendarService;
@@ -148,21 +144,7 @@ public class DayStockMovementFacade {
             }
 
             DayStockMovementAggregateParser.AggregateSnapshot data = snapshot.get();
-            dayStockMovementEntryRepository.upsertDayStockMovementEntry(
-                stock.getId(),
-                null,
-                data.dayStockMovementDate(),
-                null,
-                data.preDayClose(),
-                data.curDayOpen(),
-                data.curDayClose(),
-                data.curDayHigh(),
-                data.curDayLow(),
-                data.curDayVolWeight(),
-                data.curDayVolume(),
-                data.changePercent(),
-                data.dayOpeningChangePercent());
-            log.info("Saved day_stock_movement_entry for stock={} eventDate={}", stock.getTicker(), eventDate);
+            log.info("Skipped persisting day_stock_movement_entry for stock={} eventDate={} because the table has been removed", stock.getTicker(), eventDate);
         } catch (Exception ex) {
             log.error("Failed to fetch aggregate for stock {} on date {}", stock != null ? stock.getTicker() : null, eventDate, ex);
         }
@@ -199,20 +181,11 @@ public class DayStockMovementFacade {
             }
 
             boolean earnings = true;
-            dayStockMovementEntryRepository.insertEarningsEntry(
-                stockId,
-                data.dayStockMovementDate(),
-                earningsDateId,
-                data.preDayClose(),
-                data.curDayOpen(),
-                data.curDayClose(),
-                data.curDayHigh(),
-                data.curDayLow(),
-                data.curDayVolWeight(),
-                data.curDayVolume(),
-                data.changePercent(),
-                data.dayOpeningChangePercent(),
-                earnings);
+            log.info("Skipped persisting earnings day_stock_movement_entry for ticker={} eventDate={} (base={}, windowDays={}) because the table has been removed",
+                ticker,
+                eventDate,
+                baseEarningsDate,
+                windowDays);
 
             log.info("Computed aggregate snapshot for ticker={} eventDate={} (base={}, windowDays={}): changePercent={} dayOpeningChangePercent={}",
                 ticker,

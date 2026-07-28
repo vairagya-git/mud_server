@@ -143,6 +143,8 @@ JOIN day_stock_movement_key dsmk
 WHERE dsmk.code = '16_JUL_26_MOVING_STOCK';
 DELETE from day_stock_movement_key where code = "16_JUL_26_MOVING_STOCK";
 
+drop table day_stock_movement_map;
+
 CREATE TABLE `day_stock_movement_key` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `code` varchar(64) NOT NULL,
@@ -222,10 +224,22 @@ delete from day_stock_movement_entry where day_stock_movement_map_id  is null;
 select count(*) from day_stock_movement_entry
 where day_stock_movement_date IS NULL;
 
+ALTER TABLE day_stock_movement_entry
+ADD CONSTRAINT unique_dsme_stock_movement
+UNIQUE (stock_id, day_stock_movement_date);
+
+
+ALTER TABLE day_stock_movement_entry
+    DROP FOREIGN KEY fk_dsme_day_stock_movement_map,
+    DROP INDEX fk_dsme_day_stock_movement_map;
+    
+ALTER TABLE day_stock_movement_entry
+    DROP INDEX unique_day_stock_movement_entry,
+    DROP COLUMN day_stock_movement_map_id;
+
 CREATE TABLE `day_stock_movement_entry` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `stock_id` bigint unsigned NOT NULL,
-  `day_stock_movement_map_id` bigint unsigned DEFAULT NULL,
   `earnings_date_id` bigint unsigned DEFAULT NULL,
   `pre_day_close` decimal(20,2) NOT NULL,
   `cur_day_open` decimal(20,2) NOT NULL,
@@ -241,13 +255,12 @@ CREATE TABLE `day_stock_movement_entry` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `fk_dsme_day_stock_movement_map` (`day_stock_movement_map_id`),
+  UNIQUE KEY `unique_dsme_stock_movement` (`stock_id`,`day_stock_movement_date`),
   KEY `fk_dsme_earnings_date` (`earnings_date_id`),
-  CONSTRAINT `fk_dsme_day_stock_movement_map` FOREIGN KEY (`day_stock_movement_map_id`) REFERENCES `day_stock_movement_map` (`id`),
+  KEY `fk_dsme_stock` (`stock_id`),
   CONSTRAINT `fk_dsme_earnings_date` FOREIGN KEY (`earnings_date_id`) REFERENCES `earnings_date` (`id`),
-  CONSTRAINT `unique_day_stock_movement_entry` UNIQUE (`day_stock_movement_map_id`)
+  CONSTRAINT `fk_dsme_stock` FOREIGN KEY (`stock_id`) REFERENCES `stock` (`id`)
 ) ENGINE=InnoDB;
-
 
 /****** MASTER TABLE ********/
 
@@ -298,7 +311,8 @@ CREATE TABLE `system_config` (
   CONSTRAINT unique_day_event_master UNIQUE (`code`, `purpose`)
 ) ENGINE=InnoDB;
 
-delete from system_config;
+delete from system_config where purpose in ("DayStockMovementKeyMapEntry", "DayStockMovementCleanup");
+ 
 
 INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VALUES
 /* WeeklyAnalystFirmUpdateCronjob Settings*/
@@ -313,10 +327,11 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('useage', 'useage', 'String', 'DailyAnalystRatingCronjob', 'Pull the Analyst rating details from Benzinga API'),
 ('watchlist-codes', 'MOVING_STOCK,SEMI_WATCHLIST', 'StringArray', 'DailyAnalystRatingCronjob', 'Benzinga Analyst Rating > Watchlist Codes'),
 ('enabled', 'true', 'boolean', 'DailyAnalystRatingCronjob', 'Benzinga Analyst Rating > cronjob Enabled'),
-('execution', 'hourly', 'String', 'DailyAnalystRatingCronjob', 'CronExpression for the cronjob'),
+('execution', 'daily', 'String', 'DailyAnalystRatingCronjob', 'CronExpression for the cronjob'),
 ('minuteHourlyFrequency', '2', 'Integer', 'DailyAnalystRatingCronjob', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'DailyAnalystRatingCronjob', 'LastUpdated dateTime'),
 ('forceExecute', 'false', 'boolean', 'DailyAnalystRatingCronjob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
+('forceExecuteDailyDate', '', 'DateTime', 'DailyAnalystRatingCronjob', 'Set the date for forceExecute'),
 
 /* WeeklyUpcomingEarningCronjob Settings*/
 ('useage', 'useage', 'String', 'WeeklyUpcomingEarningCronjob', 'Populate the weekly upcoming earnings for the next week from yfinance'),
@@ -336,24 +351,6 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('dailyCutOffTime', '22:00', 'DateTime', 'DayStockMovementData', 'Record should only be fetched after the cutoffTime'),
 ('forceExecute', 'false', 'boolean', 'DayStockMovementData', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
 ('forceExecuteDailyDate', '', 'DateTime', 'DayStockMovementData', 'Set the date for forceExecute'),
-
-/*DayStockMovementCleanup Settings*/
-('useage', 'useage', 'String', 'DayStockMovementCleanup', 'Cleanup the day stock movement data for the current day'),
-('enabled', 'true', 'boolean', 'DayStockMovementCleanup', 'Day Stock Movement Cleanup > cronjob Enabled'),
-('execution', 'daily', 'String', 'DayStockMovementCleanup', 'CronExpression for the cronjob'),
-('lastUpdated', '', 'DateTime', 'DayStockMovementCleanup', 'LastUpdated dateTime'),
-('dailyCutOffTime', '23:00', 'DateTime', 'DayStockMovementCleanup', 'Record should only be fetched after the cutoffTime'),
-('forceExecute', 'false', 'boolean', 'DayStockMovementCleanup', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
-
-/*DayStockMovementKeyMapEntry Settings*/
-('useage', 'useage', 'String', 'DayStockMovementKeyMapEntry', 'Populate the day stock movement key map entry for the current day'),
-('enabled', 'true', 'boolean', 'DayStockMovementKeyMapEntry', 'Day Stock Movement Key Map Entry > cronjob Enabled'),
-('watchlist-codes', 'MOVING_STOCK,SEMI_WATCHLIST', 'StringArray', 'DayStockMovementKeyMapEntry', 'Day Stock Movement Key Map Entry > Watchlist Codes'),
-('execution', 'daily', 'String', 'DayStockMovementKeyMapEntry', 'CronExpression for the cronjob'),
-('lastUpdated', '', 'DateTime', 'DayStockMovementKeyMapEntry', 'LastUpdated dateTime'),
-('dailyCutOffTime', '19:00', 'DateTime', 'DayStockMovementKeyMapEntry', 'Record should only be fetched after the cutoffTime'),
-('minuteHourlyFrequency', '1', 'DateTime', 'DayStockMovementKeyMapEntry', 'Incase want to push date temporarily. Change execution to minutes'),
-('forceExecute', 'false', 'boolean', 'DayStockMovementKeyMapEntry', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
 
 /*MYSQL DB Dump Settings*/
 ('useage', 'useage', 'String', 'DailyMysqlDBDump', 'Dump the Mysql and write into the location'),
@@ -396,7 +393,26 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('execution', 'daily', 'String', 'EarningsDetailCronjob', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'EarningsDetailCronjob', 'Create and Close Optoin Contract entry'),
 ('dailyCutOffTime', '22:00', 'DateTime', 'EarningsDetailCronjob', 'Record should only be fetched after the cutoffTime'),
-('forceExecute', 'false', 'boolean', 'EarningsDetailCronjob', 'Set this flag if you want to execute this cronjob by overriding all the other flag');
+('forceExecute', 'false', 'boolean', 'EarningsDetailCronjob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
+
+
+/*DayStockMovementCleanup Settings*/
+('useage', 'useage', 'String', 'DayStockMovementCleanup', 'Cleanup the day stock movement data for the current day'),
+('enabled', 'true', 'boolean', 'DayStockMovementCleanup', 'Day Stock Movement Cleanup > cronjob Enabled'),
+('execution', 'daily', 'String', 'DayStockMovementCleanup', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'DayStockMovementCleanup', 'LastUpdated dateTime'),
+('dailyCutOffTime', '23:00', 'DateTime', 'DayStockMovementCleanup', 'Record should only be fetched after the cutoffTime'),
+('forceExecute', 'false', 'boolean', 'DayStockMovementCleanup', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
+
+/*DayStockMovementKeyMapEntry Settings*/
+('useage', 'useage', 'String', 'DayStockMovementKeyMapEntry', 'Populate the day stock movement key map entry for the current day'),
+('enabled', 'true', 'boolean', 'DayStockMovementKeyMapEntry', 'Day Stock Movement Key Map Entry > cronjob Enabled'),
+('watchlist-codes', 'MOVING_STOCK,SEMI_WATCHLIST', 'StringArray', 'DayStockMovementKeyMapEntry', 'Day Stock Movement Key Map Entry > Watchlist Codes'),
+('execution', 'daily', 'String', 'DayStockMovementKeyMapEntry', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'DayStockMovementKeyMapEntry', 'LastUpdated dateTime'),
+('dailyCutOffTime', '19:00', 'DateTime', 'DayStockMovementKeyMapEntry', 'Record should only be fetched after the cutoffTime'),
+('minuteHourlyFrequency', '1', 'DateTime', 'DayStockMovementKeyMapEntry', 'Incase want to push date temporarily. Change execution to minutes'),
+('forceExecute', 'false', 'boolean', 'DayStockMovementKeyMapEntry', 'Set this flag if you want to execute this cronjob by overriding all the other flag');
 
 
 /**** OPTION CONTRACT START ****/

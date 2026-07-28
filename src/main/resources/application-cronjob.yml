@@ -15,8 +15,6 @@ logging:
     files:
       earnings: logs/earnings.log
       dayStockMovementData: logs/day-stock-movement-data.log
-      dayStockMovementCleanup: logs/day-stock-movement-cleanup.log
-      dayStockMovementKeyMapEntry: logs/day-stock-movement-key-map-entry.log
       weeklyUpcomingEarning: logs/weekly-upcoming-earnings.log
       dailyAnalystRating: logs/daily-analyst-rating.log
       optionSnapshotFetcher: logs/option-snapshot-fetcher.log

@@ -4,164 +4,75 @@
 <head><title>DSM Entries — MudStock</title></head>
 <body>
 <div id="page-content" th:fragment="content">
-    <style>
-        .dsm-sticky-header {
-            position: sticky;
-            top: 0;
-            z-index: 30;
-            background: var(--bg);
-            padding-top: 6px;
-            padding-bottom: 8px;
-            margin-bottom: 10px;
-        }
-        
-
-        .dsm-sticky-filter {
-            position: sticky;
-            top: 56px;
-            z-index: 25;
-            background: #f7f7f7;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-        }
-
-        .dsm-filter-input {
-            display: inline-flex;
-            gap: 6px;
-            align-items: center;
-            margin-left: 6px;
-        }
-
-        .dsm-filter-input input {
-            width: 130px;
-            padding: 4px 8px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            font-size: 0.82rem;
-            text-transform: uppercase;
-        }
-
-        .dsm-filter-input input.dsm-filter-input-lower {
-            text-transform: none;
-            width: 150px;
-        }
-
-        .dsm-earnings-icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 20px;
-            height: 20px;
-            padding: 0 6px;
-            border-radius: 999px;
-            background: #24a148;
-            color: #fff;
-            font-weight: 700;
-            font-size: 0.75rem;
-            line-height: 1;
-        }
-    </style>
-
-    <div class="page-header dsm-sticky-header">
+    <div class="page-header">
         <h1>Day Stock Movement Entries</h1>
-        <div class="subtitle">Total: <strong th:text="${entries.size()}">0</strong></div>
+        <div class="subtitle">Showing <strong th:text="${#lists.size(entries)}">0</strong> entries</div>
     </div>
 
-    <div class="filter-bar dsm-sticky-filter" style="margin-bottom:16px">
+    <div class="filter-bar" role="search" aria-label="Filter day stock movement entries">
         <span class="filter-bar-label">Filters</span>
 
-        <div class="dsm-filter-input">
-            <input id="tickerSearchInput" list="tickerOptions" type="text" placeholder="Search ticker" aria-label="Search ticker">
-            <button id="addTickerFilterBtn" type="button" class="btn btn-sm btn-secondary">Add ticker</button>
-            <datalist id="tickerOptions">
-                <option th:each="t : ${tickers}" th:value="${t}"></option>
+        <div class="table-filter-input">
+            <input id="dsmTickerSearchInput" class="table-filter-input-uppercase" list="dsmTickerOptions" type="text" placeholder="Search ticker" aria-label="Search ticker">
+            <button id="addDsmTickerFilterBtn" type="button" class="btn btn-sm btn-secondary">Add ticker</button>
+            <datalist id="dsmTickerOptions">
+                <option th:each="ticker : ${tickers}" th:value="${ticker}"></option>
             </datalist>
         </div>
 
-        <div class="dsm-filter-input">
-            <input id="dateSearchInput" type="date" aria-label="Search date">
-            <button id="addDateFilterBtn" type="button" class="btn btn-sm btn-secondary">Add date</button>
+        <div class="table-filter-input">
+            <input id="dsmDateFilterInput" type="date" aria-label="Filter by date">
+            <button id="addDsmDateFilterBtn" type="button" class="btn btn-sm btn-secondary">Add date</button>
         </div>
 
-        <div class="dsm-filter-input">
-            <input id="changePercentSearchInput" class="dsm-filter-input-lower" type="text" placeholder="> 5 or less than 1" aria-label="Search change percent">
-            <button id="addChangePercentFilterBtn" type="button" class="btn btn-sm btn-secondary">Add change %</button>
-        </div>
-
-        <div class="dsm-filter-input">
-            <input id="openChangePercentSearchInput" class="dsm-filter-input-lower" type="text" placeholder=">= 1 or greater than 2" aria-label="Search open change percent">
-            <button id="addOpenChangePercentFilterBtn" type="button" class="btn btn-sm btn-secondary">Add open change %</button>
-        </div>
-
-        <label class="dsm-filter-input" for="earningsOnlyCheckbox" style="margin-left:10px">
-            <input id="earningsOnlyCheckbox" type="checkbox" />
-            <span>Earnings only</span>
-        </label>
-
-        <span id="entryActiveFilters"></span>
-
-        <span id="filterHint"
-              class="filter-bar-empty">Use search boxes or &#x2295; in rows to filter in browser (max 10 each). Numeric filters accept &gt;, &lt;, &gt;=, &lt;=, or phrases like "greater than 5".</span>
+        <span id="dsmActiveFilters"></span>
+        <span id="dsmFilterHint" class="filter-bar-empty">Add one or more ticker/date filters and sorting stays in the browser only.</span>
 
         <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
-            <button id="clearEntryFiltersBtn" type="button" class="btn btn-sm btn-secondary">Clear all</button>
+            <button id="clearDsmFiltersBtn" type="button" class="btn btn-sm btn-secondary">Clear all</button>
         </div>
     </div>
 
-    <div class="card table-wrap">
-        <div th:if="${entries.isEmpty()}" class="table-empty">No entries found. Run the scheduler to populate.</div>
-        <table id="dsmEntriesTable" th:unless="${entries.isEmpty()}">
+    <div th:if="${entries == null or #lists.isEmpty(entries)}" class="table-empty">No entries found. Run the scheduler to populate.</div>
+    <div th:if="${entries != null and !#lists.isEmpty(entries)}" class="card table-wrap">
+        <table id="dsm-entries-table">
             <thead>
                 <tr>
                     <th>
-                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="ticker" style="padding:2px 8px;line-height:1.2;background:#dff5df;border:1px solid #9dd59d;color:#1f5d1f;">
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="ticker">
                             Ticker <span class="sort-indicator" data-for="ticker"></span>
                         </button>
                     </th>
                     <th>
-                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="date" style="padding:2px 8px;line-height:1.2;background:#dff5df;border:1px solid #9dd59d;color:#1f5d1f;">
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="date">
                             Date <span class="sort-indicator" data-for="date"></span>
                         </button>
                     </th>
-                    <th>E</th>
                     <th>Open</th>
                     <th>Close</th>
                     <th>High</th>
                     <th>Low</th>
-                    <th>
-                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="changePercent" style="padding:2px 8px;line-height:1.2;background:#dff5df;border:1px solid #9dd59d;color:#1f5d1f;">
-                            Change % <span class="sort-indicator" data-for="changePercent"></span>
-                        </button>
-                    </th>
-                    <th>
-                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="openChangePercent" style="padding:2px 8px;line-height:1.2;background:#dff5df;border:1px solid #9dd59d;color:#1f5d1f;">
-                            OPENCHANGE% <span class="sort-indicator" data-for="openChangePercent"></span>
-                        </button>
-                    </th>
+                    <th>Change %</th>
+                    <th>Open Change %</th>
                     <th>Volume</th>
                 </tr>
             </thead>
             <tbody>
-                <tr th:each="e : ${entries}"
-                    th:with="isEarnings=${e.earnings != null and (#strings.equalsIgnoreCase(e.earnings.toString(), 'true') or e.earnings.toString() == '1')}"
-                    th:attr="data-earnings=${isEarnings}">
-                    <td th:attr="data-sort-value=${e.ticker}">
-                        <span class="badge badge-grey" th:text="${e.ticker}"></span>
-                        <button type="button" class="filter-btn" data-field="ticker" th:data-value="${e.ticker}" title="Filter by ticker">&#x2295;</button>
+                <tr th:each="e : ${entries}" th:attr="data-ticker=${e['ticker']}, data-date=${e['master_event_date']}, data-sort-ticker=${e['ticker']}, data-sort-date=${e['master_event_date']}">
+                    <td th:attr="data-sort-value=${e['ticker']},data-filter-value=${e['ticker']}">
+                        <span class="badge badge-grey" th:text="${e['ticker']}"></span>
+                        <button type="button" class="filter-btn" data-field="ticker" th:data-value="${e['ticker']}" title="Filter by ticker">⊕</button>
                     </td>
-                    <td th:attr="data-sort-value=${e.master_event_date}">
-                        <span th:text="${e.master_event_date}"></span>
-                        <button type="button" class="filter-btn" data-field="date" th:data-value="${e.master_event_date}" title="Filter by date">&#x2295;</button>
+                    <td th:attr="data-sort-value=${e['master_event_date']},data-filter-value=${e['master_event_date']}">
+                        <span th:text="${e['master_event_date']}"></span>
                     </td>
-                    <td>
-                        <span th:if="${isEarnings}" class="dsm-earnings-icon">E</span>
-                    </td>
-                    <td th:text="${e.cur_day_open}"></td>
-                    <td th:text="${e.cur_day_close}"></td>
-                    <td th:text="${e.cur_day_high}"></td>
-                    <td th:text="${e.cur_day_low}"></td>
-                    <td th:attr="data-sort-value=${e.change_percent}" th:text="${e.change_percent}"></td>
-                    <td th:attr="data-sort-value=${e.day_opening_change_percent}" th:text="${e.day_opening_change_percent}"></td>
-                    <td th:text="${e.cur_day_volume}"></td>
+                    <td th:text="${e['cur_day_open']}"></td>
+                    <td th:text="${e['cur_day_close']}"></td>
+                    <td th:text="${e['cur_day_high']}"></td>
+                    <td th:text="${e['cur_day_low']}"></td>
+                    <td th:text="${e['change_percent']}"></td>
+                    <td th:text="${e['day_opening_change_percent']}"></td>
+                    <td th:text="${e['cur_day_volume']}"></td>
                 </tr>
             </tbody>
         </table>
@@ -169,30 +80,30 @@
 
     <script>
         (function () {
-            var activeFiltersWrap = document.getElementById('entryActiveFilters');
-            var filterHint = document.getElementById('filterHint');
-            var table = document.getElementById('dsmEntriesTable');
-            var clearBtn = document.getElementById('clearEntryFiltersBtn');
-            var tickerSearchInput = document.getElementById('tickerSearchInput');
-            var addTickerFilterBtn = document.getElementById('addTickerFilterBtn');
-            var dateSearchInput = document.getElementById('dateSearchInput');
-            var addDateFilterBtn = document.getElementById('addDateFilterBtn');
-            var changePercentSearchInput = document.getElementById('changePercentSearchInput');
-            var addChangePercentFilterBtn = document.getElementById('addChangePercentFilterBtn');
-            var openChangePercentSearchInput = document.getElementById('openChangePercentSearchInput');
-            var addOpenChangePercentFilterBtn = document.getElementById('addOpenChangePercentFilterBtn');
-            var earningsOnlyCheckbox = document.getElementById('earningsOnlyCheckbox');
-            var filterStorageKey = 'day-stock-movement/entries#filters';
-            var sortState = { key: null, dir: 'asc' };
-            var filters = { ticker: [], date: [], changePercent: [], openChangePercent: [], earnings: false };
+            var table = document.getElementById('dsm-entries-table');
+            if (!table) return;
 
-            if (!table) {
-                return;
+            var tickerSearchInput = document.getElementById('dsmTickerSearchInput');
+            var addTickerFilterBtn = document.getElementById('addDsmTickerFilterBtn');
+            var dateFilterInput = document.getElementById('dsmDateFilterInput');
+            var addDateFilterBtn = document.getElementById('addDsmDateFilterBtn');
+            var activeFiltersWrap = document.getElementById('dsmActiveFilters');
+            var filterHint = document.getElementById('dsmFilterHint');
+            var clearFiltersBtn = document.getElementById('clearDsmFiltersBtn');
+            var sortState = { key: null, dir: 'asc' };
+            var filters = { ticker: [], date: [] };
+
+            function normalizeValue(field, value) {
+                var normalized = (value || '').trim();
+                if (field === 'ticker') {
+                    normalized = normalized.toUpperCase();
+                }
+                return normalized;
             }
 
-            function renderActiveFilters() {
+            function renderFilterChips() {
                 activeFiltersWrap.innerHTML = '';
-                ['ticker', 'date', 'changePercent', 'openChangePercent'].forEach(function (field) {
+                Object.keys(filters).forEach(function (field) {
                     filters[field].forEach(function (value) {
                         var chip = document.createElement('span');
                         chip.className = 'chip';
@@ -210,288 +121,138 @@
                         rmBtn.title = 'Remove';
                         rmBtn.dataset.field = field;
                         rmBtn.dataset.value = value;
-                        rmBtn.textContent = '\u2715';
+                        rmBtn.textContent = '✕';
 
                         chip.appendChild(typeSpan);
-                        chip.appendChild(document.createTextNode('\u00a0'));
+                        chip.appendChild(document.createTextNode(' '));
                         chip.appendChild(strong);
-                        chip.appendChild(document.createTextNode('\u00a0'));
+                        chip.appendChild(document.createTextNode(' '));
                         chip.appendChild(rmBtn);
-
                         activeFiltersWrap.appendChild(chip);
                     });
                 });
 
-                var hasAny = filters.ticker.length > 0 || filters.date.length > 0 || filters.changePercent.length > 0 || filters.openChangePercent.length > 0 || filters.earnings;
-                filterHint.style.display = hasAny ? 'none' : '';
-            }
-
-            function parseNumericFilter(raw) {
-                var value = (raw || '').trim().toLowerCase();
-                if (!value) return null;
-
-                var symbolMatch = value.match(/^(>=|<=|>|<|=)\s*(-?\d+(?:\.\d+)?)$/);
-                if (symbolMatch) {
-                    return { operator: symbolMatch[1], number: parseFloat(symbolMatch[2]) };
-                }
-
-                var phraseMatch = value.match(/^(greater|less)\s+(?:than|then)\s+(?:or\s+equal\s+to\s+)?(-?\d+(?:\.\d+)?)$/);
-                if (phraseMatch) {
-                    return {
-                        operator: phraseMatch[1] === 'greater' ? '>' : '<',
-                        number: parseFloat(phraseMatch[2])
-                    };
-                }
-
-                var phraseEqMatch = value.match(/^(greater|less)\s+(?:than|then)\s+or\s+equal\s+to\s+(-?\d+(?:\.\d+)?)$/);
-                if (phraseEqMatch) {
-                    return {
-                        operator: phraseEqMatch[1] === 'greater' ? '>=' : '<=',
-                        number: parseFloat(phraseEqMatch[2])
-                    };
-                }
-
-                var bareNumber = value.match(/^(-?\d+(?:\.\d+)?)$/);
-                if (bareNumber) {
-                    return { operator: '=', number: parseFloat(bareNumber[1]) };
-                }
-
-                return null;
-            }
-
-            function numericMatches(rawValue, filterExpression) {
-                var parsed = parseNumericFilter(filterExpression);
-                if (!parsed) return true;
-
-                var num = parseFloat(String(rawValue == null ? '' : rawValue).replace(/[^0-9.\-]/g, ''));
-                if (isNaN(num)) return false;
-
-                if (parsed.operator === '>') return num > parsed.number;
-                if (parsed.operator === '>=') return num >= parsed.number;
-                if (parsed.operator === '<') return num < parsed.number;
-                if (parsed.operator === '<=') return num <= parsed.number;
-                return num === parsed.number;
+                filterHint.style.display = activeFiltersWrap.children.length === 0 ? '' : 'none';
             }
 
             function applyFilters() {
-                var rows = Array.from(table.querySelectorAll('tbody tr'));
+                var rows = Array.from(table.tBodies[0].rows);
                 rows.forEach(function (row) {
-                    var rowTicker = ((row.cells[0] && (row.cells[0].dataset.sortValue || row.cells[0].textContent)) || '').trim().toUpperCase();
-                    var rowDate = ((row.cells[1] && (row.cells[1].dataset.sortValue || row.cells[1].textContent)) || '').trim();
-                    var rowEarnings = String(row.dataset.earnings || '').toLowerCase() === 'true';
+                    var ticker = normalizeValue('ticker', row.children[0].dataset.filterValue || '');
+                    var date = normalizeValue('date', row.children[1].dataset.filterValue || '');
+                    var show = true;
 
-                    var changePercentRaw = row.children[7] ? row.children[7].dataset.sortValue : '';
-                    var openChangePercentRaw = row.children[8] ? row.children[8].dataset.sortValue : '';
+                    if (filters.ticker.length > 0 && !filters.ticker.some(function (value) { return ticker.includes(value); })) {
+                        show = false;
+                    }
+                    if (show && filters.date.length > 0 && !filters.date.some(function (value) { return date.includes(value); })) {
+                        show = false;
+                    }
 
-                    var tickerMatch = filters.ticker.length === 0 || filters.ticker.includes(rowTicker);
-                    var dateMatch = filters.date.length === 0 || filters.date.includes(rowDate);
-                    var changePercentMatch = filters.changePercent.length === 0 || filters.changePercent.every(function (expr) {
-                        return numericMatches(changePercentRaw, expr);
-                    });
-                    var openChangePercentMatch = filters.openChangePercent.length === 0 || filters.openChangePercent.every(function (expr) {
-                        return numericMatches(openChangePercentRaw, expr);
-                    });
-                    var earningsMatch = !filters.earnings || rowEarnings;
-
-                    row.style.display = tickerMatch && dateMatch && changePercentMatch && openChangePercentMatch && earningsMatch ? '' : 'none';
+                    row.style.display = show ? '' : 'none';
                 });
-            }
-
-            function saveFilters() {
-                try {
-                    window.localStorage.setItem(filterStorageKey, JSON.stringify(filters));
-                } catch (err) {
-                    console.warn('Failed to persist day stock movement entry filters', err);
-                }
-            }
-
-            function restoreFilters() {
-                try {
-                    var raw = window.localStorage.getItem(filterStorageKey);
-                    if (!raw) {
-                        return;
-                    }
-
-                    var saved = JSON.parse(raw);
-                    if (!saved || typeof saved !== 'object') {
-                        return;
-                    }
-
-                    ['ticker', 'date', 'changePercent', 'openChangePercent'].forEach(function (field) {
-                        if (!Array.isArray(saved[field])) {
-                            return;
-                        }
-
-                        filters[field] = saved[field]
-                            .filter(function (value) { return typeof value === 'string'; })
-                            .map(function (value) { return value.trim(); })
-                            .filter(function (value) { return value !== ''; })
-                            .slice(0, 10);
-                    });
-
-                    filters.earnings = saved.earnings === true;
-                } catch (err) {
-                    console.warn('Failed to restore day stock movement entry filters', err);
-                }
             }
 
             function addFilter(field, value) {
-                var normalized = (value || '').trim();
+                var normalized = normalizeValue(field, value);
                 if (!normalized) return;
-
-                if (field === 'ticker') {
-                    normalized = normalized.toUpperCase();
+                if (!filters[field].includes(normalized)) {
+                    filters[field].push(normalized);
+                    renderFilterChips();
+                    applyFilters();
                 }
-                if (field === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
-                    return;
-                }
-                if (field === 'changePercent' || field === 'openChangePercent') {
-                    if (!parseNumericFilter(normalized)) {
-                        return;
-                    }
-                    normalized = normalized.replace(/\s+/g, ' ');
-                }
-                if (filters[field].includes(normalized)) return;
-                if (filters[field].length >= 10) return;
-
-                filters[field].push(normalized);
-                renderActiveFilters();
-                applyFilters();
-                saveFilters();
             }
 
             function removeFilter(field, value) {
-                filters[field] = filters[field].filter(function (v) { return v !== value; });
-                renderActiveFilters();
+                filters[field] = filters[field].filter(function (entry) { return entry !== value; });
+                renderFilterChips();
                 applyFilters();
-                saveFilters();
             }
 
-            if (addTickerFilterBtn) {
-                addTickerFilterBtn.addEventListener('click', function () {
-                    addFilter('ticker', tickerSearchInput ? tickerSearchInput.value : '');
-                    if (tickerSearchInput) tickerSearchInput.value = '';
-                });
-            }
-
-            if (tickerSearchInput) {
-                tickerSearchInput.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addFilter('ticker', tickerSearchInput.value);
-                        tickerSearchInput.value = '';
-                    }
-                });
-            }
-
-            if (addDateFilterBtn) {
-                addDateFilterBtn.addEventListener('click', function () {
-                    addFilter('date', dateSearchInput ? dateSearchInput.value : '');
-                    if (dateSearchInput) dateSearchInput.value = '';
-                });
-            }
-
-            if (dateSearchInput) {
-                dateSearchInput.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addFilter('date', dateSearchInput.value);
-                        dateSearchInput.value = '';
-                    }
-                });
-            }
-
-            if (addChangePercentFilterBtn) {
-                addChangePercentFilterBtn.addEventListener('click', function () {
-                    addFilter('changePercent', changePercentSearchInput ? changePercentSearchInput.value : '');
-                    if (changePercentSearchInput) changePercentSearchInput.value = '';
-                });
-            }
-
-            if (changePercentSearchInput) {
-                changePercentSearchInput.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addFilter('changePercent', changePercentSearchInput.value);
-                        changePercentSearchInput.value = '';
-                    }
-                });
-            }
-
-            if (addOpenChangePercentFilterBtn) {
-                addOpenChangePercentFilterBtn.addEventListener('click', function () {
-                    addFilter('openChangePercent', openChangePercentSearchInput ? openChangePercentSearchInput.value : '');
-                    if (openChangePercentSearchInput) openChangePercentSearchInput.value = '';
-                });
-            }
-
-            if (openChangePercentSearchInput) {
-                openChangePercentSearchInput.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addFilter('openChangePercent', openChangePercentSearchInput.value);
-                        openChangePercentSearchInput.value = '';
-                    }
-                });
-            }
-
-            function compareValues(a, b, sortKey) {
-                if (sortKey === 'date') {
-                    var da = Date.parse(a || '');
-                    var db = Date.parse(b || '');
-                    if (isNaN(da) && isNaN(db)) return 0;
-                    if (isNaN(da)) return -1;
-                    if (isNaN(db)) return 1;
-                    return da - db;
+            function parseSortValue(row, key) {
+                if (key === 'ticker') {
+                    return (row.children[0].dataset.sortValue || '').toLowerCase();
                 }
-                if (sortKey === 'changePercent' || sortKey === 'openChangePercent') {
-                    var na = parseFloat(a);
-                    var nb = parseFloat(b);
-                    if (isNaN(na) && isNaN(nb)) return 0;
-                    if (isNaN(na)) return -1;
-                    if (isNaN(nb)) return 1;
-                    return na - nb;
+                if (key === 'date') {
+                    var dateText = row.children[1].dataset.sortValue || '';
+                    var timestamp = Date.parse(dateText);
+                    return Number.isNaN(timestamp) ? Number.NEGATIVE_INFINITY : timestamp;
                 }
-                return String(a || '').localeCompare(String(b || ''), undefined, { sensitivity: 'base' });
+                return '';
             }
 
             function updateSortIndicators() {
                 document.querySelectorAll('.sort-indicator').forEach(function (el) {
-                    var key = el.dataset.for;
-                    if (sortState.key !== key) {
+                    if (sortState.key !== el.dataset.for) {
                         el.textContent = '';
                         return;
                     }
-                    el.textContent = sortState.dir === 'asc' ? '\u2191' : '\u2193';
+                    el.textContent = sortState.dir === 'asc' ? '↑' : '↓';
                 });
             }
 
-            function sortTable(sortKey) {
-                if (!table) return;
-                var tbody = table.querySelector('tbody');
+            function sortTable(key) {
+                var tbody = table.tBodies[0];
                 if (!tbody) return;
 
-                if (sortState.key === sortKey) {
+                if (sortState.key === key) {
                     sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
                 } else {
-                    sortState.key = sortKey;
+                    sortState.key = key;
                     sortState.dir = 'asc';
                 }
 
-                var indexByKey = { ticker: 0, date: 1, changePercent: 7, openChangePercent: 8 };
-                var colIndex = indexByKey[sortKey];
-                var rows = Array.from(tbody.querySelectorAll('tr'));
-
-                rows.sort(function (r1, r2) {
-                    var v1 = (r1.children[colIndex] && r1.children[colIndex].dataset.sortValue) || '';
-                    var v2 = (r2.children[colIndex] && r2.children[colIndex].dataset.sortValue) || '';
-                    var cmp = compareValues(v1, v2, sortKey);
-                    return sortState.dir === 'asc' ? cmp : -cmp;
+                var rows = Array.from(tbody.rows);
+                rows.sort(function (a, b) {
+                    var av = parseSortValue(a, key);
+                    var bv = parseSortValue(b, key);
+                    if (av < bv) return sortState.dir === 'asc' ? -1 : 1;
+                    if (av > bv) return sortState.dir === 'asc' ? 1 : -1;
+                    return 0;
                 });
 
                 rows.forEach(function (row) { tbody.appendChild(row); });
                 updateSortIndicators();
+                applyFilters();
             }
+
+            addTickerFilterBtn.addEventListener('click', function () {
+                addFilter('ticker', tickerSearchInput.value);
+                tickerSearchInput.value = '';
+            });
+
+            tickerSearchInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addFilter('ticker', tickerSearchInput.value);
+                    tickerSearchInput.value = '';
+                }
+            });
+
+            addDateFilterBtn.addEventListener('click', function () {
+                addFilter('date', dateFilterInput.value);
+                dateFilterInput.value = '';
+            });
+
+            clearFiltersBtn.addEventListener('click', function () {
+                filters = { ticker: [], date: [] };
+                renderFilterChips();
+                applyFilters();
+            });
+
+            document.addEventListener('click', function (e) {
+                var removeBtn = e.target.closest('.chip-remove[data-field]');
+                if (removeBtn) {
+                    removeFilter(removeBtn.dataset.field, removeBtn.dataset.value);
+                    return;
+                }
+
+                var filterBtn = e.target.closest('.filter-btn[data-field]');
+                if (filterBtn) {
+                    addFilter(filterBtn.dataset.field, filterBtn.dataset.value);
+                    return;
+                }
+            });
 
             document.querySelectorAll('.table-sort-btn[data-sort-key]').forEach(function (btn) {
                 btn.addEventListener('click', function () {
@@ -499,45 +260,7 @@
                 });
             });
 
-            document.addEventListener('click', function (e) {
-                var rm = e.target.closest('.chip-remove[data-field]');
-                if (rm && rm.closest('#entryActiveFilters')) {
-                    removeFilter(rm.dataset.field, rm.dataset.value);
-                    return;
-                }
-
-                var add = e.target.closest('.filter-btn[data-field]');
-                if (add) {
-                    addFilter(add.dataset.field, add.dataset.value);
-                }
-            });
-
-            if (clearBtn) {
-                clearBtn.addEventListener('click', function () {
-                    filters.ticker = [];
-                    filters.date = [];
-                    filters.changePercent = [];
-                    filters.openChangePercent = [];
-                    filters.earnings = false;
-                    if (earningsOnlyCheckbox) earningsOnlyCheckbox.checked = false;
-                    renderActiveFilters();
-                    applyFilters();
-                    saveFilters();
-                });
-            }
-
-            if (earningsOnlyCheckbox) {
-                earningsOnlyCheckbox.checked = filters.earnings === true;
-                earningsOnlyCheckbox.addEventListener('change', function () {
-                    filters.earnings = earningsOnlyCheckbox.checked;
-                    renderActiveFilters();
-                    applyFilters();
-                    saveFilters();
-                });
-            }
-
-            restoreFilters();
-            renderActiveFilters();
+            renderFilterChips();
             applyFilters();
         })();
     </script>
