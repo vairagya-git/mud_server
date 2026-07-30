@@ -84,11 +84,20 @@
                 <div class="card table-wrap" style="margin:16px">
                     <h3 style="margin-bottom:12px">Current Entries</h3>
                     <div th:if="${entries.isEmpty()}" class="table-empty">No option analysis entries yet.</div>
-                    <table th:unless="${entries.isEmpty()}">
+                    <div th:unless="${entries.isEmpty()}" class="filter-bar" style="display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:12px;">
+                        <div class="form-group" style="min-width:220px;margin:0;">
+                            <label for="entriesTickerFilter" style="margin-bottom:4px;display:block;">Filter Ticker</label>
+                            <input id="entriesTickerFilter" type="text" placeholder="Type ticker" autocomplete="off">
+                        </div>
+                        <button type="button" class="btn btn-secondary" data-entries-sort="ticker">Sort Ticker</button>
+                        <button type="button" class="btn btn-secondary" data-entries-sort="expiration">Sort Expiration</button>
+                    </div>
+                    <table th:unless="${entries.isEmpty()}" id="optionAnalyseEntriesTable">
                         <thead>
                             <tr>
                                 <th>Ticker</th>
                                 <th>Contract</th>
+                                <th>Source</th>
                                 <th>Status</th>
                                 <th>Expiration</th>
                                 <th>Strike From</th>
@@ -97,9 +106,11 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr th:each="e : ${entries}">
+                            <tr th:each="e : ${entries}"
+                                th:attr="data-ticker=${#strings.toUpperCase(e.ticker)},data-expiration=${e.expirationDate != null ? e.expirationDate : ''}">
                                 <td><span class="badge badge-grey" th:text="${e.ticker}"></span></td>
                                 <td th:text="${e.contractType}"></td>
+                                <td th:text="${e.source != null ? e.source : '-'}"></td>
                                 <td>
                                     <form th:if="${e.status == 'ACTIVE'}"
                                           th:action="@{/option-analysis/analyse/{id}/status(id=${e.id})}"
@@ -152,6 +163,14 @@
                         </div>
 
                         <div class="form-group">
+                            <label>Source</label>
+                            <select name="source" required>
+                                <option value="API" selected>API</option>
+                                <option value="FLAT_FILE">FLAT_FILE</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
                             <label>Status</label>
                             <div style="font-size:.84rem;color:var(--text-muted)">New entries are created with status: <strong id="statusLabel">CREATE_CONTRACT</strong></div>
                         </div>
@@ -195,6 +214,10 @@
             var stockHint = document.getElementById('stockHint');
             var statusValue = document.getElementById('statusValue');
             var statusLabel = document.getElementById('statusLabel');
+            var entriesTable = document.getElementById('optionAnalyseEntriesTable');
+            var entriesTickerFilter = document.getElementById('entriesTickerFilter');
+            var entriesSortButtons = Array.from(document.querySelectorAll('[data-entries-sort]'));
+            var entriesSortState = { field: 'ticker', dir: 'asc' };
 
             function setActiveTab(tabName) {
                 tabPanes.forEach(function (pane) { pane.classList.remove('active'); });
@@ -236,6 +259,50 @@
                 stockHint.textContent = stockIdField.value ? 'Selected stock_id: ' + stockIdField.value : 'Ticker selected.';
             }
 
+            function getSortableValue(row, field) {
+                if (field === 'expiration') {
+                    return (row.dataset.expiration || '').trim();
+                }
+                return (row.dataset.ticker || '').trim();
+            }
+
+            function updateEntriesSortLabels() {
+                entriesSortButtons.forEach(function (btn) {
+                    var field = btn.getAttribute('data-entries-sort');
+                    var isActive = field === entriesSortState.field;
+                    var arrow = isActive ? (entriesSortState.dir === 'asc' ? ' ↑' : ' ↓') : '';
+                    if (field === 'ticker') {
+                        btn.textContent = 'Sort Ticker' + arrow;
+                    }
+                    if (field === 'expiration') {
+                        btn.textContent = 'Sort Expiration' + arrow;
+                    }
+                });
+            }
+
+            function applyEntriesFilterAndSort() {
+                if (!entriesTable) return;
+                var tbody = entriesTable.querySelector('tbody');
+                if (!tbody) return;
+
+                var query = ((entriesTickerFilter && entriesTickerFilter.value) || '').trim().toUpperCase();
+                var rows = Array.from(tbody.querySelectorAll('tr'));
+
+                rows.sort(function (a, b) {
+                    var aValue = getSortableValue(a, entriesSortState.field);
+                    var bValue = getSortableValue(b, entriesSortState.field);
+                    var cmp = aValue.localeCompare(bValue, undefined, { sensitivity: 'base' });
+                    return entriesSortState.dir === 'asc' ? cmp : -cmp;
+                });
+
+                rows.forEach(function (row) {
+                    var ticker = (row.dataset.ticker || '').toUpperCase();
+                    var matchesTicker = !query || ticker.indexOf(query) !== -1;
+                    row.style.display = matchesTicker ? '' : 'none';
+                    tbody.appendChild(row);
+                });
+            }
+
             tabButtons.forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     setActiveTab(btn.dataset.tabTarget);
@@ -256,6 +323,24 @@
                 syncInlineSave();
             });
 
+            if (entriesTickerFilter) {
+                entriesTickerFilter.addEventListener('input', applyEntriesFilterAndSort);
+            }
+
+            entriesSortButtons.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var nextField = btn.getAttribute('data-entries-sort');
+                    if (entriesSortState.field === nextField) {
+                        entriesSortState.dir = entriesSortState.dir === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        entriesSortState.field = nextField;
+                        entriesSortState.dir = 'asc';
+                    }
+                    updateEntriesSortLabels();
+                    applyEntriesFilterAndSort();
+                });
+            });
+
             tickerInput.addEventListener('input', syncStockId);
             tickerInput.addEventListener('change', syncStockId);
 
@@ -272,6 +357,8 @@
             var initialTab = tabPanes.some(function (pane) { return pane.id === hashTab; }) ? hashTab : 'pane-entries';
             setActiveTab(initialTab);
             syncStatus();
+            updateEntriesSortLabels();
+            applyEntriesFilterAndSort();
         })();
     </script>
 </div>

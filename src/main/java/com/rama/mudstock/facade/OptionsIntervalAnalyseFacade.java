@@ -125,6 +125,7 @@ public class OptionsIntervalAnalyseFacade {
         Long stockId = entry.stockId();
         String ticker = entry.ticker();
         String requestedContractType = entry.contractType();
+        String source = entry.source();
         LocalDate expirationDate = entry.expirationDate();
         BigDecimal strikeFrom = entry.strikeFrom();
         BigDecimal strikeTo = entry.strikeTo();
@@ -169,6 +170,7 @@ public class OptionsIntervalAnalyseFacade {
                     optionContractRepository.upsert(
                         stockId,
                         contract.contractType(),
+                        source,
                         contract.exerciseStyle(),
                         contract.expirationDate(),
                         contract.strikePrice(),

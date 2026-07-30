@@ -13,6 +13,8 @@ public class OptionContractRepository {
 
     public static final String STATUS_ACTIVE = "ACTIVE";
     public static final String STATUS_COMPLETED = "COMPLETED";
+    public static final String SOURCE_API = "API";
+    public static final String SOURCE_FLAT_FILE = "FLAT_FILE";
 
     private final JdbcTemplate jdbc;
 
@@ -22,20 +24,27 @@ public class OptionContractRepository {
 
     public int upsert(Long stockId,
                       String contractType,
+                      String source,
                       String exerciseStyle,
                       LocalDate expirationDate,
                       BigDecimal strikePrice,
                       int sharesPerContract,
                       String contractTicker) {
+        String normalizedSource = source == null ? SOURCE_API : source.trim().toUpperCase();
+        if (!SOURCE_API.equals(normalizedSource) && !SOURCE_FLAT_FILE.equals(normalizedSource)) {
+            normalizedSource = SOURCE_API;
+        }
+
         String sql = "INSERT INTO option_contract "
-            + "(stock_id, contract_type, exercise_style, expiration_date, strike_price, shares_per_contract, contract_ticker) "
-            + "VALUES (?, ?, ?, ?, ?, ?, ?) "
+            + "(stock_id, contract_type, source, exercise_style, expiration_date, strike_price, shares_per_contract, contract_ticker) "
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
             + "ON DUPLICATE KEY UPDATE "
+            + "source = VALUES(source), "
             + "exercise_style = VALUES(exercise_style), "
             + "strike_price = VALUES(strike_price), "
             + "shares_per_contract = VALUES(shares_per_contract), "
             + "updated_at = CURRENT_TIMESTAMP";
-        return jdbc.update(sql, stockId, contractType, exerciseStyle, expirationDate, strikePrice, sharesPerContract, contractTicker);
+        return jdbc.update(sql, stockId, contractType, normalizedSource, exerciseStyle, expirationDate, strikePrice, sharesPerContract, contractTicker);
     }
 
     public boolean existsByUniqueKey(Long stockId,
@@ -51,10 +60,12 @@ public class OptionContractRepository {
         return count != null && count > 0;
     }
 
-    public List<Map<String, Object>> getOptionContractsWithTickerByStatus(String status, boolean snapshotFetchOnly) {
+    public List<Map<String, Object>> getOptionContractsWithTickerByStatus(String status,
+                                                                           boolean snapshotFetchOnly,
+                                                                           String source) {
         String selectClause = snapshotFetchOnly
             ? "SELECT o.id, o.stock_id, s.ticker, o.contract_ticker, o.strike_price, o.expiration_date "
-            : "SELECT o.id, o.stock_id, s.ticker, o.contract_type, o.status, o.exercise_style, o.expiration_date, "
+            : "SELECT o.id, o.stock_id, s.ticker, o.contract_type, o.source, o.status, o.exercise_style, o.expiration_date, "
                 + "o.strike_price, o.shares_per_contract, o.contract_ticker, o.created_at, o.updated_at ";
 
         StringBuilder sql = new StringBuilder(selectClause)
@@ -62,13 +73,19 @@ public class OptionContractRepository {
             .append("JOIN stock s ON s.id = o.stock_id ");
 
         boolean hasStatus = status != null && !status.isBlank();
-        if (hasStatus) {
-            sql.append("WHERE UPPER(o.status) = UPPER(?) ");
+        boolean hasSource = source != null && !source.isBlank();
+
+        if (hasStatus || hasSource || snapshotFetchOnly) {
+            sql.append("WHERE 1=1 ");
+            if (hasStatus) {
+                sql.append("AND UPPER(o.status) = UPPER(?) ");
+            }
+            if (hasSource) {
+                sql.append("AND UPPER(o.source) = UPPER(?) ");
+            }
             if (snapshotFetchOnly) {
                 sql.append("AND s.ticker IS NOT NULL AND s.ticker <> '' ");
             }
-        } else if (snapshotFetchOnly) {
-            sql.append("WHERE s.ticker IS NOT NULL AND s.ticker <> '' ");
         }
 
         if (snapshotFetchOnly) {
@@ -79,8 +96,14 @@ public class OptionContractRepository {
             sql.append("ORDER BY o.updated_at DESC, s.ticker, o.expiration_date, o.strike_price");
         }
 
+        if (hasStatus && hasSource) {
+            return jdbc.queryForList(sql.toString(), status, source);
+        }
         if (hasStatus) {
             return jdbc.queryForList(sql.toString(), status);
+        }
+        if (hasSource) {
+            return jdbc.queryForList(sql.toString(), source);
         }
         return jdbc.queryForList(sql.toString());
     }

@@ -9,7 +9,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.rama.mudstock.enums.CronjobConfigEnum;
-import com.rama.mudstock.facade.OptionSnapshotFetcherFacade;
+import com.rama.mudstock.facade.OptionAPISnapshotFetcherFacade;
 import com.rama.mudstock.scheduler.AbstractCronjob;
 import com.rama.mudstock.service.SystemConfigService;
 
@@ -19,14 +19,14 @@ import com.rama.mudstock.service.SystemConfigService;
  */
 @Component
 @Profile("cronjob")
-public class OptionSnapshotFetcherJob extends AbstractCronjob {
+public class OptionAPISnapshotFetcherJob extends AbstractCronjob {
 
-    private final OptionSnapshotFetcherFacade optionSnapshotFetcherFacade;
-    private final Logger log = LoggerFactory.getLogger(OptionSnapshotFetcherJob.class);
+    private final OptionAPISnapshotFetcherFacade optionSnapshotFetcherFacade;
+    private final Logger log = LoggerFactory.getLogger(OptionAPISnapshotFetcherJob.class);
 
-    public OptionSnapshotFetcherJob(OptionSnapshotFetcherFacade optionSnapshotFetcherFacade,
-                                    SystemConfigService systemConfigService) {
-        super(systemConfigService, CronjobConfigEnum.Purpose.OPTION_SNAPSHOT_FETCHER_JOB.value());
+    public OptionAPISnapshotFetcherJob(OptionAPISnapshotFetcherFacade optionSnapshotFetcherFacade,
+                                       SystemConfigService systemConfigService) {
+        super(systemConfigService, CronjobConfigEnum.Purpose.OPTION_API_SNAPSHOT_FETCHER_JOB.value());
         this.optionSnapshotFetcherFacade = optionSnapshotFetcherFacade;
     }
 

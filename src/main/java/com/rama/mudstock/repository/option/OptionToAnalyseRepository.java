@@ -29,19 +29,20 @@ public class OptionToAnalyseRepository {
 
     public int insert(Long stockId,
                       String contractType,
+                      String source,
                       String status,
                       LocalDate expirationDate,
                       BigDecimal strikeFrom,
                       BigDecimal strikeTo,
                       BigDecimal interval) {
         String sql = "INSERT INTO options_interval_analyse "
-            + "(stock_id, contract_type, status, expiration_date, strike_from, strike_to, `interval`) "
-            + "VALUES (?, ?, ?, ?, ?, ?, ?)";
-        return jdbc.update(sql, stockId, contractType, status, expirationDate, strikeFrom, strikeTo, interval);
+            + "(stock_id, contract_type, source, status, expiration_date, strike_from, strike_to, `interval`) "
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        return jdbc.update(sql, stockId, contractType, source, status, expirationDate, strikeFrom, strikeTo, interval);
     }
 
     public List<OptionsInternalAnalyseEntity> getOptionsInternalAnalyseByStatus(String status) {
-        String baseSql = "SELECT o.id, o.stock_id, s.ticker, o.contract_type, o.status, o.expiration_date, "
+        String baseSql = "SELECT o.id, o.stock_id, s.ticker, o.contract_type, o.source, o.status, o.expiration_date, "
             + "o.strike_from, o.strike_to, o.`interval`, o.created_at, o.updated_at "
             + "FROM options_interval_analyse o "
             + "JOIN stock s ON s.id = o.stock_id ";
@@ -52,6 +53,7 @@ public class OptionToAnalyseRepository {
             rs.getObject("stock_id", Long.class),
             rs.getString("ticker"),
             rs.getString("contract_type"),
+            rs.getString("source"),
             rs.getString("status"),
             rs.getObject("expiration_date", LocalDate.class),
             rs.getBigDecimal("strike_from"),
@@ -69,7 +71,7 @@ public class OptionToAnalyseRepository {
     }
 
     public Map<String, Object> findByIdWithTicker(Long id) {
-        String sql = "SELECT o.id, o.stock_id, s.ticker, o.contract_type, o.status, o.expiration_date, "
+        String sql = "SELECT o.id, o.stock_id, s.ticker, o.contract_type, o.source, o.status, o.expiration_date, "
             + "o.strike_from, o.strike_to, o.`interval`, o.created_at, o.updated_at "
             + "FROM options_interval_analyse o "
             + "JOIN stock s ON s.id = o.stock_id "

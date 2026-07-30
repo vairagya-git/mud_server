@@ -67,6 +67,7 @@ public class OptionAnalysisController {
     @PostMapping("/analyse")
     public String create(@RequestParam Long stockId,
                          @RequestParam String contractType,
+                         @RequestParam(defaultValue = "API") String source,
                          @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate expirationDate,
                          @RequestParam BigDecimal strikeFrom,
                          @RequestParam BigDecimal strikeTo,
@@ -74,11 +75,13 @@ public class OptionAnalysisController {
                          RedirectAttributes redirectAttributes) {
         try {
             String normalizedContractType = contractType == null ? "" : contractType.trim().toUpperCase();
+            String normalizedSource = normalizeAnalyseSource(source);
             String normalizedStatus = OptionToAnalyseRepository.STATUS_CREATE_CONTRACT;
 
             optionToAnalyseRepository.insert(
                 stockId,
                 normalizedContractType,
+                normalizedSource,
                 normalizedStatus,
                 expirationDate,
                 strikeFrom,
@@ -196,10 +199,18 @@ public class OptionAnalysisController {
         return OptionToAnalyseRepository.STATUS_CREATE_CONTRACT;
     }
 
+    private String normalizeAnalyseSource(String source) {
+        String normalized = source == null ? "API" : source.trim().toUpperCase();
+        if ("API".equals(normalized) || "FLAT_FILE".equals(normalized)) {
+            return normalized;
+        }
+        return "API";
+    }
+
     @GetMapping("/contract")
     public String contractList(Model model,
                                @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
-        model.addAttribute("contracts", optionContractRepository.getOptionContractsWithTickerByStatus(null, false));
+        model.addAttribute("contracts", optionContractRepository.getOptionContractsWithTickerByStatus(null, false, null));
         model.addAttribute("contractTickers", listDistinctContractTickers(null));
         return hxRequest != null ? "option_analysis/contract :: content" : "option_analysis/contract";
     }
@@ -209,7 +220,8 @@ public class OptionAnalysisController {
                                @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         model.addAttribute("activeContracts", optionContractRepository.getOptionContractsWithTickerByStatus(
             OptionContractRepository.STATUS_ACTIVE,
-            false));
+            false,
+            null));
         model.addAttribute("activeContractTickers", listDistinctContractTickers(OptionContractRepository.STATUS_ACTIVE));
         model.addAttribute("snapshotRefreshIntervalMs", applicationProperties.getSnapshotRefreshMs());
         return hxRequest != null ? "option_analysis/snapshot :: content" : "option_analysis/snapshot";

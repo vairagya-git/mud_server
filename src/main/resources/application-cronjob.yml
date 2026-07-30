@@ -17,6 +17,6 @@ logging:
       dayStockMovementData: logs/day-stock-movement-data.log
       weeklyUpcomingEarning: logs/weekly-upcoming-earnings.log
       dailyAnalystRating: logs/daily-analyst-rating.log
-      optionSnapshotFetcher: logs/option-snapshot-fetcher.log
+      optionApiSnapshotFetcher: logs/option-snapshot-fetcher.log
 
 

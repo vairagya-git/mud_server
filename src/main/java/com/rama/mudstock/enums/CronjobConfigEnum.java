@@ -100,7 +100,8 @@ public enum CronjobConfigEnum {
         DAILY_MY_SQL_DB_DUMP("DailyMysqlDBDump"),
         OPTIONS_INTERVAL_ANALYSE_DAILY_JOB("OptionsIntervalAnalyseDailyJob"),
         OPTION_SNAPSHOT_IV_METRICS("OptionSnapshotIVMetrics"),
-        OPTION_SNAPSHOT_FETCHER_JOB("OptionSnapshotFetcherJob");
+        OPTION_API_SNAPSHOT_FETCHER_JOB("OptionAPISnapshotFetcherJob"),
+        OPTION_FLAT_FILE_SNAPSHOT_FETCHER_JOB("OptionFlatFileSnapshotFetcherJob");
 
         private final String value;
 

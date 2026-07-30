@@ -19,19 +19,20 @@ import com.rama.mudstock.service.OptionSnapshotParser;
 import com.rama.mudstock.util.TypeConverstionUtil;
 
 @Service
-public class OptionSnapshotFetcherFacade {
+public class OptionAPISnapshotFetcherFacade {
 
-    private static final Logger log = LoggerFactory.getLogger(OptionSnapshotFetcherFacade.class);
+    private static final Logger log = LoggerFactory.getLogger(OptionAPISnapshotFetcherFacade.class);
     private static final boolean TEMP_LOG = true;
+    private static final String SOURCE = OptionContractRepository.SOURCE_API;
     private final OptionContractRepository optionContractRepository;
     private final OptionSnapshotRepository optionSnapshotRepository;
     private final MassiveRestOptionSnapshotService massiveRestOptionSnapshotService;
     private final OptionSnapshotParser optionSnapshotParser;
 
-    public OptionSnapshotFetcherFacade(OptionContractRepository optionContractRepository,
-                                       OptionSnapshotRepository optionSnapshotRepository,
-                                       MassiveRestOptionSnapshotService massiveRestOptionSnapshotService,
-                                       OptionSnapshotParser optionSnapshotParser) {
+    public OptionAPISnapshotFetcherFacade(OptionContractRepository optionContractRepository,
+                                          OptionSnapshotRepository optionSnapshotRepository,
+                                          MassiveRestOptionSnapshotService massiveRestOptionSnapshotService,
+                                          OptionSnapshotParser optionSnapshotParser) {
         this.optionContractRepository = optionContractRepository;
         this.optionSnapshotRepository = optionSnapshotRepository;
         this.massiveRestOptionSnapshotService = massiveRestOptionSnapshotService;
@@ -41,14 +42,15 @@ public class OptionSnapshotFetcherFacade {
     public int fetchAndStoreSnapshots(long snapshotVersion) {
         List<Map<String, Object>> contracts = optionContractRepository.getOptionContractsWithTickerByStatus(
             OptionContractRepository.STATUS_ACTIVE,
-            true);
+            true,
+            SOURCE);
         int inserted = 0;
 
         for (Map<String, Object> contract : contracts) {
             try {
                 inserted += processContract(contract, snapshotVersion);
             } catch (Exception ex) {
-                log.error("OptionSnapshotFetcherFacade: failed processing contract {}", contract, ex);
+                log.error("OptionAPISnapshotFetcherFacade: failed processing contract {}", contract, ex);
             }
         }
 
@@ -64,7 +66,7 @@ public class OptionSnapshotFetcherFacade {
         LocalDate expirationDate = TypeConverstionUtil.toLocalDate(contract.get("expiration_date"));
 
         if (optionContractId == null || stockId == null || stockTicker == null || strikePrice == null || expirationDate == null) {
-            log.warn("OptionSnapshotFetcherFacade: skipping incomplete active contract {}", contract);
+            log.warn("OptionAPISnapshotFetcherFacade: skipping incomplete active contract {}", contract);
             return 0;
         }
 
@@ -75,7 +77,7 @@ public class OptionSnapshotFetcherFacade {
 
         OptionSnapshotParser.OptionSnapshotData snapshot = optionSnapshotParser.parseSnapshotData(responseBody, contractTicker);
         if (snapshot.underlyingPrice() == null) {
-            log.warn("OptionSnapshotFetcherFacade: skipping snapshot insert because underlying_price is missing for option_contract_id={}", optionContractId);
+            log.warn("OptionAPISnapshotFetcherFacade: skipping snapshot insert because underlying_price is missing for option_contract_id={}", optionContractId);
             return 0;
         }
 
@@ -95,7 +97,7 @@ public class OptionSnapshotFetcherFacade {
 
         if (TEMP_LOG) {
             log.info(
-                "TEMP_LOG OptionSnapshotFetcherFacade timestamp check: option_contract_id={} contract_ticker={} fetched_at={} quote_last_updated_nanos={} quote_last_updated_ts={} trade_sip_timestamp_nanos={} trade_sip_timestamp_ts={} underlying_last_updated_nanos={} underlying_last_updated_ts={}",
+                "TEMP_LOG OptionAPISnapshotFetcherFacade timestamp check: option_contract_id={} contract_ticker={} fetched_at={} quote_last_updated_nanos={} quote_last_updated_ts={} trade_sip_timestamp_nanos={} trade_sip_timestamp_ts={} underlying_last_updated_nanos={} underlying_last_updated_ts={}",
                 optionContractId,
                 contractTicker,
                 fetchedAt,
@@ -137,7 +139,7 @@ public class OptionSnapshotFetcherFacade {
                 snapshot.underlyingTimeframe());
         } catch (DuplicateKeyException ex) {
             log.info(
-                "OptionSnapshotFetcherFacade: skipping duplicate snapshot for option_contract_id={} contract_ticker={} quote_time={}",
+                "OptionAPISnapshotFetcherFacade: skipping duplicate snapshot for option_contract_id={} contract_ticker={} quote_time={}",
                 optionContractId,
                 contractTicker,
                 TypeConverstionUtil.toTimestampFromEpochNanos(snapshot.quoteLastUpdated()));

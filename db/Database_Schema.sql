@@ -371,15 +371,25 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('minuteHourlyFrequency', '5', 'Integer', 'OptionsIntervalAnalyseDailyJob', 'CronExpression for the cronjob'),
 ('forceExecute', 'false', 'boolean', 'OptionsIntervalAnalyseDailyJob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
 
-/*OptionSnapshotFetcherJob Settings*/
-('useage', 'useage', 'String', 'OptionSnapshotFetcherJob', 'Fetch Option snapshot data for the given ticker, strike and expiration date'),
-('enabled', 'true', 'boolean', 'OptionSnapshotFetcherJob', 'OptionSnapshotFetcherJob Enable property'),
-('execution', 'minutes', 'String', 'OptionSnapshotFetcherJob', 'CronExpression for the cronjob'),
-('lastUpdated', '', 'DateTime', 'OptionSnapshotFetcherJob', 'Create and Close Optoin Contract entry'),
-('startTime', '14:30', 'Time', 'OptionSnapshotFetcherJob', 'Cronjob Start Time'),
-('endTime', '21:00', 'Time', 'OptionSnapshotFetcherJob', 'Cronjob End Time'),
-('minuteHourlyFrequency', '5', 'Integer', 'OptionSnapshotFetcherJob', 'CronExpression for the cronjob'),
-('forceExecute', 'false', 'boolean', 'OptionSnapshotFetcherJob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
+/*OptionAPISnapshotFetcherJob Settings*/
+('useage', 'useage', 'String', 'OptionAPISnapshotFetcherJob', 'Fetch Option snapshot data for the given ticker, strike and expiration date'),
+('enabled', 'true', 'boolean', 'OptionAPISnapshotFetcherJob', 'OptionAPISnapshotFetcherJob  Enable property'),
+('execution', 'minutes', 'String', 'OptionAPISnapshotFetcherJob', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'OptionAPISnapshotFetcherJob', 'Create and Close Optoin Contract entry'),
+('startTime', '14:30', 'Time', 'OptionAPISnapshotFetcherJob', 'Cronjob Start Time'),
+('endTime', '21:00', 'Time', 'OptionAPISnapshotFetcherJob', 'Cronjob End Time'),
+('minuteHourlyFrequency', '5', 'Integer', 'OptionAPISnapshotFetcherJob', 'CronExpression for the cronjob'),
+('forceExecute', 'false', 'boolean', 'OptionAPISnapshotFetcherJob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
+
+/*OptionFlatFileSnapshotFetcherJob Settings*/
+('useage', 'useage', 'String', 'OptionFlatFileSnapshotFetcherJob', 'Fetch Option snapshot data for the given ticker, strike and expiration date'),
+('enabled', 'true', 'boolean', 'OptionFlatFileSnapshotFetcherJob', 'OptionFlatFileSnapshotFetcherJob  Enable property'),
+('execution', 'minutes', 'String', 'OptionFlatFileSnapshotFetcherJob', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'OptionFlatFileSnapshotFetcherJob', 'Create and Close Optoin Contract entry'),
+('startTime', '14:30', 'Time', 'OptionFlatFileSnapshotFetcherJob', 'Cronjob Start Time'),
+('endTime', '21:00', 'Time', 'OptionFlatFileSnapshotFetcherJob', 'Cronjob End Time'),
+('minuteHourlyFrequency', '5', 'Integer', 'OptionFlatFileSnapshotFetcherJob', 'CronExpression for the cronjob'),
+('forceExecute', 'false', 'boolean', 'OptionFlatFileSnapshotFetcherJob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
 
 /*OptionSnapshotIVMetrics Settings*/
 ('useage', 'useage', 'String', 'OptionSnapshotIVMetrics', 'Calculate Option IV Metrics after end of the day'),
@@ -395,26 +405,7 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('execution', 'daily', 'String', 'EarningsDetailCronjob', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'EarningsDetailCronjob', 'Create and Close Optoin Contract entry'),
 ('dailyCutOffTime', '22:00', 'DateTime', 'EarningsDetailCronjob', 'Record should only be fetched after the cutoffTime'),
-('forceExecute', 'false', 'boolean', 'EarningsDetailCronjob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
-
-
-/*DayStockMovementCleanup Settings*/
-('useage', 'useage', 'String', 'DayStockMovementCleanup', 'Cleanup the day stock movement data for the current day'),
-('enabled', 'true', 'boolean', 'DayStockMovementCleanup', 'Day Stock Movement Cleanup > cronjob Enabled'),
-('execution', 'daily', 'String', 'DayStockMovementCleanup', 'CronExpression for the cronjob'),
-('lastUpdated', '', 'DateTime', 'DayStockMovementCleanup', 'LastUpdated dateTime'),
-('dailyCutOffTime', '23:00', 'DateTime', 'DayStockMovementCleanup', 'Record should only be fetched after the cutoffTime'),
-('forceExecute', 'false', 'boolean', 'DayStockMovementCleanup', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
-
-/*DayStockMovementKeyMapEntry Settings*/
-('useage', 'useage', 'String', 'DayStockMovementKeyMapEntry', 'Populate the day stock movement key map entry for the current day'),
-('enabled', 'true', 'boolean', 'DayStockMovementKeyMapEntry', 'Day Stock Movement Key Map Entry > cronjob Enabled'),
-('watchlist-codes', 'MOVING_STOCK,SEMI_WATCHLIST', 'StringArray', 'DayStockMovementKeyMapEntry', 'Day Stock Movement Key Map Entry > Watchlist Codes'),
-('execution', 'daily', 'String', 'DayStockMovementKeyMapEntry', 'CronExpression for the cronjob'),
-('lastUpdated', '', 'DateTime', 'DayStockMovementKeyMapEntry', 'LastUpdated dateTime'),
-('dailyCutOffTime', '19:00', 'DateTime', 'DayStockMovementKeyMapEntry', 'Record should only be fetched after the cutoffTime'),
-('minuteHourlyFrequency', '1', 'DateTime', 'DayStockMovementKeyMapEntry', 'Incase want to push date temporarily. Change execution to minutes'),
-('forceExecute', 'false', 'boolean', 'DayStockMovementKeyMapEntry', 'Set this flag if you want to execute this cronjob by overriding all the other flag');
+('forceExecute', 'false', 'boolean', 'EarningsDetailCronjob', 'Set this flag if you want to execute this cronjob by overriding all the other flag');
 
 
 /**** OPTION CONTRACT START ****/
@@ -426,6 +417,7 @@ CREATE TABLE options_interval_analyse (
     stock_id bigint unsigned NOT NULL,
     contract_type ENUM('CALL', 'PUT', 'BOTH') NOT NULL,
     status ENUM('CREATE_CONTRACT', 'ACTIVE', 'CLOSE', 'PARTIALLY_COMPLETED', 'COMPLETED') NOT NULL default 'CREATE_CONTRACT',
+    source ENUM('API', 'FLAT_FILE') NOT NULL default 'API',
     expiration_date DATE NOT NULL,
     strike_from DECIMAL(12,4) NOT NULL,
     strike_to DECIMAL(12,4) NOT NULL,
@@ -439,6 +431,9 @@ CREATE TABLE options_interval_analyse (
 );
 
 ALTER TABLE options_interval_analyse
+  ADD source ENUM('API', 'FLAT_FILE') NOT NULL default 'API';
+  
+ALTER TABLE options_interval_analyse
     modify COLUMN
     status ENUM('CREATE_CONTRACT', 'ACTIVE', 'CLOSE', 'PARTIALLY_COMPLETED','COMPLETED') NOT NULL default 'CREATE_CONTRACT';
 
@@ -449,6 +444,7 @@ CREATE TABLE option_contract (
     stock_id bigint unsigned NOT NULL,
     contract_type ENUM('CALL', 'PUT') NOT NULL,
     status ENUM('ACTIVE', 'COMPLETED') NOT NULL default 'ACTIVE',
+    source ENUM('API', 'FLAT_FILE') NOT NULL default 'API',
     exercise_style VARCHAR(32),
     expiration_date DATE NOT NULL,
     strike_price DECIMAL(12,4) NOT NULL,
