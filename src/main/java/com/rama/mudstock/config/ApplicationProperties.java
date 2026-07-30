@@ -1,5 +1,7 @@
 package com.rama.mudstock.config;
 
+import java.time.LocalDate;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +15,7 @@ public class ApplicationProperties {
     private Python python = new Python();
     private Earnings earnings = new Earnings();
     private DayStockMovementKeyMapEntry dayStockMovementKeyMapEntry = new DayStockMovementKeyMapEntry();
+    private S3Flatfiles s3Flatfiles = new S3Flatfiles();
     private Spring spring = new Spring();
 
     public OptionAnalysis getOptionAnalysis() {
@@ -61,6 +64,14 @@ public class ApplicationProperties {
 
     public void setDayStockMovementKeyMapEntry(DayStockMovementKeyMapEntry dayStockMovementKeyMapEntry) {
         this.dayStockMovementKeyMapEntry = dayStockMovementKeyMapEntry;
+    }
+
+    public S3Flatfiles getS3Flatfiles() {
+        return s3Flatfiles;
+    }
+
+    public void setS3Flatfiles(S3Flatfiles s3Flatfiles) {
+        this.s3Flatfiles = s3Flatfiles;
     }
 
     public Spring getSpring() {
@@ -250,6 +261,81 @@ public class ApplicationProperties {
 
         public void setCron(String cron) {
             this.cron = cron;
+        }
+    }
+
+    public static class S3Flatfiles {
+        private String bucket;
+        private String endpoint;
+        private String accessKey;
+        private String secretKey;
+        private String minuteAgg;
+        private String fileLocationPattern;
+        private String testTicker;
+        private LocalDate testDay;
+
+        public String getBucket() {
+            return bucket;
+        }
+
+        public void setBucket(String bucket) {
+            this.bucket = bucket;
+        }
+
+        public String getEndpoint() {
+            return endpoint;
+        }
+
+        public void setEndpoint(String endpoint) {
+            this.endpoint = endpoint;
+        }
+
+        public String getAccessKey() {
+            return accessKey;
+        }
+
+        public void setAccessKey(String accessKey) {
+            this.accessKey = accessKey;
+        }
+
+        public String getSecretKey() {
+            return secretKey;
+        }
+
+        public void setSecretKey(String secretKey) {
+            this.secretKey = secretKey;
+        }
+
+        public String getMinuteAgg() {
+            return minuteAgg;
+        }
+
+        public void setMinuteAgg(String minuteAgg) {
+            this.minuteAgg = minuteAgg;
+        }
+
+        public String getFileLocationPattern() {
+            return fileLocationPattern;
+        }
+
+        public void setFileLocationPattern(String fileLocationPattern) {
+            this.fileLocationPattern = fileLocationPattern;
+        }
+
+        public String getTestTicker() {
+            return testTicker;
+        }
+
+        public void setTestTicker(String testTicker) {
+            this.testTicker = testTicker;
+        }
+
+        public LocalDate getTestDay() {
+            return testDay;
+        }
+
+        public void setTestDay(LocalDate testDay) {
+            this.testDay = testDay;
         }
     }
 

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>CSV Opt — MudStock</title></head>
+<body>
+<div id="page-content" th:fragment="content">
+    <div class="page-header">
+        <h1>Utility</h1>
+        <div class="subtitle">CSV Opt</div>
+    </div>
+
+    <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+    <div class="card" style="max-width:1100px;">
+        <form th:action="@{/utility/csv-opt}" method="get">
+            <div class="form-group">
+                <label for="fileLocation">File location</label>
+                <input id="fileLocation" name="fileLocation" type="text" th:value="${selectedFileLocation}" placeholder="s3://bucket/path/to/file.csv.gz" required />
+            </div>
+            <div class="form-group">
+                <label for="sortBy">Sort by</label>
+                <select id="sortBy" name="sortBy">
+                    <option value="window_start" th:selected="${selectedSortBy == 'window_start'}">Window Start</option>
+                    <option value="portugal_time" th:selected="${selectedSortBy == 'portugal_time'}">Portugal Time</option>
+                    <option value="ticker" th:selected="${selectedSortBy == 'ticker'}">Ticker</option>
+                    <option value="volume" th:selected="${selectedSortBy == 'volume'}">Volume</option>
+                    <option value="open" th:selected="${selectedSortBy == 'open'}">Open</option>
+                    <option value="close" th:selected="${selectedSortBy == 'close'}">Close</option>
+                    <option value="high" th:selected="${selectedSortBy == 'high'}">High</option>
+                    <option value="low" th:selected="${selectedSortBy == 'low'}">Low</option>
+                    <option value="transactions" th:selected="${selectedSortBy == 'transactions'}">Transactions</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="sortDirection">Sort direction</label>
+                <select id="sortDirection" name="sortDirection">
+                    <option value="asc" th:selected="${selectedSortDirection == 'asc'}">Ascending</option>
+                    <option value="desc" th:selected="${selectedSortDirection == 'desc'}">Descending</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="limit">Limit</label>
+                <input id="limit" name="limit" type="number" min="1" max="2000" step="1" th:value="${selectedLimit}" />
+            </div>
+            <div class="actions-bar" style="margin-top:20px;">
+                <button type="submit" class="btn btn-primary">Load CSV Opt</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="table-empty" th:if="${csvOptData == null}">Enter a file URL above to load and sort the CSV file.</div>
+
+    <div class="card" th:if="${csvOptData != null}" style="max-width:1400px;">
+        <div style="font-weight:700;margin-bottom:10px;">CSV Opt Results</div>
+        <div class="subtitle" style="margin-bottom:12px;">
+            File: <strong th:text="${csvOptData.fileLocation}"></strong>,
+            Sort: <strong th:text="${csvOptData.sortBy}"></strong> / <strong th:text="${csvOptData.sortDirection}"></strong>,
+            Matches: <strong th:text="${csvOptData.recordCount}">0</strong>
+        </div>
+
+        <div th:if="${csvOptData.recordCount == 0}" class="table-empty">No matching rows found in the file.</div>
+
+        <table th:if="${csvOptData.recordCount > 0}">
+            <thead>
+            <tr>
+                <th>Ticker</th>
+                <th>Volume</th>
+                <th>Open</th>
+                <th>Close</th>
+                <th>High</th>
+                <th>Low</th>
+                <th>Window Start</th>
+                <th>Portugal Time</th>
+                <th>Transactions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="row : ${csvOptData.records}">
+                <td th:text="${row.ticker}"></td>
+                <td th:text="${row.volume}"></td>
+                <td th:text="${row.open}"></td>
+                <td th:text="${row.close}"></td>
+                <td th:text="${row.high}"></td>
+                <td th:text="${row.low}"></td>
+                <td th:text="${row.window_start}"></td>
+                <td th:text="${row.portugal_time}"></td>
+                <td th:text="${row.transactions}"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

@@ -396,6 +396,9 @@
                     return normalized.toUpperCase();
                 }
                 if (field === 'strike') {
+                    if (normalized === '') {
+                        return '';
+                    }
                     var numeric = Number(normalized);
                     return Number.isFinite(numeric) ? numeric.toString() : normalized;
                 }
@@ -463,10 +466,12 @@
                         var rowStrike = normalizeContractTabValue('strike', row.dataset.strike || '');
                         var rowType = normalizeContractTabValue('contractType', row.children[3] ? row.children[3].textContent : '');
 
-                        if (rowTicker === ticker
-                            && rowExpiration === expiration
-                            && rowStrike === strike
-                            && (contractType === 'BOTH' || rowType === contractType)) {
+                        var matchesTicker = !ticker || rowTicker === ticker;
+                        var matchesExpiration = !expiration || rowExpiration === expiration;
+                        var matchesStrike = !strike || rowStrike === strike;
+                        var matchesType = contractType === 'BOTH' || rowType === contractType;
+
+                        if (matchesTicker && matchesExpiration && matchesStrike && matchesType) {
                             if (!contractTabSelectedIds.includes(row.dataset.contractId)) {
                                 contractTabSelectedIds.push(row.dataset.contractId);
                             }
@@ -517,7 +522,7 @@
                 var strike = normalizeContractTabValue('strike', contractTabStrikeInput ? contractTabStrikeInput.value : '');
                 var contractType = normalizeContractTabValue('contractType', contractTabTypeSelect ? contractTabTypeSelect.value : 'BOTH');
 
-                if (!ticker || !expiration || !strike) {
+                if (!ticker || !expiration) {
                     return;
                 }
 

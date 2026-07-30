@@ -15,6 +15,7 @@
     <description>Minimal Spring Boot project connecting to local MySQL</description>
     <properties>
         <java.version>21</java.version>
+        <aws.sdk.version>2.26.24</aws.sdk.version>
     </properties>
     <dependencies>
         <dependency>
@@ -43,6 +44,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>${aws.sdk.version}</version>
         </dependency>
     </dependencies>
     <build>

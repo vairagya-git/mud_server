@@ -143,8 +143,9 @@ JOIN day_stock_movement_key dsmk
 WHERE dsmk.code = '16_JUL_26_MOVING_STOCK';
 DELETE from day_stock_movement_key where code = "16_JUL_26_MOVING_STOCK";
 
-drop table day_stock_movement_map;
+drop table day_stock_movement_key;
 
+/* DELETED TABLE
 CREATE TABLE `day_stock_movement_key` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `code` varchar(64) NOT NULL,
@@ -170,6 +171,7 @@ CREATE TABLE `day_stock_movement_map` (
   CONSTRAINT `fk_dsm_day_stock_movement_key` FOREIGN KEY (`day_stock_movement_key_id`) REFERENCES `day_stock_movement_key` (`id`),
   CONSTRAINT `unique_dsm_stock_key` UNIQUE (`stock_id`, `day_stock_movement_key_id`)
 ) ENGINE=InnoDB;
+ DELETED TABLE */
 
 select * from day_stock_movement_entry
 order by id desc;

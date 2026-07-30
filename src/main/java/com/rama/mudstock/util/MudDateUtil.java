@@ -1,5 +1,7 @@
 package com.rama.mudstock.util;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -8,6 +10,9 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Central date utility for the mud-server project.
@@ -19,6 +24,10 @@ import java.time.format.DateTimeParseException;
  * <p>All methods are {@code static} — no instantiation needed.</p>
  */
 public final class MudDateUtil {
+
+    private static final Pattern OPTION_CONTRACT_PATTERN =
+        Pattern.compile("^O:([A-Z0-9]+)(\\d{6})([PC])(\\d{8})$");
+    private static final String OPTION_CONTRACT_TEMPLATE = "O:{TICKER}{EXPIRY}{TYPE}{STRIKE}";
 
     // -----------------------------------------------------------------------
     // Formatters (package-private constants so tests can reference them)
@@ -198,5 +207,95 @@ public final class MudDateUtil {
         return instant
             .atZone(ZoneId.systemDefault())
             .format(FMT_DATE_TIME_MINUTE);
+    }
+
+    /**
+     * Builds an OCC-style option contract ticker in the format:
+     * O:{TICKER}{YYMMDD}{P|C}{STRIKE_8_DIGITS}
+     *
+     * Example: ticker=INTC, expiryYyMmDd=260731, putCall=P, strike=50
+     * returns O:INTC260731P00050000
+     */
+    public static String buildOptionContractTicker(String ticker,
+                                                   String expiryYyMmDd,
+                                                   String putCall,
+                                                   BigDecimal strike) {
+        String normalizedTicker = ticker == null ? "" : ticker.trim().toUpperCase(Locale.ROOT);
+        if (normalizedTicker.isEmpty()) {
+            throw new IllegalArgumentException("ticker is required");
+        }
+
+        String normalizedExpiry = expiryYyMmDd == null ? "" : expiryYyMmDd.trim();
+        if (!normalizedExpiry.matches("\\d{6}")) {
+            throw new IllegalArgumentException("expiryYyMmDd must be in YYMMDD format");
+        }
+
+        String normalizedType = putCall == null ? "" : putCall.trim().toUpperCase(Locale.ROOT);
+        if (!("P".equals(normalizedType) || "C".equals(normalizedType))) {
+            throw new IllegalArgumentException("putCall must be either 'P' or 'C'");
+        }
+
+        if (strike == null || strike.signum() < 0) {
+            throw new IllegalArgumentException("strike must be a non-negative number");
+        }
+
+        long strikeScaled = strike.movePointRight(3)
+            .setScale(0, RoundingMode.HALF_UP)
+            .longValueExact();
+
+        return OPTION_CONTRACT_TEMPLATE
+            .replace("{TICKER}", normalizedTicker)
+            .replace("{EXPIRY}", normalizedExpiry)
+            .replace("{TYPE}", normalizedType)
+            .replace("{STRIKE}", String.format("%08d", strikeScaled));
+    }
+
+    public static String buildOptionContractTicker(String ticker,
+                                                   String expiryYyMmDd,
+                                                   String putCall,
+                                                   double strike) {
+        return buildOptionContractTicker(ticker, expiryYyMmDd, putCall, BigDecimal.valueOf(strike));
+    }
+
+    /**
+     * Extracts ticker from OCC-style contract ticker.
+     * Example: O:ASML260731C01640000 -> ASML
+     */
+    public static String parseOptionContractTicker(String contract) {
+        return parseOptionContract(contract).group(1);
+    }
+
+    /**
+     * Extracts expiry in YYMMDD from OCC-style contract ticker.
+     * Example: O:ASML260731C01640000 -> 260731
+     */
+    public static String parseOptionContractExpiryYyMmDd(String contract) {
+        return parseOptionContract(contract).group(2);
+    }
+
+    /**
+     * Extracts option type (P or C) from OCC-style contract ticker.
+     * Example: O:ASML260731P00880000 -> P
+     */
+    public static String parseOptionContractType(String contract) {
+        return parseOptionContract(contract).group(3);
+    }
+
+    /**
+     * Extracts strike from OCC-style contract ticker.
+     * Example: O:ASML260731C01640000 -> 1640
+     */
+    public static BigDecimal parseOptionContractStrike(String contract) {
+        String encodedStrike = parseOptionContract(contract).group(4);
+        return new BigDecimal(encodedStrike).movePointLeft(3).stripTrailingZeros();
+    }
+
+    private static Matcher parseOptionContract(String contract) {
+        String normalized = contract == null ? "" : contract.trim().toUpperCase(Locale.ROOT);
+        Matcher matcher = OPTION_CONTRACT_PATTERN.matcher(normalized);
+        if (!matcher.matches()) {
+            throw new IllegalArgumentException("Invalid option contract format: " + contract);
+        }
+        return matcher;
     }
 }

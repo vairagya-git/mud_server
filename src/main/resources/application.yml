@@ -34,6 +34,17 @@ massive:
   benzinga-analyst-rating: benzinga/v1/ratings?ticker=%s&last_updated.gte=%s&apiKey=%s
   apikey: ${MASSIVE_API_KEY:0jSwNlbvfYIgQ8OAVJsZ7T1sEmpWm7JV}
 
+s3-flatfiles:
+  bucket: flatfiles
+  endpoint: https://files.massive.com
+  access-key: ad198cac-4804-4fdd-b780-dfde45245f74
+  secret-key: 0jSwNlbvfYIgQ8OAVJsZ7T1sEmpWm7JV
+  minute-agg: us_options_opra/minute_aggs_v1
+  file-location-pattern: YYYY/MM/YYYY-MM-DD.csv.gz
+  test-ticker: MU
+  test-day: 2026-07-27
+
+
 python:
 # Python Service Local Instance url
   yfinance-url: http://localhost:8087/
