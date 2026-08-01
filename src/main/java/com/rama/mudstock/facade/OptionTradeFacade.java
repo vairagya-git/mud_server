@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
+import com.rama.mudstock.enums.SystemRepositoryEnum.OptionContractStatusEnum;
 import com.rama.mudstock.repository.option.OptionContractRepository;
 import com.rama.mudstock.repository.option.OptionStrategyRepository;
 
@@ -24,9 +25,9 @@ public class OptionTradeFacade {
     public OptionTradeFilterData loadFilterData() {
         List<Map<String, Object>> strategyDefinitions = optionStrategyRepository.listActiveStrategyDefinitions();
         List<Map<String, Object>> strategyDefinitionLegs = optionStrategyRepository.listActiveStrategyDefinitionLegs();
-        List<String> tickers = optionContractRepository.listDistinctTickersByStatus(OptionContractRepository.STATUS_ACTIVE);
+        List<String> tickers = optionContractRepository.listDistinctTickersByStatus(OptionContractStatusEnum.ACTIVE.name());
         List<LocalDate> expirationDates = optionContractRepository
-            .listDistinctExpirationDatesByStatus(OptionContractRepository.STATUS_ACTIVE);
+            .listDistinctExpirationDatesByStatus(OptionContractStatusEnum.ACTIVE.name());
         List<Map<String, Object>> contracts = optionContractRepository.listActiveContractsForSimulator();
 
         return new OptionTradeFilterData(strategyDefinitions, strategyDefinitionLegs, tickers, expirationDates, contracts);

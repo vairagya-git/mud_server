@@ -43,6 +43,7 @@ s3-flatfiles:
   file-location-pattern: YYYY/MM/YYYY-MM-DD.csv.gz
   test-ticker: MU
   test-day: 2026-07-27
+  local-file-path: /Users/rama/dev-mud-stock/S3_FlatFiles
 
 
 python:

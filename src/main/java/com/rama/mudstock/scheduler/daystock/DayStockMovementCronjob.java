@@ -14,6 +14,7 @@ import com.rama.mudstock.facade.DayStockMovementFacade;
 import com.rama.mudstock.model.stockwatchlist.Stock;
 import com.rama.mudstock.repository.stockwatchlist.WatchlistRepository;
 import com.rama.mudstock.scheduler.AbstractCronjob;
+import com.rama.mudstock.service.MarketCalendarService;
 import com.rama.mudstock.service.SystemConfigService;
 
 @Component
@@ -25,8 +26,9 @@ public class DayStockMovementCronjob extends AbstractCronjob {
 
     public DayStockMovementCronjob(DayStockMovementFacade dayStockMovementFacade,
                                    WatchlistRepository watchlistRepository,
+                                   MarketCalendarService marketCalendarService,
                                    SystemConfigService systemConfigService) {
-        super(systemConfigService, CronjobConfigEnum.Purpose.DAY_STOCK_MOVEMENT_DATA.value());
+        super(systemConfigService, CronjobConfigEnum.Purpose.DAY_STOCK_MOVEMENT_DATA.value(), marketCalendarService);
         this.dayStockMovementFacade = dayStockMovementFacade;
         this.watchlistRepository = watchlistRepository;
     }
@@ -55,6 +57,7 @@ public class DayStockMovementCronjob extends AbstractCronjob {
         try {
             dayStockMovementFacade.fetchAggregatesForWatchlist(uniqueStocks, targetDate);
             updateLastUpdatedNowUtc(getPurpose());
+            updateDailyDateToNextEligible(getPurpose(), targetDate);
         } catch (Exception ex) {
             log.error("{}: error while fetching aggregates", getPurpose(), ex);
         }

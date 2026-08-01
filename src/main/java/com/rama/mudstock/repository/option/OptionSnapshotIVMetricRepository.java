@@ -8,6 +8,8 @@ import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import com.rama.mudstock.enums.SystemRepositoryEnum.OptionContractStatusEnum;
+
 @Repository
 public class OptionSnapshotIVMetricRepository {
 
@@ -88,6 +90,6 @@ public class OptionSnapshotIVMetricRepository {
             + "updated_at = CURRENT_TIMESTAMP";
 
         Date sqlDate = Date.valueOf(ivDate);
-        return jdbc.update(sql, sqlDate, OptionContractRepository.STATUS_ACTIVE);
+        return jdbc.update(sql, sqlDate, OptionContractStatusEnum.ACTIVE.name());
     }
 }

@@ -13,17 +13,11 @@ import org.springframework.stereotype.Repository;
 import com.rama.mudstock.model.option.OptionsInternalAnalyseEntity;
 
 @Repository
-public class OptionToAnalyseRepository {
-
-    public static final String STATUS_CREATE_CONTRACT = "CREATE_CONTRACT";
-    public static final String STATUS_ACTIVE = "ACTIVE";
-    public static final String STATUS_PARTIALLY_COMPLETED = "PARTIALLY_COMPLETED";
-    public static final String STATUS_CLOSE = "CLOSE";
-    public static final String STATUS_COMPLETED = "COMPLETED";
+public class OptionIntervalAnalyseRepository {
 
     private final JdbcTemplate jdbc;
 
-    public OptionToAnalyseRepository(JdbcTemplate jdbc) {
+    public OptionIntervalAnalyseRepository(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
@@ -97,5 +91,30 @@ public class OptionToAnalyseRepository {
     public int updateStatusById(Long id, String status) {
         String sql = "UPDATE options_interval_analyse SET status = ? WHERE id = ?";
         return jdbc.update(sql, status, id);
+    }
+
+    public List<OptionsInternalAnalyseEntity> getOptionsInternalAnalyseByStatusAndExpirationBefore(String status,
+                                                                                                    java.time.LocalDate expirationDate) {
+        String sql = "SELECT * FROM options_interval_analyse "
+            + "WHERE UPPER(status) = UPPER(?) "
+            + "AND expiration_date IS NOT NULL "
+            + "AND expiration_date < ?";
+        return jdbc.query(sql, this::mapRow, status, expirationDate);
+    }
+
+    private OptionsInternalAnalyseEntity mapRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+        return new OptionsInternalAnalyseEntity(
+            rs.getObject("id", Long.class),
+            rs.getObject("stock_id", Long.class),
+            rs.getString("ticker"),
+            rs.getString("contract_type"),
+            rs.getString("source"),
+            rs.getString("status"),
+            rs.getObject("expiration_date", LocalDate.class),
+            rs.getBigDecimal("strike_from"),
+            rs.getBigDecimal("strike_to"),
+            rs.getBigDecimal("interval"),
+            rs.getObject("created_at", LocalDateTime.class),
+            rs.getObject("updated_at", LocalDateTime.class));
     }
 }

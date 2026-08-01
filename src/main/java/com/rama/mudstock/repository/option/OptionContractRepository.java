@@ -8,13 +8,11 @@ import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import com.rama.mudstock.enums.SystemRepositoryEnum.OptionIntervalAnalyseStatusEnum;
+import com.rama.mudstock.enums.SystemRepositoryEnum.OptionSourceEnum;
+
 @Repository
 public class OptionContractRepository {
-
-    public static final String STATUS_ACTIVE = "ACTIVE";
-    public static final String STATUS_COMPLETED = "COMPLETED";
-    public static final String SOURCE_API = "API";
-    public static final String SOURCE_FLAT_FILE = "FLAT_FILE";
 
     private final JdbcTemplate jdbc;
 
@@ -29,22 +27,22 @@ public class OptionContractRepository {
                       LocalDate expirationDate,
                       BigDecimal strikePrice,
                       int sharesPerContract,
-                      String contractTicker) {
-        String normalizedSource = source == null ? SOURCE_API : source.trim().toUpperCase();
-        if (!SOURCE_API.equals(normalizedSource) && !SOURCE_FLAT_FILE.equals(normalizedSource)) {
-            normalizedSource = SOURCE_API;
-        }
+                      String contractTicker,
+                      Long optionsIntervalAnalyseId) {
+        OptionSourceEnum resolvedSource = OptionSourceEnum.fromValue(source);
+        String normalizedSource = (resolvedSource != null ? resolvedSource : OptionSourceEnum.API).name();
 
         String sql = "INSERT INTO option_contract "
-            + "(stock_id, contract_type, source, exercise_style, expiration_date, strike_price, shares_per_contract, contract_ticker) "
-            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+            + "(stock_id, contract_type, source, exercise_style, expiration_date, strike_price, shares_per_contract, contract_ticker, options_interval_analyse_id) "
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
             + "ON DUPLICATE KEY UPDATE "
             + "source = VALUES(source), "
             + "exercise_style = VALUES(exercise_style), "
             + "strike_price = VALUES(strike_price), "
             + "shares_per_contract = VALUES(shares_per_contract), "
+            + "options_interval_analyse_id = VALUES(options_interval_analyse_id), "
             + "updated_at = CURRENT_TIMESTAMP";
-        return jdbc.update(sql, stockId, contractType, normalizedSource, exerciseStyle, expirationDate, strikePrice, sharesPerContract, contractTicker);
+        return jdbc.update(sql, stockId, contractType, normalizedSource, exerciseStyle, expirationDate, strikePrice, sharesPerContract, contractTicker, optionsIntervalAnalyseId);
     }
 
     public boolean existsByUniqueKey(Long stockId,
@@ -62,26 +60,29 @@ public class OptionContractRepository {
 
     public List<Map<String, Object>> getOptionContractsWithTickerByStatus(String status,
                                                                            boolean snapshotFetchOnly,
-                                                                           String source) {
+                                                                           List<String> sources) {
         String selectClause = snapshotFetchOnly
             ? "SELECT o.id, o.stock_id, s.ticker, o.contract_ticker, o.strike_price, o.expiration_date "
-            : "SELECT o.id, o.stock_id, s.ticker, o.contract_type, o.source, o.status, o.exercise_style, o.expiration_date, "
+            : "SELECT o.id, o.stock_id, s.ticker, o.contract_type, "
+                + "o.source, "
+                + "o.status, o.exercise_style, o.expiration_date, "
                 + "o.strike_price, o.shares_per_contract, o.contract_ticker, o.created_at, o.updated_at ";
 
         StringBuilder sql = new StringBuilder(selectClause)
             .append("FROM option_contract o ")
             .append("JOIN stock s ON s.id = o.stock_id ");
 
-        boolean hasStatus = status != null && !status.isBlank();
-        boolean hasSource = source != null && !source.isBlank();
+        boolean hasStatus = status != null;
+        boolean hasSources = sources != null && !sources.isEmpty();
 
-        if (hasStatus || hasSource || snapshotFetchOnly) {
+        if (hasStatus || hasSources || snapshotFetchOnly) {
             sql.append("WHERE 1=1 ");
             if (hasStatus) {
                 sql.append("AND UPPER(o.status) = UPPER(?) ");
             }
-            if (hasSource) {
-                sql.append("AND UPPER(o.source) = UPPER(?) ");
+            if (hasSources) {
+                String placeholders = String.join(",", java.util.Collections.nCopies(sources.size(), "UPPER(?)"));
+                sql.append("AND UPPER(o.source) IN (").append(placeholders).append(") ");
             }
             if (snapshotFetchOnly) {
                 sql.append("AND s.ticker IS NOT NULL AND s.ticker <> '' ");
@@ -96,16 +97,15 @@ public class OptionContractRepository {
             sql.append("ORDER BY o.updated_at DESC, s.ticker, o.expiration_date, o.strike_price");
         }
 
-        if (hasStatus && hasSource) {
-            return jdbc.queryForList(sql.toString(), status, source);
-        }
+        List<Object> params = new java.util.ArrayList<>();
         if (hasStatus) {
-            return jdbc.queryForList(sql.toString(), status);
+            params.add(status);
         }
-        if (hasSource) {
-            return jdbc.queryForList(sql.toString(), source);
+        if (hasSources) {
+            params.addAll(sources);
         }
-        return jdbc.queryForList(sql.toString());
+
+        return jdbc.queryForList(sql.toString(), params.toArray());
     }
 
     public List<String> listDistinctTickersByStatus(String status) {
@@ -157,48 +157,27 @@ public class OptionContractRepository {
             + "AND s.ticker IS NOT NULL AND s.ticker <> '' "
             + "AND o.expiration_date IS NOT NULL "
             + "ORDER BY s.ticker, o.expiration_date, o.contract_type, o.strike_price";
-        return jdbc.queryForList(sql, STATUS_ACTIVE);
+        return jdbc.queryForList(sql, OptionIntervalAnalyseStatusEnum.ACTIVE.name());
     }
 
-    public int markContractsCompletedForInterval(Long stockId,
-                                                 String contractType,
-                                                 LocalDate expirationDate,
-                                                 BigDecimal strikeFrom,
-                                                 BigDecimal strikeTo) {
-        String normalizedContractType = contractType == null ? "" : contractType.trim().toUpperCase();
-
-        if ("BOTH".equals(normalizedContractType)) {
-            String sql = "UPDATE option_contract "
-                + "SET status = ?, updated_at = CURRENT_TIMESTAMP "
-                + "WHERE stock_id = ? "
-                + "AND expiration_date = ? "
-                + "AND strike_price >= ? "
-                + "AND strike_price <= ? "
-                + "AND status <> ?";
-            return jdbc.update(sql,
-                STATUS_COMPLETED,
-                stockId,
-                expirationDate,
-                strikeFrom,
-                strikeTo,
-                STATUS_COMPLETED);
+    public int markContractsStatusForInterval(Long optionsIntervalAnalyseId, String status) {
+        if (optionsIntervalAnalyseId == null || status == null || status.isBlank()) {
+            return 0;
         }
 
         String sql = "UPDATE option_contract "
             + "SET status = ?, updated_at = CURRENT_TIMESTAMP "
-            + "WHERE stock_id = ? "
-            + "AND contract_type = ? "
-            + "AND expiration_date = ? "
-            + "AND strike_price >= ? "
-            + "AND strike_price <= ? "
+            + "WHERE options_interval_analyse_id = ? "
             + "AND status <> ?";
-        return jdbc.update(sql,
-            STATUS_COMPLETED,
-            stockId,
-            normalizedContractType,
-            expirationDate,
-            strikeFrom,
-            strikeTo,
-            STATUS_COMPLETED);
+        return jdbc.update(sql, status, optionsIntervalAnalyseId, status);
+    }
+
+    public int markContractCompletedById(Long contractId) {
+        String completedStatus = OptionIntervalAnalyseStatusEnum.COMPLETED.name();
+        String sql = "UPDATE option_contract "
+            + "SET status = ?, updated_at = CURRENT_TIMESTAMP "
+            + "WHERE id = ? "
+            + "AND status <> ?";
+        return jdbc.update(sql, completedStatus, contractId, completedStatus);
     }
 }

@@ -29,6 +29,25 @@
             <button id="addContractTypeFilterBtn" type="button" class="btn btn-sm btn-secondary">Add type</button>
         </div>
 
+        <div class="table-filter-input">
+            <select id="contractSourceFilterSelect" aria-label="Filter source">
+                <option value="">Source</option>
+                <option value="API">API</option>
+                <option value="FLAT_FILE">FLAT_FILE</option>
+            </select>
+            <button id="addContractSourceFilterBtn" type="button" class="btn btn-sm btn-secondary">Add source</button>
+        </div>
+
+        <div class="table-filter-input">
+            <input id="contractExpiryFilterInput" type="date" aria-label="Filter by expiry date">
+            <button id="addContractExpiryFilterBtn" type="button" class="btn btn-sm btn-secondary">Add expiry</button>
+        </div>
+
+        <div class="table-filter-input">
+            <input id="contractStrikeFilterInput" type="number" step="0.01" placeholder="Strike" aria-label="Filter by strike price">
+            <button id="addContractStrikeFilterBtn" type="button" class="btn btn-sm btn-secondary">Add strike</button>
+        </div>
+
         <span id="contractActiveFilters"></span>
 
         <span id="contractFilterHint" class="filter-bar-empty">Click + or use the filter controls, then sorting stays in the browser only.</span>
@@ -54,6 +73,11 @@
                         </button>
                     </th>
                     <th>Status</th>
+                    <th>
+                        <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="source">
+                            Source <span class="sort-indicator" data-for="source"></span>
+                        </button>
+                    </th>
                     <th>Exercise Style</th>
                     <th>
                         <button type="button" class="btn btn-sm table-sort-btn" data-sort-key="expirationDate">
@@ -81,9 +105,13 @@
                         <button type="button" class="filter-btn" data-field="contractType" th:data-value="${c.contract_type}" title="Filter by contract type">&#x2295;</button>
                     </td>
                     <td><span class="badge badge-blue" th:text="${c.status}"></span></td>
+                    <td th:attr="data-sort-value=${c.source != null && !#strings.isEmpty(c.source) ? c.source : 'API'},data-filter-value=${c.source != null && !#strings.isEmpty(c.source) ? c.source : 'API'}">
+                        <span class="badge badge-grey" th:text="${c.source != null && !#strings.isEmpty(c.source) ? c.source : 'API'}"></span>
+                        <button type="button" class="filter-btn" data-field="source" th:data-value="${c.source != null && !#strings.isEmpty(c.source) ? c.source : 'API'}" title="Filter by source">&#x2295;</button>
+                    </td>
                     <td th:text="${c.exercise_style}"></td>
-                    <td th:attr="data-sort-value=${c.expiration_date}" th:text="${c.expiration_date}"></td>
-                    <td th:attr="data-sort-value=${c.strike_price}" th:text="${c.strike_price}"></td>
+                    <td th:attr="data-sort-value=${c.expiration_date},data-filter-value=${c.expiration_date}" th:text="${c.expiration_date}"></td>
+                    <td th:attr="data-sort-value=${c.strike_price},data-filter-value=${c.strike_price}" th:text="${c.strike_price}"></td>
                     <td th:text="${c.shares_per_contract}"></td>
                     <td><code th:text="${c.contract_ticker}"></code></td>
                     <td th:text="${c.updated_at}"></td>
@@ -101,16 +129,28 @@
             var addTickerFilterBtn = document.getElementById('addContractTickerFilterBtn');
             var contractTypeFilterSelect = document.getElementById('contractTypeFilterSelect');
             var addContractTypeFilterBtn = document.getElementById('addContractTypeFilterBtn');
+            var contractSourceFilterSelect = document.getElementById('contractSourceFilterSelect');
+            var addContractSourceFilterBtn = document.getElementById('addContractSourceFilterBtn');
+            var expiryFilterInput = document.getElementById('contractExpiryFilterInput');
+            var addExpiryFilterBtn = document.getElementById('addContractExpiryFilterBtn');
+            var strikeFilterInput = document.getElementById('contractStrikeFilterInput');
+            var addStrikeFilterBtn = document.getElementById('addContractStrikeFilterBtn');
             var activeFiltersWrap = document.getElementById('contractActiveFilters');
             var filterHint = document.getElementById('contractFilterHint');
             var clearFiltersBtn = document.getElementById('clearContractFiltersBtn');
             var sortState = { key: null, dir: 'asc' };
-            var filters = { ticker: [], contractType: [] };
+            var filters = { ticker: [], contractType: [], source: [], expiry: [], strike: [] };
 
             function normalizeValue(field, value) {
                 var normalized = (value || '').trim();
-                if (field === 'ticker' || field === 'contractType') {
+                if (field === 'ticker' || field === 'contractType' || field === 'source') {
                     normalized = normalized.toUpperCase();
+                }
+                if (field === 'strike') {
+                    var parsedStrike = Number(normalized);
+                    if (!Number.isNaN(parsedStrike)) {
+                        normalized = String(parsedStrike);
+                    }
                 }
                 return normalized;
             }
@@ -154,12 +194,24 @@
                 rows.forEach(function (row) {
                     var ticker = normalizeValue('ticker', row.children[0].dataset.filterValue || '');
                     var contractType = normalizeValue('contractType', row.children[1].dataset.filterValue || '');
+                    var source = normalizeValue('source', row.children[3].dataset.filterValue || '');
+                    var expiry = normalizeValue('expiry', row.children[5].dataset.filterValue || '');
+                    var strike = normalizeValue('strike', row.children[6].dataset.filterValue || '');
                     var show = true;
 
                     if (filters.ticker.length > 0 && !filters.ticker.includes(ticker)) {
                         show = false;
                     }
                     if (show && filters.contractType.length > 0 && !filters.contractType.includes(contractType)) {
+                        show = false;
+                    }
+                    if (show && filters.source.length > 0 && !filters.source.includes(source)) {
+                        show = false;
+                    }
+                    if (show && filters.expiry.length > 0 && !filters.expiry.includes(expiry)) {
+                        show = false;
+                    }
+                    if (show && filters.strike.length > 0 && !filters.strike.includes(strike)) {
                         show = false;
                     }
 
@@ -190,13 +242,16 @@
                 if (key === 'contractType') {
                     return (row.children[1].dataset.sortValue || '').toLowerCase();
                 }
+                if (key === 'source') {
+                    return (row.children[3].dataset.sortValue || '').toLowerCase();
+                }
                 if (key === 'expirationDate') {
-                    var dateText = row.children[4].dataset.sortValue || '';
+                    var dateText = row.children[5].dataset.sortValue || '';
                     var timestamp = Date.parse(dateText);
                     return Number.isNaN(timestamp) ? Number.NEGATIVE_INFINITY : timestamp;
                 }
                 if (key === 'strikePrice') {
-                    return Number(row.children[5].dataset.sortValue || 0);
+                    return Number(row.children[6].dataset.sortValue || 0);
                 }
                 return '';
             }
@@ -254,8 +309,23 @@
                 contractTypeFilterSelect.value = '';
             });
 
+            addContractSourceFilterBtn.addEventListener('click', function () {
+                addFilter('source', contractSourceFilterSelect.value);
+                contractSourceFilterSelect.value = '';
+            });
+
+            addExpiryFilterBtn.addEventListener('click', function () {
+                addFilter('expiry', expiryFilterInput.value);
+                expiryFilterInput.value = '';
+            });
+
+            addStrikeFilterBtn.addEventListener('click', function () {
+                addFilter('strike', strikeFilterInput.value);
+                strikeFilterInput.value = '';
+            });
+
             clearFiltersBtn.addEventListener('click', function () {
-                filters = { ticker: [], contractType: [] };
+                filters = { ticker: [], contractType: [], source: [], expiry: [], strike: [] };
                 renderFilterChips();
                 applyFilters();
             });
@@ -287,5 +357,3 @@
 </div>
 </body>
 </html>
-
-//Changed For Git

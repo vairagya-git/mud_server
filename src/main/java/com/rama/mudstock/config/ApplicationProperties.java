@@ -273,6 +273,7 @@ public class ApplicationProperties {
         private String fileLocationPattern;
         private String testTicker;
         private LocalDate testDay;
+        private String localFilePath;
 
         public String getBucket() {
             return bucket;
@@ -336,6 +337,14 @@ public class ApplicationProperties {
 
         public void setTestDay(LocalDate testDay) {
             this.testDay = testDay;
+        }
+
+        public String getLocalFilePath() {
+            return localFilePath;
+        }
+
+        public void setLocalFilePath(String localFilePath) {
+            this.localFilePath = localFilePath;
         }
     }
 

@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
+import com.rama.mudstock.enums.SystemRepositoryEnum.OptionContractStatusEnum;
+import com.rama.mudstock.enums.SystemRepositoryEnum.OptionSourceEnum;
 import com.rama.mudstock.repository.option.OptionContractRepository;
 import com.rama.mudstock.repository.option.OptionSnapshotRepository;
 import com.rama.mudstock.service.MassiveRestOptionSnapshotService;
@@ -23,7 +25,9 @@ public class OptionAPISnapshotFetcherFacade {
 
     private static final Logger log = LoggerFactory.getLogger(OptionAPISnapshotFetcherFacade.class);
     private static final boolean TEMP_LOG = true;
-    private static final String SOURCE = OptionContractRepository.SOURCE_API;
+    private static final List<String> SOURCES = List.of(
+        OptionSourceEnum.API.name(),
+        OptionSourceEnum.BOTH.name());
     private final OptionContractRepository optionContractRepository;
     private final OptionSnapshotRepository optionSnapshotRepository;
     private final MassiveRestOptionSnapshotService massiveRestOptionSnapshotService;
@@ -41,9 +45,9 @@ public class OptionAPISnapshotFetcherFacade {
 
     public int fetchAndStoreSnapshots(long snapshotVersion) {
         List<Map<String, Object>> contracts = optionContractRepository.getOptionContractsWithTickerByStatus(
-            OptionContractRepository.STATUS_ACTIVE,
+            OptionContractStatusEnum.ACTIVE.name(),
             true,
-            SOURCE);
+            SOURCES);
         int inserted = 0;
 
         for (Map<String, Object> contract : contracts) {

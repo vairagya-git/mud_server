@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import com.rama.mudstock.config.ApplicationConfig;
 import com.rama.mudstock.enums.CronjobConfigEnum;
 import com.rama.mudstock.repository.stockwatchlist.WatchlistRepository;
+import com.rama.mudstock.service.MarketCalendarService;
 import com.rama.mudstock.service.SystemConfigService;
 import com.rama.mudstock.util.TypeConverstionUtil;
 import com.rama.mudstock.util.WatchlistUtil;
@@ -26,11 +27,19 @@ public abstract class AbstractCronjob {
     private static final boolean TEMP_LOG = true;
 
     private final SystemConfigService systemConfigService;
+    private final MarketCalendarService marketCalendarService;
     private String currentPurpose;
     private Map<String, Object> currentPurposeConfig = new HashMap<>();
 
     protected AbstractCronjob(SystemConfigService systemConfigService, String purpose) {
+        this(systemConfigService, purpose, null);
+    }
+
+    protected AbstractCronjob(SystemConfigService systemConfigService,
+                              String purpose,
+                              MarketCalendarService marketCalendarService) {
         this.systemConfigService = systemConfigService;
+        this.marketCalendarService = marketCalendarService;
         loadPurposeConfig(purpose);
     }
 
@@ -158,24 +167,12 @@ public abstract class AbstractCronjob {
         }
     }
 
-    private boolean hasItBeenExecutedToday(String purpose,
-                                           String rawLastUpdated) {
+    private boolean hasItBeenExecutedToday(String purpose) {
         LocalDate today = LocalDate.now(ApplicationConfig.LISBON);
-        LocalDate lastUpdatedDate = null;
-        if (rawLastUpdated != null && !rawLastUpdated.isBlank()) {
-            String value = rawLastUpdated.trim();
-            try {
-                // Expected DB format: 2026-07-18T10:27:09.432373Z
-                lastUpdatedDate = Instant.parse(value).atZone(ApplicationConfig.LISBON).toLocalDate();
-            } catch (Exception ignored) {
-            }
-            if (lastUpdatedDate == null) {
-                try {
-                    lastUpdatedDate = LocalDate.parse(value.substring(0, Math.min(value.length(), 10)));
-                } catch (Exception ignored) {
-                }
-            }
-        }
+        LocalDate lastUpdatedDate = resolveDateFromConfig(
+            purpose,
+            CronjobConfigEnum.LAST_UPDATED.code(),
+            null);
 
         if (lastUpdatedDate != null) {
             if (lastUpdatedDate.isEqual(today)) {
@@ -274,28 +271,57 @@ public abstract class AbstractCronjob {
         }
     }
 
+    protected LocalDate resolveNextEligibleDate(LocalDate fromDate) {
+        LocalDate baseDate = fromDate == null ? LocalDate.now(ApplicationConfig.LISBON) : fromDate;
+        LocalDate candidate = baseDate.plusDays(1);
+        if (marketCalendarService == null) {
+            log.warn("{}: MarketCalendarService not configured in AbstractCronjob; using next calendar day {}",
+                getPurpose(),
+                candidate);
+            return candidate;
+        }
+        while (marketCalendarService.isMarketClosed(candidate)) {
+            candidate = candidate.plusDays(1);
+        }
+        return candidate;
+    }
+
+    protected void updateDailyDateToNextEligible(String purpose,
+                                                 LocalDate currentTargetDate) {
+        String dailyDateCode = CronjobConfigEnum.DAILY_DATE.code();
+        LocalDate nextEligibleDate = resolveNextEligibleDate(currentTargetDate);
+        String nextEligibleDateText = nextEligibleDate.toString();
+
+        boolean updated = systemConfigService.updateValue(purpose, dailyDateCode, nextEligibleDateText);
+        if (!updated) {
+            log.warn("AbstractCronjob: failed to update dailyDate config (purpose={}, code={}, value={})",
+                purpose,
+                dailyDateCode,
+                nextEligibleDateText);
+            return;
+        }
+
+        if (purpose.equals(currentPurpose)) {
+            currentPurposeConfig.put(dailyDateCode, nextEligibleDateText);
+        }
+
+        log.info("{}: updated {} to next eligible market date {}", purpose, dailyDateCode, nextEligibleDateText);
+    }
+
     protected boolean isForceExecuteEnabled(String purpose) {
         return Boolean.TRUE.equals(TypeConverstionUtil.toBoolean(getConfigValue(CronjobConfigEnum.FORCE_EXECUTE.code())));
     }
 
-    /**
-     * Resolves execution target date from force execute config.
-     * If forceExecute=false, returns current date in Lisbon.
-     * If forceExecute=true, uses forceExecuteDailyDate when valid, otherwise current Lisbon date.
-     */
-    protected LocalDate resolveTargetDate(String purpose) {
-        LocalDate today = LocalDate.now(ApplicationConfig.LISBON);
-        if (!isForceExecuteEnabled(purpose)) {
-            return today;
-        }
-
-        String rawDate = TypeConverstionUtil.toString(getConfigValue(CronjobConfigEnum.FORCE_EXECUTE_DAILY_DATE.code()));
+    private LocalDate resolveDateFromConfig(String purpose,
+                                            String configCode,
+                                            LocalDate fallbackDate) {
+        boolean logOnFallback = fallbackDate != null;
+        String rawDate = TypeConverstionUtil.toString(getConfigValue(configCode));
         if (rawDate == null || rawDate.isBlank()) {
-            log.warn("{}: forceExecute is enabled but {} is empty; using current date {}",
-                purpose,
-                CronjobConfigEnum.FORCE_EXECUTE_DAILY_DATE.code(),
-                today);
-            return today;
+            if (logOnFallback) {
+                log.warn("{}: {} is empty; using current date {}", purpose, configCode, fallbackDate);
+            }
+            return fallbackDate;
         }
 
         String value = rawDate.trim();
@@ -314,13 +340,39 @@ public abstract class AbstractCronjob {
         try {
             return LocalDate.parse(value.substring(0, Math.min(value.length(), 10)));
         } catch (Exception ignored) {
-            log.warn("{}: unable to parse {}='{}'; using current date {}",
-                purpose,
-                CronjobConfigEnum.FORCE_EXECUTE_DAILY_DATE.code(),
-                rawDate,
-                today);
-            return today;
+            if (logOnFallback) {
+                log.warn("{}: unable to parse {}='{}'; using current date {}",
+                    purpose,
+                    configCode,
+                    rawDate,
+                    fallbackDate);
+            }
+            return fallbackDate;
         }
+    }
+
+    /**
+     * Resolves execution target date from force execute config.
+     * If forceExecute=false, uses dailyDate when valid, otherwise current Lisbon date.
+     * If forceExecute=true, uses forceExecuteDailyDate when valid, otherwise current Lisbon date.
+     */
+    protected LocalDate resolveTargetDate(String purpose) {
+        LocalDate today = LocalDate.now(ApplicationConfig.LISBON);
+        boolean forceExecuteEnabled = isForceExecuteEnabled(purpose);
+        String configCode = forceExecuteEnabled
+            ? CronjobConfigEnum.FORCE_EXECUTE_DAILY_DATE.code()
+            : CronjobConfigEnum.DAILY_DATE.code();
+
+        LocalDate targetDate = resolveDateFromConfig(purpose, configCode, today);
+        if (TEMP_LOG) {
+            log.info("TEMP_LOG {} resolveTargetDate: forceExecute={} configCode={} resolvedTargetDate={} today={}",
+                purpose,
+                forceExecuteEnabled,
+                configCode,
+                targetDate,
+                today);
+        }
+        return targetDate;
     }
 
     private boolean hasSystemConfigProperty(CronjobConfigEnum config) {
@@ -386,9 +438,7 @@ public abstract class AbstractCronjob {
             if (!isOnOrAfterDailyCutOff(purpose)) {
                 return false;
             }
-
-            String lastUpdated = TypeConverstionUtil.toString(getConfigValue(CronjobConfigEnum.LAST_UPDATED.code()));
-            return !hasItBeenExecutedToday(purpose, lastUpdated);
+            return !hasItBeenExecutedToday(purpose);
         }
 
         if (execution == CronjobConfigEnum.Execution.HOURLY

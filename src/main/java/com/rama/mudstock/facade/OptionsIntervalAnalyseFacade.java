@@ -9,10 +9,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 
+import com.rama.mudstock.enums.SystemRepositoryEnum.OptionContractStatusEnum;
+import com.rama.mudstock.enums.SystemRepositoryEnum.OptionIntervalAnalyseStatusEnum;
 import com.rama.mudstock.model.option.OptionsInternalAnalyseEntity;
 import com.rama.mudstock.repository.option.OptionContractRepository;
-import com.rama.mudstock.repository.option.OptionToAnalyseRepository;
+import com.rama.mudstock.repository.option.OptionIntervalAnalyseRepository;
 import com.rama.mudstock.service.MassiveRestOptionSnapshotService;
+import com.rama.mudstock.service.OptionDataContractService;
 import com.rama.mudstock.service.OptionSnapshotParser;
 
 /**
@@ -25,50 +28,31 @@ public class OptionsIntervalAnalyseFacade {
 
     private static final Logger log = LoggerFactory.getLogger(OptionsIntervalAnalyseFacade.class);
 
-    private final OptionToAnalyseRepository optionToAnalyseRepository;
+    private final OptionIntervalAnalyseRepository optionToAnalyseRepository;
     private final MassiveRestOptionSnapshotService massiveOptionSnapshotService;
     private final OptionSnapshotParser optionSnapshotParser;
     private final OptionContractRepository optionContractRepository;
+    private final OptionDataContractService optionDataContractService;
 
-    public OptionsIntervalAnalyseFacade(OptionToAnalyseRepository optionToAnalyseRepository,
+    public OptionsIntervalAnalyseFacade(OptionIntervalAnalyseRepository optionToAnalyseRepository,
                                         MassiveRestOptionSnapshotService massiveOptionSnapshotService,
                                         OptionSnapshotParser optionSnapshotParser,
-                                        OptionContractRepository optionContractRepository) {
+                                        OptionContractRepository optionContractRepository,
+                                        OptionDataContractService optionDataContractService) {
         this.optionToAnalyseRepository = optionToAnalyseRepository;
         this.massiveOptionSnapshotService = massiveOptionSnapshotService;
         this.optionSnapshotParser = optionSnapshotParser;
         this.optionContractRepository = optionContractRepository;
+        this.optionDataContractService = optionDataContractService;
     }
 
     public int completeExpiredActiveEntries() {
-        List<OptionsInternalAnalyseEntity> activeEntries = optionToAnalyseRepository
-            .getOptionsInternalAnalyseByStatus(OptionToAnalyseRepository.STATUS_ACTIVE);
-
-        int completedCount = 0;
-        LocalDate today = LocalDate.now();
-        for (OptionsInternalAnalyseEntity entry : activeEntries) {
-            Long entryId = entry.id();
-            LocalDate expirationDate = entry.expirationDate();
-            if (entryId == null || expirationDate == null) {
-                continue;
-            }
-
-            if (expirationDate.isBefore(today)) {
-                optionToAnalyseRepository.updateStatusById(entryId, OptionToAnalyseRepository.STATUS_COMPLETED);
-                completedCount++;
-                log.info("OptionsIntervalAnalyseFacade: entry id={} moved ACTIVE -> COMPLETED (expirationDate={} < today={})",
-                    entryId,
-                    expirationDate,
-                    today);
-            }
-        }
-
-        return completedCount;
+        return optionDataContractService.completeExpiredActiveEntries(OptionIntervalAnalyseStatusEnum.API_COMPLETED.name());
     }
 
     public int analyseDaily() {
         List<OptionsInternalAnalyseEntity> entries = optionToAnalyseRepository
-            .getOptionsInternalAnalyseByStatus(OptionToAnalyseRepository.STATUS_CREATE_CONTRACT);
+            .getOptionsInternalAnalyseByStatus(OptionIntervalAnalyseStatusEnum.CREATE_CONTRACT.name());
         int processedContracts = 0;
 
         for (OptionsInternalAnalyseEntity entry : entries) {
@@ -87,16 +71,16 @@ public class OptionsIntervalAnalyseFacade {
                 Long entryId = entry.id();
                 if (entryId != null) {
                     if (result.hadNotFound()) {
-                        optionToAnalyseRepository.updateStatusById(entryId, OptionToAnalyseRepository.STATUS_PARTIALLY_COMPLETED);
+                        optionToAnalyseRepository.updateStatusById(entryId, OptionIntervalAnalyseStatusEnum.PARTIALLY_COMPLETED.name());
                         log.info("OptionsIntervalAnalyseFacade: entry id={} status updated to {} (processedContracts={})",
                             entryId,
-                            OptionToAnalyseRepository.STATUS_PARTIALLY_COMPLETED,
+                            OptionIntervalAnalyseStatusEnum.PARTIALLY_COMPLETED.name(),
                             result.processedContracts());
                     } else if (result.createdContracts()) {
-                        optionToAnalyseRepository.updateStatusById(entryId, OptionToAnalyseRepository.STATUS_ACTIVE);
+                        optionToAnalyseRepository.updateStatusById(entryId, OptionIntervalAnalyseStatusEnum.ACTIVE.name());
                         log.info("OptionsIntervalAnalyseFacade: entry id={} status updated to {} (processedContracts={})",
                             entryId,
-                            OptionToAnalyseRepository.STATUS_ACTIVE,
+                            OptionIntervalAnalyseStatusEnum.ACTIVE.name(),
                             result.processedContracts());
                     } else {
                         log.info("OptionsIntervalAnalyseFacade: entry id={} no contracts created and no 404 observed; status unchanged",
@@ -109,10 +93,17 @@ public class OptionsIntervalAnalyseFacade {
         }
 
         List<OptionsInternalAnalyseEntity> closeEntries = optionToAnalyseRepository
-            .getOptionsInternalAnalyseByStatus(OptionToAnalyseRepository.STATUS_CLOSE);
+            .getOptionsInternalAnalyseByStatus(OptionIntervalAnalyseStatusEnum.CLOSE.name());
         for (OptionsInternalAnalyseEntity entry : closeEntries) {
             try {
-                completeContractsForClosedInterval(entry);
+                optionDataContractService.completeContractsForInterval(
+                    entry.stockId(),
+                    entry.contractType(),
+                    entry.expirationDate(),
+                    entry.strikeFrom(),
+                    entry.strikeTo(),
+                    entry.id(),
+                    OptionContractStatusEnum.COMPLETED.name());
             } catch (Exception ex) {
                 log.error("OptionsIntervalAnalyseFacade: failed completing contracts for CLOSE entry {}", entry, ex);
             }
@@ -175,7 +166,8 @@ public class OptionsIntervalAnalyseFacade {
                         contract.expirationDate(),
                         contract.strikePrice(),
                         contract.sharesPerContract(),
-                        contract.contractTicker());
+                        contract.contractTicker(),
+                        entry.id());
                     processed++;
                 }
             } catch (HttpClientErrorException.NotFound notFound) {
@@ -188,32 +180,6 @@ public class OptionsIntervalAnalyseFacade {
         }
 
         return new EntryProcessingResult(processed, processed > 0, hadNotFound);
-    }
-
-    private void completeContractsForClosedInterval(OptionsInternalAnalyseEntity entry) {
-        Long stockId = entry.stockId();
-        String contractType = entry.contractType();
-        LocalDate expirationDate = entry.expirationDate();
-        BigDecimal strikeFrom = entry.strikeFrom();
-        BigDecimal strikeTo = entry.strikeTo();
-
-        if (stockId == null || contractType == null || expirationDate == null || strikeFrom == null || strikeTo == null) {
-            log.warn("OptionsIntervalAnalyseFacade: skipping CLOSE entry with missing interval fields {}", entry);
-            return;
-        }
-
-        int completed = optionContractRepository.markContractsCompletedForInterval(
-            stockId,
-            contractType,
-            expirationDate,
-            strikeFrom,
-            strikeTo);
-
-        if (completed > 0) {
-            log.info("OptionsIntervalAnalyseFacade: marked {} option_contract row(s) COMPLETED for close interval id={}",
-                completed,
-                entry.id());
-        }
     }
 
     private boolean shouldPersist(String requestedContractType, String contractType) {

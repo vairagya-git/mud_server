@@ -20,10 +20,13 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.rama.mudstock.config.ApplicationProperties;
+import com.rama.mudstock.enums.SystemRepositoryEnum.OptionContractStatusEnum;
+import com.rama.mudstock.enums.SystemRepositoryEnum.OptionIntervalAnalyseStatusEnum;
+import com.rama.mudstock.enums.SystemRepositoryEnum.OptionSourceEnum;
 import com.rama.mudstock.repository.option.OptionContractRepository;
+import com.rama.mudstock.repository.option.OptionIntervalAnalyseRepository;
 import com.rama.mudstock.repository.option.OptionSnapshotIVMetricRepository;
 import com.rama.mudstock.repository.option.OptionSnapshotRepository;
-import com.rama.mudstock.repository.option.OptionToAnalyseRepository;
 import com.rama.mudstock.repository.stockwatchlist.StockRepository;
 import com.rama.mudstock.util.MudDateUtil;
 
@@ -32,14 +35,14 @@ import com.rama.mudstock.util.MudDateUtil;
 public class OptionAnalysisController {
 
     private final StockRepository stockRepository;
-    private final OptionToAnalyseRepository optionToAnalyseRepository;
+    private final OptionIntervalAnalyseRepository optionToAnalyseRepository;
     private final OptionContractRepository optionContractRepository;
     private final OptionSnapshotRepository optionSnapshotRepository;
     private final OptionSnapshotIVMetricRepository optionSnapshotIVMetricRepository;
     private final ApplicationProperties applicationProperties;
 
     public OptionAnalysisController(StockRepository stockRepository,
-                                    OptionToAnalyseRepository optionToAnalyseRepository,
+                                    OptionIntervalAnalyseRepository optionToAnalyseRepository,
                                     OptionContractRepository optionContractRepository,
                                     OptionSnapshotRepository optionSnapshotRepository,
                                     OptionSnapshotIVMetricRepository optionSnapshotIVMetricRepository,
@@ -76,7 +79,7 @@ public class OptionAnalysisController {
         try {
             String normalizedContractType = contractType == null ? "" : contractType.trim().toUpperCase();
             String normalizedSource = normalizeAnalyseSource(source);
-            String normalizedStatus = OptionToAnalyseRepository.STATUS_CREATE_CONTRACT;
+            String normalizedStatus = OptionIntervalAnalyseStatusEnum.CREATE_CONTRACT.name();
 
             optionToAnalyseRepository.insert(
                 stockId,
@@ -169,8 +172,8 @@ public class OptionAnalysisController {
             String currentStatus = entry.get("status") == null ? "" : entry.get("status").toString().trim().toUpperCase();
             String requestedStatus = normalizeAnalyseStatus(status);
 
-            if (OptionToAnalyseRepository.STATUS_ACTIVE.equals(currentStatus)
-                && OptionToAnalyseRepository.STATUS_CLOSE.equals(requestedStatus)) {
+            if (OptionIntervalAnalyseStatusEnum.ACTIVE.name().equals(currentStatus)
+                && OptionIntervalAnalyseStatusEnum.CLOSE.name().equals(requestedStatus)) {
                 optionToAnalyseRepository.updateStatusById(id, requestedStatus);
                 redirectAttributes.addFlashAttribute("message", "Status updated to CLOSE.");
             } else {
@@ -184,27 +187,13 @@ public class OptionAnalysisController {
     }
 
     private String normalizeAnalyseStatus(String status) {
-        String normalized = status == null
-            ? OptionToAnalyseRepository.STATUS_CREATE_CONTRACT
-            : status.trim().toUpperCase();
-
-        if (OptionToAnalyseRepository.STATUS_CREATE_CONTRACT.equals(normalized)
-            || OptionToAnalyseRepository.STATUS_ACTIVE.equals(normalized)
-            || OptionToAnalyseRepository.STATUS_PARTIALLY_COMPLETED.equals(normalized)
-            || OptionToAnalyseRepository.STATUS_CLOSE.equals(normalized)
-            || OptionToAnalyseRepository.STATUS_COMPLETED.equals(normalized)) {
-            return normalized;
-        }
-
-        return OptionToAnalyseRepository.STATUS_CREATE_CONTRACT;
+        OptionIntervalAnalyseStatusEnum resolved = OptionIntervalAnalyseStatusEnum.fromValue(status);
+        return resolved != null ? resolved.name() : OptionIntervalAnalyseStatusEnum.CREATE_CONTRACT.name();
     }
 
     private String normalizeAnalyseSource(String source) {
-        String normalized = source == null ? "API" : source.trim().toUpperCase();
-        if ("API".equals(normalized) || "FLAT_FILE".equals(normalized)) {
-            return normalized;
-        }
-        return "API";
+        OptionSourceEnum resolved = OptionSourceEnum.fromValue(source);
+        return resolved != null ? resolved.name() : OptionSourceEnum.API.name();
     }
 
     @GetMapping("/contract")
@@ -219,10 +208,10 @@ public class OptionAnalysisController {
     public String snapshotList(Model model,
                                @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         model.addAttribute("activeContracts", optionContractRepository.getOptionContractsWithTickerByStatus(
-            OptionContractRepository.STATUS_ACTIVE,
+            OptionContractStatusEnum.ACTIVE.name(),
             false,
             null));
-        model.addAttribute("activeContractTickers", listDistinctContractTickers(OptionContractRepository.STATUS_ACTIVE));
+        model.addAttribute("activeContractTickers", listDistinctContractTickers(OptionContractStatusEnum.ACTIVE.name()));
         model.addAttribute("snapshotRefreshIntervalMs", applicationProperties.getSnapshotRefreshMs());
         return hxRequest != null ? "option_analysis/snapshot :: content" : "option_analysis/snapshot";
     }

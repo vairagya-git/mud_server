@@ -1,10 +1,14 @@
 package com.rama.mudstock.service;
 
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
 import java.time.Instant;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -23,6 +27,7 @@ import java.util.function.Function;
 import java.util.zip.GZIPInputStream;
 
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import com.rama.mudstock.config.ApplicationProperties;
 import com.rama.mudstock.config.ApplicationConfig;
@@ -34,14 +39,18 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 @Service
 public class S3OptionFlatfileService {
 
+    private static final String STOCK_MINUTE_AGG = "us_stocks_sip/minute_aggs_v1";
     private static final DateTimeFormatter YYYY = DateTimeFormatter.ofPattern("yyyy");
     private static final DateTimeFormatter MM = DateTimeFormatter.ofPattern("MM");
     private static final DateTimeFormatter DD = DateTimeFormatter.ofPattern("dd");
     private static final DateTimeFormatter PORTUGAL_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final DateTimeFormatter ISO_DAY = DateTimeFormatter.ISO_LOCAL_DATE;
 
     private final ApplicationProperties.S3Flatfiles properties;
 
@@ -50,74 +59,11 @@ public class S3OptionFlatfileService {
     }
 
     public Map<String, Object> fetchOptionRows(LocalDate date, String ticker, int limit) {
-        String normalizedTicker = normalizeTicker(ticker);
-        String key = buildObjectKey(date);
+        return fetchRowsByDateAndTicker(date, ticker, limit, properties.getMinuteAgg());
+    }
 
-        List<Map<String, Object>> records = new ArrayList<>();
-
-        AwsBasicCredentials creds = AwsBasicCredentials.create(properties.getAccessKey(), properties.getSecretKey());
-        S3Configuration s3Configuration = S3Configuration.builder()
-            .pathStyleAccessEnabled(true)
-            .build();
-
-        try (S3Client client = S3Client.builder()
-            .endpointOverride(URI.create(properties.getEndpoint()))
-            .credentialsProvider(StaticCredentialsProvider.create(creds))
-            .region(Region.US_EAST_1)
-            .serviceConfiguration(s3Configuration)
-            .build();
-             BufferedReader reader = new BufferedReader(new InputStreamReader(
-                 new GZIPInputStream(client.getObject(GetObjectRequest.builder()
-                     .bucket(properties.getBucket())
-                     .key(key)
-                     .build())),
-                 StandardCharsets.UTF_8))) {
-
-            String line;
-            boolean headerSkipped = false;
-            while ((line = reader.readLine()) != null) {
-                if (!headerSkipped) {
-                    headerSkipped = true;
-                    continue;
-                }
-
-                String[] parts = line.split(",", -1);
-                if (parts.length < 8) {
-                    continue;
-                }
-
-                String rowTicker = parts[0].trim();
-                if (!isTickerMatch(rowTicker, normalizedTicker)) {
-                    continue;
-                }
-
-                Map<String, Object> row = new LinkedHashMap<>();
-                row.put("ticker", rowTicker);
-                row.put("volume", parts[1]);
-                row.put("open", parts[2]);
-                row.put("close", parts[3]);
-                row.put("high", parts[4]);
-                row.put("low", parts[5]);
-                row.put("window_start", parts[6]);
-                row.put("transactions", parts[7]);
-                records.add(row);
-
-                if (records.size() >= limit) {
-                    break;
-                }
-            }
-        } catch (Exception ex) {
-            throw new RuntimeException("Failed to read s3 object '" + key + "': " + ex.getMessage(), ex);
-        }
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("bucket", properties.getBucket());
-        result.put("endpoint", properties.getEndpoint());
-        result.put("objectKey", key);
-        result.put("ticker", normalizedTicker);
-        result.put("recordCount", records.size());
-        result.put("records", records);
-        return result;
+    public Map<String, Object> fetchStockRows(LocalDate date, String ticker, int limit) {
+        return fetchRowsByDateAndTicker(date, ticker, limit, STOCK_MINUTE_AGG);
     }
 
     public Map<String, Object> fetchCsvOptRows(String fileLocation, String sortBy, String sortDirection, int limit) {
@@ -230,12 +176,134 @@ public class S3OptionFlatfileService {
     }
 
     private String buildObjectKey(LocalDate date) {
+        return buildObjectKey(date, properties.getMinuteAgg());
+    }
+
+    private String buildObjectKey(LocalDate date, String minuteAggPrefix) {
         String pattern = properties.getFileLocationPattern();
         String path = pattern
             .replace("YYYY", date.format(YYYY))
             .replace("MM", date.format(MM))
             .replace("DD", date.format(DD));
-        return trimSlashes(properties.getMinuteAgg()) + "/" + trimSlashes(path);
+        return trimSlashes(minuteAggPrefix) + "/" + trimSlashes(path);
+    }
+
+    private Map<String, Object> fetchRowsByDateAndTicker(LocalDate date,
+                                                          String ticker,
+                                                          int limit,
+                                                          String minuteAggPrefix) {
+        String normalizedTicker = normalizeTicker(ticker);
+        String key = buildObjectKey(date, minuteAggPrefix);
+
+        List<Map<String, Object>> records = new ArrayList<>();
+
+        AwsBasicCredentials creds = AwsBasicCredentials.create(properties.getAccessKey(), properties.getSecretKey());
+        S3Configuration s3Configuration = S3Configuration.builder()
+            .pathStyleAccessEnabled(true)
+            .build();
+
+        try (S3Client client = S3Client.builder()
+            .endpointOverride(URI.create(properties.getEndpoint()))
+            .credentialsProvider(StaticCredentialsProvider.create(creds))
+            .region(Region.US_EAST_1)
+            .serviceConfiguration(s3Configuration)
+            .build()) {
+
+            Path localPath = ensureLocalCopy(client, date, minuteAggPrefix, key);
+            try (InputStream rawInput = openInputStream(client, key, localPath);
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(
+                     new GZIPInputStream(rawInput),
+                     StandardCharsets.UTF_8))) {
+
+                String line;
+                boolean headerSkipped = false;
+                while ((line = reader.readLine()) != null) {
+                    if (!headerSkipped) {
+                        headerSkipped = true;
+                        continue;
+                    }
+
+                    String[] parts = line.split(",", -1);
+                    if (parts.length < 8) {
+                        continue;
+                    }
+
+                    String rowTicker = parts[0].trim();
+                    if (!isTickerMatch(rowTicker, normalizedTicker)) {
+                        continue;
+                    }
+
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("ticker", rowTicker);
+                    row.put("volume", parts[1]);
+                    row.put("open", parts[2]);
+                    row.put("close", parts[3]);
+                    row.put("high", parts[4]);
+                    row.put("low", parts[5]);
+                    row.put("window_start", parts[6]);
+                    row.put("transactions", parts[7]);
+                    records.add(row);
+
+                    if (records.size() >= limit) {
+                        break;
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            throw new RuntimeException("Failed to read s3 object '" + key + "': " + ex.getMessage(), ex);
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("bucket", properties.getBucket());
+        result.put("endpoint", properties.getEndpoint());
+        result.put("objectKey", key);
+        result.put("ticker", normalizedTicker);
+        result.put("recordCount", records.size());
+        result.put("records", records);
+        return result;
+    }
+
+    private InputStream openInputStream(S3Client client, String key, Path localPath) throws Exception {
+        if (localPath != null) {
+            return Files.newInputStream(localPath);
+        }
+        return client.getObject(GetObjectRequest.builder()
+            .bucket(properties.getBucket())
+            .key(key)
+            .build());
+    }
+
+    private Path ensureLocalCopy(S3Client client,
+                                 LocalDate date,
+                                 String minuteAggPrefix,
+                                 String key) {
+        String root = properties.getLocalFilePath();
+        if (!StringUtils.hasText(root)) {
+            return null;
+        }
+
+        try {
+            Path dateDir = Path.of(root.trim(), date.format(ISO_DAY));
+            Files.createDirectories(dateDir);
+
+            String safePrefix = trimSlashes(minuteAggPrefix).replace('/', '_');
+            Path localFile = dateDir.resolve(safePrefix + "-" + date.format(ISO_DAY) + ".csv.gz");
+            if (Files.exists(localFile) && Files.size(localFile) > 0L) {
+                return localFile;
+            }
+
+            Path tempFile = dateDir.resolve(localFile.getFileName().toString() + ".part");
+            try (ResponseInputStream<GetObjectResponse> remote = client.getObject(GetObjectRequest.builder()
+                .bucket(properties.getBucket())
+                .key(key)
+                .build())) {
+                Files.copy(remote, tempFile, StandardCopyOption.REPLACE_EXISTING);
+            }
+            Files.move(tempFile, localFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            return localFile;
+        } catch (Exception ex) {
+            throw new RuntimeException("Failed to cache s3 object locally for key '" + key + "': " + ex.getMessage(), ex);
+        }
     }
 
     private static String trimSlashes(String value) {

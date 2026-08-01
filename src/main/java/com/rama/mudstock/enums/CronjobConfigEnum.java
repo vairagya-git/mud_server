@@ -7,6 +7,7 @@ public enum CronjobConfigEnum {
     ENABLED("enabled", "Boolean", "Enabled"),
     FORCE_EXECUTE("forceExecute", "Boolean", "Force Execute"),
     FORCE_EXECUTE_DAILY_DATE("forceExecuteDailyDate", "DateTime", "Set the date for forceExecute"),
+    DAILY_DATE("dailyDate", "DateTime", "Set the execution date for normal runs"),
     EXECUTION("execution", "String", "Execution"),
     MINUTE_HOURLY_FREQUENCY("minuteHourlyFrequency", "Integer", "Minute/Hourly Frequency"),
     LAST_UPDATED("lastUpdated", "DateTime", "Last Updated"),

@@ -351,6 +351,7 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('execution', 'daily', 'String', 'DayStockMovementData', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'DayStockMovementData', 'LastUpdated dateTime'),
 ('dailyCutOffTime', '22:00', 'DateTime', 'DayStockMovementData', 'Record should only be fetched after the cutoffTime'),
+('dailyDate', '2026-07-30', 'DateTime', 'DayStockMovementData', 'Use this date for the current date for the cronjob'),
 ('forceExecute', 'false', 'boolean', 'DayStockMovementData', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
 ('forceExecuteDailyDate', '', 'DateTime', 'DayStockMovementData', 'Set the date for forceExecute'),
 
@@ -384,12 +385,12 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 /*OptionFlatFileSnapshotFetcherJob Settings*/
 ('useage', 'useage', 'String', 'OptionFlatFileSnapshotFetcherJob', 'Fetch Option snapshot data for the given ticker, strike and expiration date'),
 ('enabled', 'true', 'boolean', 'OptionFlatFileSnapshotFetcherJob', 'OptionFlatFileSnapshotFetcherJob  Enable property'),
-('execution', 'minutes', 'String', 'OptionFlatFileSnapshotFetcherJob', 'CronExpression for the cronjob'),
+('execution', 'daily', 'String', 'OptionFlatFileSnapshotFetcherJob', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'OptionFlatFileSnapshotFetcherJob', 'Create and Close Optoin Contract entry'),
-('startTime', '14:30', 'Time', 'OptionFlatFileSnapshotFetcherJob', 'Cronjob Start Time'),
-('endTime', '21:00', 'Time', 'OptionFlatFileSnapshotFetcherJob', 'Cronjob End Time'),
-('minuteHourlyFrequency', '5', 'Integer', 'OptionFlatFileSnapshotFetcherJob', 'CronExpression for the cronjob'),
+('dailyCutOffTime', '9:00', 'DateTime', 'OptionFlatFileSnapshotFetcherJob', 'Record should only be fetched after the cutoffTime'),
+('dailyDate', '2026-07-30', 'DateTime', 'OptionFlatFileSnapshotFetcherJob', 'Use this date for the current date for the cronjob'),
 ('forceExecute', 'false', 'boolean', 'OptionFlatFileSnapshotFetcherJob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
+('forceExecuteDailyDate', '2026-07-30', 'DateTime', 'OptionFlatFileSnapshotFetcherJob', 'Set the date for forceExecute'),
 
 /*OptionSnapshotIVMetrics Settings*/
 ('useage', 'useage', 'String', 'OptionSnapshotIVMetrics', 'Calculate Option IV Metrics after end of the day'),
@@ -416,8 +417,8 @@ CREATE TABLE options_interval_analyse (
     id  bigint unsigned NOT NULL AUTO_INCREMENT,
     stock_id bigint unsigned NOT NULL,
     contract_type ENUM('CALL', 'PUT', 'BOTH') NOT NULL,
-    status ENUM('CREATE_CONTRACT', 'ACTIVE', 'CLOSE', 'PARTIALLY_COMPLETED', 'COMPLETED') NOT NULL default 'CREATE_CONTRACT',
-    source ENUM('API', 'FLAT_FILE') NOT NULL default 'API',
+    status ENUM('CREATE_CONTRACT', 'ACTIVE', 'CLOSE', 'PARTIALLY_COMPLETED',  'API_COMPLETED', 'FLAT_FILE_COMPLETED', 'COMPLETED') NOT NULL default 'CREATE_CONTRACT',
+    source ENUM('API', 'FLAT_FILE', 'BOTH') NOT NULL default 'API',
     expiration_date DATE NOT NULL,
     strike_from DECIMAL(12,4) NOT NULL,
     strike_to DECIMAL(12,4) NOT NULL,
@@ -430,31 +431,45 @@ CREATE TABLE options_interval_analyse (
   CONSTRAINT `unique_ota_option_to_analyse` UNIQUE (`stock_id`, contract_type,`expiration_date`,strike_from,strike_to)
 );
 
-ALTER TABLE options_interval_analyse
-  ADD source ENUM('API', 'FLAT_FILE') NOT NULL default 'API';
+ALTER TABLE option_contract
+  modify source ENUM('API', 'FLAT_FILE', 'BOTH') NOT NULL default 'API';
   
 ALTER TABLE options_interval_analyse
     modify COLUMN
-    status ENUM('CREATE_CONTRACT', 'ACTIVE', 'CLOSE', 'PARTIALLY_COMPLETED','COMPLETED') NOT NULL default 'CREATE_CONTRACT';
+    status ENUM('CREATE_CONTRACT', 'ACTIVE', 'CLOSE', 'PARTIALLY_COMPLETED', 'API_COMPLETED', 'FLAT_FILE_COMPLETED', 'COMPLETED') NOT NULL default 'CREATE_CONTRACT';
+    
+ALTER TABLE option_contract
+    modify COLUMN
+    status ENUM('ACTIVE', 'API_COMPLETED', 'FLAT_FILE_COMPLETED', 'COMPLETED') NOT NULL default 'ACTIVE';
 
-select * from option_contract;
+
+select * from option_contract where source is null;
+
+
+ALTER TABLE option_contract
+  ADD COLUMN `options_interval_analyse_id` bigint unsigned NULL after `stock_id`,
+  ADD KEY fk_oc_soptions_interval_analyse (options_interval_analyse_id),
+  ADD CONSTRAINT fk_oc_soptions_interval_analyse
+    FOREIGN KEY (options_interval_analyse_id) REFERENCES options_interval_analyse (id);
 
 CREATE TABLE option_contract (
     id  bigint unsigned NOT NULL AUTO_INCREMENT,
     stock_id bigint unsigned NOT NULL,
+    `options_interval_analyse_id` bigint unsigned NULL,
     contract_type ENUM('CALL', 'PUT') NOT NULL,
-    status ENUM('ACTIVE', 'COMPLETED') NOT NULL default 'ACTIVE',
-    source ENUM('API', 'FLAT_FILE') NOT NULL default 'API',
+    status ENUM('ACTIVE', 'API_COMPLETED', 'FLAT_FILE_COMPLETED', 'COMPLETED') NOT NULL default 'ACTIVE',
+    source ENUM('API', 'FLAT_FILE', 'BOTH') NOT NULL default 'API',
     exercise_style VARCHAR(32),
     expiration_date DATE NOT NULL,
     strike_price DECIMAL(12,4) NOT NULL,
     shares_per_contract INT NOT NULL DEFAULT 100,
-  contract_ticker VARCHAR(128),
+    contract_ticker VARCHAR(128),
     created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
+    updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
     KEY `fk_optcon_stock` (`stock_id`),
     CONSTRAINT `fk_optcon_stock` FOREIGN KEY (`stock_id`) REFERENCES `stock` (`id`),
+	CONSTRAINT fk_oc_soptions_interval_analyse FOREIGN KEY (options_interval_analyse_id) REFERENCES options_interval_analyse (id),
     CONSTRAINT uk_optcon_contract_ticker UNIQUE (contract_ticker),
   CONSTRAINT `unique_optcon_option_contract` UNIQUE (`stock_id`, contract_type,`expiration_date`,contract_ticker)
 );
@@ -467,6 +482,8 @@ where oc.contract_ticker = "O:INTC260717C00100000";
 delete from option_snapshot;
 
 select * from option_snapshot;
+
+ALTER TABLE option_snapshot RENAME TO option_snapshot_flatfile;
 
 CREATE TABLE option_snapshot (
     id bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -534,6 +551,60 @@ CREATE TABLE option_snapshot (
     INDEX idx_snapshot_contract_time (
         option_contract_id,
         option_quote_time
+    )
+);
+
+
+CREATE TABLE option_snapshot_flatfile (
+    id bigint unsigned NOT NULL AUTO_INCREMENT,
+
+    option_contract_id bigint unsigned NOT NULL,
+    stock_id bigint unsigned NOT NULL,
+
+-- Time this record was collected by the Java application
+    snapshot_time DATETIME(6) NOT NULL,
+
+-- Option Fields
+    contract_ticker VARCHAR(128),
+    opt_volume INT,
+    opt_open DECIMAL(6,2),
+    opt_close DECIMAL(6,2),
+    opt_high DECIMAL(6,2),
+    opt_low DECIMAL(6,2),
+    unix_time bigint unsigned NOT NULL,
+    unix_utc_time DATETIME(6) NOT NULL,
+    local_time DATETIME(6) NOT NULL,
+    
+-- Stock Fields   
+    stock_ticker VARCHAR(128),
+    stock_volume INT,
+    stock_open DECIMAL(6,2),
+    stock_close DECIMAL(6,2),
+    stock_high DECIMAL(6,2),
+    stock_low DECIMAL(6,2),
+
+
+
+    snapshot_version bigint unsigned NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (`id`),
+    
+    CONSTRAINT fk_osf_stock 
+    FOREIGN KEY (stock_id) 
+        REFERENCES stock (id),
+
+    CONSTRAINT fk_osf_contract
+        FOREIGN KEY (option_contract_id)
+        REFERENCES option_contract(id),
+  
+     CONSTRAINT uk_osf_time
+        UNIQUE (option_contract_id, unix_time),
+
+    INDEX idx_osf_time (
+        option_contract_id,
+        unix_time
     )
 );
 
