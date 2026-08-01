@@ -431,19 +431,12 @@ CREATE TABLE options_interval_analyse (
   CONSTRAINT `unique_ota_option_to_analyse` UNIQUE (`stock_id`, contract_type,`expiration_date`,strike_from,strike_to)
 );
 
-ALTER TABLE option_contract
-  modify source ENUM('API', 'FLAT_FILE', 'BOTH') NOT NULL default 'API';
-  
-ALTER TABLE options_interval_analyse
-    modify COLUMN
-    status ENUM('CREATE_CONTRACT', 'ACTIVE', 'CLOSE', 'PARTIALLY_COMPLETED', 'API_COMPLETED', 'FLAT_FILE_COMPLETED', 'COMPLETED') NOT NULL default 'CREATE_CONTRACT';
-    
-ALTER TABLE option_contract
-    modify COLUMN
-    status ENUM('ACTIVE', 'API_COMPLETED', 'FLAT_FILE_COMPLETED', 'COMPLETED') NOT NULL default 'ACTIVE';
+select * from options_interval_analyse
+order by id desc
 
-
-select * from option_contract where source is null;
+select * from option_contract 
+where options_interval_analyse_id is null
+order by id desc
 
 
 ALTER TABLE option_contract
@@ -471,9 +464,8 @@ CREATE TABLE option_contract (
     CONSTRAINT `fk_optcon_stock` FOREIGN KEY (`stock_id`) REFERENCES `stock` (`id`),
 	CONSTRAINT fk_oc_soptions_interval_analyse FOREIGN KEY (options_interval_analyse_id) REFERENCES options_interval_analyse (id),
     CONSTRAINT uk_optcon_contract_ticker UNIQUE (contract_ticker),
-  CONSTRAINT `unique_optcon_option_contract` UNIQUE (`stock_id`, contract_type,`expiration_date`,contract_ticker)
+  CONSTRAINT `unique_optcon_option_contract` UNIQUE (contract_ticker, source)
 );
-
 
 select * from option_snapshot os
 join option_contract oc on os.option_contract_id = oc.id
@@ -554,15 +546,13 @@ CREATE TABLE option_snapshot (
     )
 );
 
+select * from option_snapshot_flatfile;
 
 CREATE TABLE option_snapshot_flatfile (
     id bigint unsigned NOT NULL AUTO_INCREMENT,
 
     option_contract_id bigint unsigned NOT NULL,
     stock_id bigint unsigned NOT NULL,
-
--- Time this record was collected by the Java application
-    snapshot_time DATETIME(6) NOT NULL,
 
 -- Option Fields
     contract_ticker VARCHAR(128),

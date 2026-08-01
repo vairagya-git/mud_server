@@ -63,6 +63,12 @@
             color: var(--text-muted);
             font-size: .84rem;
         }
+
+        .sortable-header {
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
     </style>
 
     <div class="page-header">
@@ -89,17 +95,23 @@
                             <label for="entriesTickerFilter" style="margin-bottom:4px;display:block;">Filter Ticker</label>
                             <input id="entriesTickerFilter" type="text" placeholder="Type ticker" autocomplete="off">
                         </div>
-                        <button type="button" class="btn btn-secondary" data-entries-sort="ticker">Sort Ticker</button>
-                        <button type="button" class="btn btn-secondary" data-entries-sort="expiration">Sort Expiration</button>
                     </div>
                     <table th:unless="${entries.isEmpty()}" id="optionAnalyseEntriesTable">
                         <thead>
                             <tr>
-                                <th>Ticker</th>
+                                <th>
+                                  <button type="button" class="btn btn-sm table-sort-btn" data-entries-sort="ticker">Ticker</button>
+                                </th>
                                 <th>Contract</th>
-                                <th>Source</th>
-                                <th>Status</th>
-                                <th>Expiration</th>
+                                <th>
+                                  <button type="button" class="btn btn-sm table-sort-btn" data-entries-sort="source">Source</button>
+                                </th>
+                                <th>
+                                  <button type="button" class="btn btn-sm table-sort-btn" data-entries-sort="status">Status</button>
+                                </th>
+                                <th>
+                                  <button type="button" class="btn btn-sm table-sort-btn" data-entries-sort="expiration">Expiration</button>
+                                </th>
                                 <th>Strike From</th>
                                 <th>Strike To</th>
                                 <th>Interval</th>
@@ -107,7 +119,10 @@
                         </thead>
                         <tbody>
                             <tr th:each="e : ${entries}"
-                                th:attr="data-ticker=${#strings.toUpperCase(e.ticker)},data-expiration=${e.expirationDate != null ? e.expirationDate : ''}">
+                                th:attr="data-ticker=${#strings.toUpperCase(e.ticker)},
+                                         data-source=${e.source != null ? #strings.toUpperCase(e.source) : ''},
+                                         data-status=${e.status != null ? #strings.toUpperCase(e.status) : ''},
+                                         data-expiration=${e.expirationDate != null ? e.expirationDate : ''}">
                                 <td><span class="badge badge-grey" th:text="${e.ticker}"></span></td>
                                 <td th:text="${e.contractType}"></td>
                                 <td th:text="${e.source != null ? e.source : '-'}"></td>
@@ -217,7 +232,7 @@
             var statusLabel = document.getElementById('statusLabel');
             var entriesTable = document.getElementById('optionAnalyseEntriesTable');
             var entriesTickerFilter = document.getElementById('entriesTickerFilter');
-            var entriesSortButtons = Array.from(document.querySelectorAll('[data-entries-sort]'));
+            var entriesSortButtons = Array.from(document.querySelectorAll('#optionAnalyseEntriesTable [data-entries-sort]'));
             var entriesSortState = { field: 'ticker', dir: 'asc' };
 
             function setActiveTab(tabName) {
@@ -261,23 +276,19 @@
             }
 
             function getSortableValue(row, field) {
-                if (field === 'expiration') {
-                    return (row.dataset.expiration || '').trim();
-                }
+                if (field === 'expiration') return (row.dataset.expiration || '').trim();
+                if (field === 'source') return (row.dataset.source || '').trim();
+                if (field === 'status') return (row.dataset.status || '').trim();
                 return (row.dataset.ticker || '').trim();
             }
 
             function updateEntriesSortLabels() {
                 entriesSortButtons.forEach(function (btn) {
                     var field = btn.getAttribute('data-entries-sort');
+                    var baseLabel = btn.getAttribute('data-sort-label') || btn.textContent.replace(/[↑↓]/g, '').trim();
                     var isActive = field === entriesSortState.field;
                     var arrow = isActive ? (entriesSortState.dir === 'asc' ? ' ↑' : ' ↓') : '';
-                    if (field === 'ticker') {
-                        btn.textContent = 'Sort Ticker' + arrow;
-                    }
-                    if (field === 'expiration') {
-                        btn.textContent = 'Sort Expiration' + arrow;
-                    }
+                    btn.textContent = baseLabel + arrow;
                 });
             }
 

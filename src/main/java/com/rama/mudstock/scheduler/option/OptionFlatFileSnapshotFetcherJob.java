@@ -40,6 +40,11 @@ public class OptionFlatFileSnapshotFetcherJob extends AbstractCronjob {
 
         try {
             LocalDate targetDate = resolveTargetDate(getPurpose());
+            if (targetDate == null) {
+                log.error("{}: targetDate is required, skipping flat-file snapshot fetch", getPurpose());
+                return;
+            }
+
             long snapshotVersion = Instant.now().toEpochMilli();
             int inserted = optionFlatFileSnapshotFetcherFacade.fetchAndStoreSnapshots(snapshotVersion, targetDate);
             log.info("{}: inserted {} option_snapshot row(s) from flat file, targetDate={}, snapshotVersion={}",

@@ -58,11 +58,11 @@ public class OptionContractRepository {
         return count != null && count > 0;
     }
 
-    public List<Map<String, Object>> getOptionContractsWithTickerByStatus(String status,
+    public List<Map<String, Object>> getOptionContractsWithTickerByStatus(List<String> statuses,
                                                                            boolean snapshotFetchOnly,
                                                                            List<String> sources) {
         String selectClause = snapshotFetchOnly
-            ? "SELECT o.id, o.stock_id, s.ticker, o.contract_ticker, o.strike_price, o.expiration_date "
+            ? "SELECT o.id, o.stock_id, s.ticker, o.contract_ticker, o.strike_price, o.expiration_date, o.options_interval_analyse_id "
             : "SELECT o.id, o.stock_id, s.ticker, o.contract_type, "
                 + "o.source, "
                 + "o.status, o.exercise_style, o.expiration_date, "
@@ -72,18 +72,22 @@ public class OptionContractRepository {
             .append("FROM option_contract o ")
             .append("JOIN stock s ON s.id = o.stock_id ");
 
-        boolean hasStatus = status != null;
+        boolean hasStatuses = statuses != null && !statuses.isEmpty();
         boolean hasSources = sources != null && !sources.isEmpty();
 
-        if (hasStatus || hasSources || snapshotFetchOnly) {
+        if (hasStatuses || hasSources || snapshotFetchOnly) {
             sql.append("WHERE 1=1 ");
-            if (hasStatus) {
-                sql.append("AND UPPER(o.status) = UPPER(?) ");
+
+            if (hasStatuses) {
+                String statusPlaceholders = String.join(",", java.util.Collections.nCopies(statuses.size(), "UPPER(?)"));
+                sql.append("AND UPPER(o.status) IN (").append(statusPlaceholders).append(") ");
             }
+
             if (hasSources) {
-                String placeholders = String.join(",", java.util.Collections.nCopies(sources.size(), "UPPER(?)"));
-                sql.append("AND UPPER(o.source) IN (").append(placeholders).append(") ");
+                String sourcePlaceholders = String.join(",", java.util.Collections.nCopies(sources.size(), "UPPER(?)"));
+                sql.append("AND UPPER(o.source) IN (").append(sourcePlaceholders).append(") ");
             }
+
             if (snapshotFetchOnly) {
                 sql.append("AND s.ticker IS NOT NULL AND s.ticker <> '' ");
             }
@@ -91,15 +95,15 @@ public class OptionContractRepository {
 
         if (snapshotFetchOnly) {
             sql.append("ORDER BY o.updated_at DESC");
-        } else if (hasStatus) {
+        } else if (hasStatuses) {
             sql.append("ORDER BY s.ticker, o.expiration_date, o.strike_price, o.contract_type");
         } else {
             sql.append("ORDER BY o.updated_at DESC, s.ticker, o.expiration_date, o.strike_price");
         }
 
         List<Object> params = new java.util.ArrayList<>();
-        if (hasStatus) {
-            params.add(status);
+        if (hasStatuses) {
+            params.addAll(statuses);
         }
         if (hasSources) {
             params.addAll(sources);

@@ -1,6 +1,7 @@
 package com.rama.mudstock.scheduler.option;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
 import com.rama.mudstock.enums.CronjobConfigEnum;
 import com.rama.mudstock.facade.OptionAPISnapshotFetcherFacade;
 import com.rama.mudstock.scheduler.AbstractCronjob;
+import com.rama.mudstock.service.MarketCalendarService;
 import com.rama.mudstock.service.SystemConfigService;
 
 /**
@@ -21,18 +23,21 @@ import com.rama.mudstock.service.SystemConfigService;
 @Profile("cronjob")
 public class OptionAPISnapshotFetcherJob extends AbstractCronjob {
 
+    private final MarketCalendarService marketCalendarService;
     private final OptionAPISnapshotFetcherFacade optionSnapshotFetcherFacade;
     private final Logger log = LoggerFactory.getLogger(OptionAPISnapshotFetcherJob.class);
 
     public OptionAPISnapshotFetcherJob(OptionAPISnapshotFetcherFacade optionSnapshotFetcherFacade,
-                                       SystemConfigService systemConfigService) {
+                                       SystemConfigService systemConfigService, MarketCalendarService marketCalendarService) {
         super(systemConfigService, CronjobConfigEnum.Purpose.OPTION_API_SNAPSHOT_FETCHER_JOB.value());
         this.optionSnapshotFetcherFacade = optionSnapshotFetcherFacade;
+        this.marketCalendarService = marketCalendarService;
     }
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = com.rama.mudstock.config.ApplicationConfig.LISBON_ZONE)
     public void fetchSnapshots() {
-        if (!shouldExecuteBySchedule(getPurpose())) {
+        if (!shouldExecuteBySchedule(getPurpose()) && marketCalendarService.isMarketClosed(LocalDate.now())) {
+            log.info("{}: market is closed or outside trading hours", getPurpose());
             return;
         }
 

@@ -45,7 +45,10 @@ public class OptionAPISnapshotFetcherFacade {
 
     public int fetchAndStoreSnapshots(long snapshotVersion) {
         List<Map<String, Object>> contracts = optionContractRepository.getOptionContractsWithTickerByStatus(
-            OptionContractStatusEnum.ACTIVE.name(),
+            List.of(
+                OptionContractStatusEnum.ACTIVE.name(),
+                OptionContractStatusEnum.FLAT_FILE_COMPLETED.name()
+            ),
             true,
             SOURCES);
         int inserted = 0;

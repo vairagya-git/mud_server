@@ -199,8 +199,13 @@ public class OptionAnalysisController {
     @GetMapping("/contract")
     public String contractList(Model model,
                                @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
-        model.addAttribute("contracts", optionContractRepository.getOptionContractsWithTickerByStatus(null, false, null));
+        model.addAttribute("contracts", optionContractRepository.getOptionContractsWithTickerByStatus(List.of(), false, null));
         model.addAttribute("contractTickers", listDistinctContractTickers(null));
+        model.addAttribute("contractSources", List.of(
+            OptionSourceEnum.API.name(),
+            OptionSourceEnum.FLAT_FILE.name(),
+            OptionSourceEnum.BOTH.name()
+        ));
         return hxRequest != null ? "option_analysis/contract :: content" : "option_analysis/contract";
     }
 
@@ -208,7 +213,7 @@ public class OptionAnalysisController {
     public String snapshotList(Model model,
                                @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
         model.addAttribute("activeContracts", optionContractRepository.getOptionContractsWithTickerByStatus(
-            OptionContractStatusEnum.ACTIVE.name(),
+            java.util.List.of(OptionContractStatusEnum.ACTIVE.name()),
             false,
             null));
         model.addAttribute("activeContractTickers", listDistinctContractTickers(OptionContractStatusEnum.ACTIVE.name()));

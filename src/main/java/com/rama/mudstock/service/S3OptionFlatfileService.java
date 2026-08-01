@@ -31,6 +31,9 @@ import org.springframework.util.StringUtils;
 
 import com.rama.mudstock.config.ApplicationProperties;
 import com.rama.mudstock.config.ApplicationConfig;
+import java.math.BigDecimal;
+import com.rama.mudstock.model.option.TickerOptionSnapshotData;
+import com.rama.mudstock.model.option.TickerStockSnapshotData;
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -58,12 +61,120 @@ public class S3OptionFlatfileService {
         this.properties = applicationProperties.getS3Flatfiles();
     }
 
-    public Map<String, Object> fetchOptionRows(LocalDate date, String ticker, int limit) {
-        return fetchRowsByDateAndTicker(date, ticker, limit, properties.getMinuteAgg());
+    public Map<String, List<TickerOptionSnapshotData>> loadOptionRowsDaysData(LocalDate date) {
+        String key = buildObjectKey(date, properties.getMinuteAgg());
+        Map<String, List<TickerOptionSnapshotData>> rowsByTicker = new LinkedHashMap<>();
+
+        AwsBasicCredentials creds = AwsBasicCredentials.create(properties.getAccessKey(), properties.getSecretKey());
+        S3Configuration s3Configuration = S3Configuration.builder().pathStyleAccessEnabled(true).build();
+
+        try (S3Client client = S3Client.builder()
+            .endpointOverride(URI.create(properties.getEndpoint()))
+            .credentialsProvider(StaticCredentialsProvider.create(creds))
+            .region(Region.US_EAST_1)
+            .serviceConfiguration(s3Configuration)
+            .build()) {
+
+            Path localPath = ensureLocalCopy(client, date, properties.getMinuteAgg(), key);
+            try (InputStream rawInput = openInputStream(client, key, localPath);
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(rawInput), StandardCharsets.UTF_8))) {
+
+                String line;
+                boolean headerSkipped = false;
+                while ((line = reader.readLine()) != null) {
+                    if (!headerSkipped) {
+                        headerSkipped = true;
+                        continue;
+                    }
+
+                    String[] parts = line.split(",", -1);
+                    if (parts.length < 8) {
+                        continue;
+                    }
+
+                    String rowTicker = parts[0].trim();
+                    Long windowStart = parseLong(parts[6]);
+                    if (windowStart == null) {
+                        continue;
+                    }
+
+                    TickerOptionSnapshotData row = new TickerOptionSnapshotData(
+                        rowTicker,
+                        parseInteger(parts[1]),
+                        parseBigDecimal(parts[2]),
+                        parseBigDecimal(parts[3]),
+                        parseBigDecimal(parts[4]),
+                        parseBigDecimal(parts[5]),
+                        windowStart,
+                        parseInteger(parts[7]));
+
+                    rowsByTicker.computeIfAbsent(rowTicker, k -> new ArrayList<>()).add(row);
+                }
+            }
+        } catch (Exception ex) {
+            throw new RuntimeException("Failed to read s3 object '" + key + "': " + ex.getMessage(), ex);
+        }
+
+        return rowsByTicker;
     }
 
-    public Map<String, Object> fetchStockRows(LocalDate date, String ticker, int limit) {
-        return fetchRowsByDateAndTicker(date, ticker, limit, STOCK_MINUTE_AGG);
+    public Map<String, Map<Long, TickerStockSnapshotData>> loadStockRowsDaysData(LocalDate date) {
+        String key = buildObjectKey(date, STOCK_MINUTE_AGG);
+        Map<String, Map<Long, TickerStockSnapshotData>> rowsByTicker = new LinkedHashMap<>();
+
+        AwsBasicCredentials creds = AwsBasicCredentials.create(properties.getAccessKey(), properties.getSecretKey());
+        S3Configuration s3Configuration = S3Configuration.builder().pathStyleAccessEnabled(true).build();
+
+        try (S3Client client = S3Client.builder()
+            .endpointOverride(URI.create(properties.getEndpoint()))
+            .credentialsProvider(StaticCredentialsProvider.create(creds))
+            .region(Region.US_EAST_1)
+            .serviceConfiguration(s3Configuration)
+            .build()) {
+
+            Path localPath = ensureLocalCopy(client, date, STOCK_MINUTE_AGG, key);
+            try (InputStream rawInput = openInputStream(client, key, localPath);
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(rawInput), StandardCharsets.UTF_8))) {
+
+                String line;
+                boolean headerSkipped = false;
+                while ((line = reader.readLine()) != null) {
+                    if (!headerSkipped) {
+                        headerSkipped = true;
+                        continue;
+                    }
+
+                    String[] parts = line.split(",", -1);
+                    if (parts.length < 8) {
+                        continue;
+                    }
+
+                    String rowTicker = parts[0].trim();
+                    Long windowStart = parseLong(parts[6]);
+                    if (windowStart == null) {
+                        continue;
+                    }
+
+                    TickerStockSnapshotData row = new TickerStockSnapshotData(
+                        rowTicker,
+                        parseInteger(parts[1]),
+                        parseBigDecimal(parts[2]),
+                        parseBigDecimal(parts[3]),
+                        parseBigDecimal(parts[4]),
+                        parseBigDecimal(parts[5]),
+                        windowStart,
+                        parseInteger(parts[7]));
+
+                    rowsByTicker
+                        .computeIfAbsent(rowTicker, k -> new LinkedHashMap<>())
+                        .put(windowStart, row);
+                }
+            }
+        } catch (Exception ex) {
+            throw new RuntimeException("Failed to read s3 object '" + key + "': " + ex.getMessage(), ex);
+        }
+
+        return rowsByTicker;
     }
 
     public Map<String, Object> fetchCsvOptRows(String fileLocation, String sortBy, String sortDirection, int limit) {
@@ -186,81 +297,6 @@ public class S3OptionFlatfileService {
             .replace("MM", date.format(MM))
             .replace("DD", date.format(DD));
         return trimSlashes(minuteAggPrefix) + "/" + trimSlashes(path);
-    }
-
-    private Map<String, Object> fetchRowsByDateAndTicker(LocalDate date,
-                                                          String ticker,
-                                                          int limit,
-                                                          String minuteAggPrefix) {
-        String normalizedTicker = normalizeTicker(ticker);
-        String key = buildObjectKey(date, minuteAggPrefix);
-
-        List<Map<String, Object>> records = new ArrayList<>();
-
-        AwsBasicCredentials creds = AwsBasicCredentials.create(properties.getAccessKey(), properties.getSecretKey());
-        S3Configuration s3Configuration = S3Configuration.builder()
-            .pathStyleAccessEnabled(true)
-            .build();
-
-        try (S3Client client = S3Client.builder()
-            .endpointOverride(URI.create(properties.getEndpoint()))
-            .credentialsProvider(StaticCredentialsProvider.create(creds))
-            .region(Region.US_EAST_1)
-            .serviceConfiguration(s3Configuration)
-            .build()) {
-
-            Path localPath = ensureLocalCopy(client, date, minuteAggPrefix, key);
-            try (InputStream rawInput = openInputStream(client, key, localPath);
-                 BufferedReader reader = new BufferedReader(new InputStreamReader(
-                     new GZIPInputStream(rawInput),
-                     StandardCharsets.UTF_8))) {
-
-                String line;
-                boolean headerSkipped = false;
-                while ((line = reader.readLine()) != null) {
-                    if (!headerSkipped) {
-                        headerSkipped = true;
-                        continue;
-                    }
-
-                    String[] parts = line.split(",", -1);
-                    if (parts.length < 8) {
-                        continue;
-                    }
-
-                    String rowTicker = parts[0].trim();
-                    if (!isTickerMatch(rowTicker, normalizedTicker)) {
-                        continue;
-                    }
-
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    row.put("ticker", rowTicker);
-                    row.put("volume", parts[1]);
-                    row.put("open", parts[2]);
-                    row.put("close", parts[3]);
-                    row.put("high", parts[4]);
-                    row.put("low", parts[5]);
-                    row.put("window_start", parts[6]);
-                    row.put("transactions", parts[7]);
-                    records.add(row);
-
-                    if (records.size() >= limit) {
-                        break;
-                    }
-                }
-            }
-        } catch (Exception ex) {
-            throw new RuntimeException("Failed to read s3 object '" + key + "': " + ex.getMessage(), ex);
-        }
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("bucket", properties.getBucket());
-        result.put("endpoint", properties.getEndpoint());
-        result.put("objectKey", key);
-        result.put("ticker", normalizedTicker);
-        result.put("recordCount", records.size());
-        result.put("records", records);
-        return result;
     }
 
     private InputStream openInputStream(S3Client client, String key, Path localPath) throws Exception {
@@ -461,6 +497,21 @@ public class S3OptionFlatfileService {
         } catch (Exception ignored) {
         }
         return Long.MIN_VALUE;
+    }
+
+    private static Integer parseInteger(String value) {
+        try { return value == null || value.isBlank() ? null : Integer.valueOf(value.trim()); }
+        catch (Exception ex) { return null; }
+    }
+
+    private static Long parseLong(String value) {
+        try { return value == null || value.isBlank() ? null : Long.valueOf(value.trim()); }
+        catch (Exception ex) { return null; }
+    }
+
+    private static BigDecimal parseBigDecimal(String value) {
+        try { return value == null || value.isBlank() ? null : new BigDecimal(value.trim()); }
+        catch (Exception ex) { return null; }
     }
 
     private record S3Location(String bucket, String key, String original) { }

@@ -96,20 +96,46 @@ public class OptionsIntervalAnalyseFacade {
             .getOptionsInternalAnalyseByStatus(OptionIntervalAnalyseStatusEnum.CLOSE.name());
         for (OptionsInternalAnalyseEntity entry : closeEntries) {
             try {
-                optionDataContractService.completeContractsForInterval(
-                    entry.stockId(),
-                    entry.contractType(),
-                    entry.expirationDate(),
-                    entry.strikeFrom(),
-                    entry.strikeTo(),
-                    entry.id(),
-                    OptionContractStatusEnum.COMPLETED.name());
+                if (entry.id() != null) {
+                    int updatedContracts = optionContractRepository.markContractsStatusForInterval(
+                        entry.id(),
+                        OptionContractStatusEnum.COMPLETED.name());
+                    if (updatedContracts > 0) {
+                        log.info("OptionsIntervalAnalyseFacade: marked {} option_contract row(s) COMPLETED for CLOSE entry id={}",
+                            updatedContracts,
+                            entry.id());
+                    }
+                }
             } catch (Exception ex) {
                 log.error("OptionsIntervalAnalyseFacade: failed completing contracts for CLOSE entry {}", entry, ex);
             }
         }
 
         return processedContracts;
+    }
+
+    public int closeInvalidStrikeIntervals() {
+        List<OptionsInternalAnalyseEntity> entries = optionToAnalyseRepository
+            .getOptionsInternalAnalyseByStatus(OptionIntervalAnalyseStatusEnum.ACTIVE.name());
+
+        int closedCount = 0;
+        for (OptionsInternalAnalyseEntity entry : entries) {
+            Long entryId = entry.id();
+            BigDecimal strikeFrom = entry.strikeFrom();
+            BigDecimal strikeTo = entry.strikeTo();
+            if (entryId == null || strikeFrom == null || strikeTo == null) {
+                continue;
+            }
+
+            if (strikeFrom.compareTo(strikeTo) > 0) {
+                optionToAnalyseRepository.updateStatusById(entryId, OptionIntervalAnalyseStatusEnum.CLOSE.name());
+                closedCount++;
+                log.info("OptionsIntervalAnalyseFacade: entry id={} moved -> CLOSE (strikeFrom={} > strikeTo={})",
+                    entryId, strikeFrom, strikeTo);
+            }
+        }
+
+        return closedCount;
     }
 
     private EntryProcessingResult processEntry(OptionsInternalAnalyseEntity entry) throws Exception {

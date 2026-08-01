@@ -40,37 +40,52 @@ public class OptionDataContractService {
             if (entryId == null || expirationDate == null) {
                 continue;
             }
-
-            StatusResolution resolution = resolveCompletionStatus(entry, completionSource);
-            if (resolution == null) {
-                log.warn("OptionDataContractService: unable to resolve completion status for entry id={} source={} status={}",
-                    entryId,
-                    entry.source(),
-                    entry.status());
+            if (!expirationDate.isBefore(today)) {
                 continue;
             }
 
-            int updatedContracts = optionContractRepository.markContractsStatusForInterval(entryId, resolution.contractStatus());
-            if (updatedContracts > 0) {
-                log.info("OptionDataContractService: marked {} option_contract row(s) status={} for interval entryId={}",
-                    updatedContracts,
-                    resolution.contractStatus(),
-                    entryId);
+            if (updateCompletionStatus(entry, completionSource, today)) {
+                completedCount++;
             }
-
-            optionIntervalAnalyseRepository.updateStatusById(entryId, resolution.intervalStatus());
-            completedCount++;
-            log.info("OptionDataContractService: entry id={} moved -> {} (expirationDate={} < today={})",
-                entryId,
-                resolution.intervalStatus(),
-                expirationDate,
-                today);
         }
 
         return completedCount;
     }
 
-    public StatusResolution resolveCompletionStatus(OptionsInternalAnalyseEntity entry, String completionSource) {
+    public boolean updateCompletionStatus(OptionsInternalAnalyseEntity entry, String completionSource, LocalDate today) {
+        Long entryId = entry.id();
+        if (entryId == null) {
+            return false;
+        }
+
+        StatusResolution resolution = resolveStatusResolution(entry, completionSource);
+        if (resolution == null) {
+            log.warn("OptionDataContractService: unable to resolve completion status for entry id={} source={} status={}",
+                entryId,
+                entry.source(),
+                entry.status());
+            return false;
+        }
+
+        int updatedContracts = optionContractRepository.markContractsStatusForInterval(entryId, resolution.contractStatus());
+        if (updatedContracts > 0) {
+            log.info("OptionDataContractService: marked {} option_contract row(s) status={} for interval entryId={}",
+                updatedContracts,
+                resolution.contractStatus(),
+                entryId);
+        }
+
+        optionIntervalAnalyseRepository.updateStatusById(entryId, resolution.intervalStatus());
+        log.info("OptionDataContractService: entry id={} moved -> {} (expirationDate={} < today={})",
+            entryId,
+            resolution.intervalStatus(),
+            entry.expirationDate(),
+            today);
+
+        return true;
+    }
+
+    private StatusResolution resolveStatusResolution(OptionsInternalAnalyseEntity entry, String completionSource) {
         String source = entry.source() == null ? "" : entry.source().trim().toUpperCase();
         String normalizedCompletionSource = completionSource == null ? "" : completionSource.trim().toUpperCase();
 

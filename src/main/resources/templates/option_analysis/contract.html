@@ -30,10 +30,9 @@
         </div>
 
         <div class="table-filter-input">
-            <select id="contractSourceFilterSelect" aria-label="Filter source">
-                <option value="">Source</option>
-                <option value="API">API</option>
-                <option value="FLAT_FILE">FLAT_FILE</option>
+            <select id="contractSourceFilter">
+                <option value="">All Sources</option>
+                <option th:each="src : ${contractSources}" th:value="${src}" th:text="${src}"></option>
             </select>
             <button id="addContractSourceFilterBtn" type="button" class="btn btn-sm btn-secondary">Add source</button>
         </div>
@@ -129,7 +128,7 @@
             var addTickerFilterBtn = document.getElementById('addContractTickerFilterBtn');
             var contractTypeFilterSelect = document.getElementById('contractTypeFilterSelect');
             var addContractTypeFilterBtn = document.getElementById('addContractTypeFilterBtn');
-            var contractSourceFilterSelect = document.getElementById('contractSourceFilterSelect');
+            var contractSourceFilterSelect = document.getElementById('contractSourceFilter');
             var addContractSourceFilterBtn = document.getElementById('addContractSourceFilterBtn');
             var expiryFilterInput = document.getElementById('contractExpiryFilterInput');
             var addExpiryFilterBtn = document.getElementById('addContractExpiryFilterBtn');

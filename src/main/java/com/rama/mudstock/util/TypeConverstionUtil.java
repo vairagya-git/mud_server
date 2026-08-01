@@ -9,6 +9,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import com.rama.mudstock.config.ApplicationConfig;
+
 public final class TypeConverstionUtil {
 
     private static final BigDecimal HUNDRED = new BigDecimal("100");
@@ -25,8 +27,47 @@ public final class TypeConverstionUtil {
         return Timestamp.from(Instant.ofEpochSecond(seconds, nanos));
     }
 
+    public static Timestamp toPortugalTimestampFromEpochNanos(Long epochNanos) {
+        Timestamp utcTimestamp = toTimestampFromEpochNanos(epochNanos);
+        if (utcTimestamp == null) {
+            return null;
+        }
+        return Timestamp.valueOf(
+            utcTimestamp.toInstant()
+                .atZone(ApplicationConfig.LISBON)
+                .toLocalDateTime());
+    }
+
     public static Long toLong(Object value) {
-        return value instanceof Number number ? number.longValue() : null;
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Long l) {
+            return l;
+        }
+        if (value instanceof Number n) {
+            return n.longValue();
+        }
+        String text = value.toString();
+        if (text == null) {
+            return null;
+        }
+        String normalized = text.trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+
+        // keep digits/sign only to tolerate CSV/object-map formatting noise
+        normalized = normalized.replaceAll("[^0-9\\-]", "");
+        if (normalized.isEmpty() || "-".equals(normalized)) {
+            return null;
+        }
+
+        try {
+            return Long.parseLong(normalized);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     public static Integer toInteger(String value) {
