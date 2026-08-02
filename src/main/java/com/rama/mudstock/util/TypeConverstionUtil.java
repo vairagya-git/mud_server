@@ -5,6 +5,7 @@ import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -32,10 +33,17 @@ public final class TypeConverstionUtil {
         if (utcTimestamp == null) {
             return null;
         }
-        return Timestamp.valueOf(
-            utcTimestamp.toInstant()
-                .atZone(ApplicationConfig.LISBON)
-                .toLocalDateTime());
+
+        Instant utcInstant = utcTimestamp.toInstant();
+
+        // Determine Lisbon's actual UTC offset at this instant (handles DST automatically).
+        ZoneOffset lisbonOffset = ApplicationConfig.LISBON.getRules().getOffset(utcInstant);
+
+        // Shift the UTC instant forward by that offset so its UTC-calendar fields
+        // match Lisbon's local wall-clock fields when persisted.
+        Instant lisbonShiftedInstant = utcInstant.plusSeconds(lisbonOffset.getTotalSeconds());
+
+        return Timestamp.from(lisbonShiftedInstant);
     }
 
     public static Long toLong(Object value) {

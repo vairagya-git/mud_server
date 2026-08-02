@@ -50,14 +50,17 @@ public class OptionFlatFileSnapshotFetcherFacade {
     public int fetchAndStoreSnapshots(long snapshotVersion, LocalDate targetDate, boolean forceExecute) {
         try {
             List<Map<String, Object>> contracts = loadContractsForFlatFileRun(forceExecute);
+          
+            // Load once per execution (all option rows grouped by ticker).
+            optionRowsDaysDataCache = s3OptionFlatfileService.loadOptionRowsDaysData(targetDate);
+           
+            // Load once per execution (all stock rows grouped by ticker -> window_start).
+            stockRowsDaysDataCache = s3OptionFlatfileService.loadStockRowsDaysData(targetDate);
 
-            if (optionRowsDaysDataCache == null) {
-                // Load once per execution (all option rows grouped by ticker).
-                optionRowsDaysDataCache = s3OptionFlatfileService.loadOptionRowsDaysData(targetDate);
-            }
-            if (stockRowsDaysDataCache == null) {
-                // Load once per execution (all stock rows grouped by ticker -> window_start).
-                stockRowsDaysDataCache = s3OptionFlatfileService.loadStockRowsDaysData(targetDate);
+            if (optionRowsDaysDataCache.isEmpty() || stockRowsDaysDataCache.isEmpty()) {
+                log.warn("{}: no flat-file data available for targetDate={}. optionTickerGroups={}, stockTickerGroups={}. Skipping run.",
+                    SOURCE, targetDate, optionRowsDaysDataCache.size(), stockRowsDaysDataCache.size());
+                return 0;
             }
 
             log.info("{}: fetchAndStoreSnapshots started. snapshotVersion={}, targetDate={}, contracts={}, optionTickerGroups={}, stockTickerGroups={}",

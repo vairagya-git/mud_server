@@ -35,10 +35,12 @@ public class OptionsIntervalAnalyseJob extends AbstractCronjob {
         }
 
         try {
-            int closedInvalid = optionsIntervalAnalyseFacade.closeInvalidStrikeIntervals();
+            int closedInvalid = 0;
+            // int closedInvalid = optionsIntervalAnalyseFacade.closeInvalidStrikeIntervals();
             log.info("{}: closed {} invalid options_interval_analyse row(s) where strikeFrom > strikeTo", getPurpose(), closedInvalid);
 
-            int completedExpired = optionsIntervalAnalyseFacade.completeExpiredActiveEntries();
+            int completedExpired = 0;
+            // int completedExpired = optionsIntervalAnalyseFacade.completeExpiredActiveEntries();
             log.info("{}: completed {} expired ACTIVE options_interval_analyse row(s)", getPurpose(), completedExpired);
 
             int processed = optionsIntervalAnalyseFacade.analyseDaily();

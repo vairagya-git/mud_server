@@ -22,6 +22,7 @@ import com.rama.mudstock.service.SystemConfigService;
 @Profile("cronjob")
 public class OptionFlatFileSnapshotFetcherJob extends AbstractCronjob {
 
+    private final MarketCalendarService marketCalendarService;
     private final OptionFlatFileSnapshotFetcherFacade optionFlatFileSnapshotFetcherFacade;
     private final Logger log = LoggerFactory.getLogger(OptionFlatFileSnapshotFetcherJob.class);
 
@@ -30,17 +31,21 @@ public class OptionFlatFileSnapshotFetcherJob extends AbstractCronjob {
                                             SystemConfigService systemConfigService) {
         super(systemConfigService, CronjobConfigEnum.Purpose.OPTION_FLAT_FILE_SNAPSHOT_FETCHER_JOB.value(), marketCalendarService);
         this.optionFlatFileSnapshotFetcherFacade = optionFlatFileSnapshotFetcherFacade;
+        this.marketCalendarService = marketCalendarService;
     }
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = com.rama.mudstock.config.ApplicationConfig.LISBON_ZONE)
     public void fetchSnapshots() {
+
+        // backfillJulyOnce(); // Uncomment this line to run the backfill for July 2026
+
         if (!shouldExecuteBySchedule(getPurpose())) {
             return;
         }
 
         try {
             LocalDate targetDate = resolveTargetDate(getPurpose());
-            if (targetDate == null) {
+            if (targetDate == null && marketCalendarService.isMarketClosed(targetDate)) {
                 log.error("{}: targetDate is required, skipping flat-file snapshot fetch", getPurpose());
                 return;
             }
@@ -56,6 +61,38 @@ public class OptionFlatFileSnapshotFetcherJob extends AbstractCronjob {
             updateDailyDateToNextEligible(getPurpose(), targetDate);
         } catch (Exception ex) {
             log.error("{}: flat-file snapshot fetch failed", getPurpose(), ex);
+        }
+    }
+
+    /**
+     * One-time backfill: fetch and store flat-file snapshots for each day
+     * from 2025-07-01 to 2025-07-31 (inclusive), with a 3-minute delay after each day.
+     */
+    public void backfillJulyOnce() {
+        LocalDate start = LocalDate.of(2026, 6, 24);
+        LocalDate end = LocalDate.of(2026, 6, 30);
+
+        for (LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
+             if (date == null || marketCalendarService.isMarketClosed(date)) {
+                log.error("{}: targetDate is required, skipping flat-file snapshot fetch", getPurpose());
+                continue;
+            }
+            try {
+                long snapshotVersion = Instant.now().toEpochMilli();
+                int inserted = optionFlatFileSnapshotFetcherFacade.fetchAndStoreSnapshots(snapshotVersion, date, isForceExecuteEnabled(getPurpose()));
+                log.info("{}: backfill inserted {} option_snapshot row(s) for date={}, snapshotVersion={}",
+                    getPurpose(), inserted, date, snapshotVersion);
+            } catch (Exception ex) {
+                log.error("{}: backfill failed for date={}", getPurpose(), date, ex);
+            }
+
+            try {
+                Thread.sleep(1 * 60 * 1000L);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                log.warn("{}: backfill delay interrupted, stopping backfill loop", getPurpose());
+                break;
+            }
         }
     }
 }

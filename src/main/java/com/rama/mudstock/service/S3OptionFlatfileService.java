@@ -28,6 +28,8 @@ import java.util.zip.GZIPInputStream;
 
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.rama.mudstock.config.ApplicationProperties;
 import com.rama.mudstock.config.ApplicationConfig;
@@ -48,6 +50,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 @Service
 public class S3OptionFlatfileService {
 
+    private static final Logger log = LoggerFactory.getLogger(S3OptionFlatfileService.class);
     private static final String STOCK_MINUTE_AGG = "us_stocks_sip/minute_aggs_v1";
     private static final DateTimeFormatter YYYY = DateTimeFormatter.ofPattern("yyyy");
     private static final DateTimeFormatter MM = DateTimeFormatter.ofPattern("MM");
@@ -315,6 +318,8 @@ public class S3OptionFlatfileService {
                                  String key) {
         String root = properties.getLocalFilePath();
         if (!StringUtils.hasText(root)) {
+            log.warn("S3OptionFlatfileService: local-file-path not configured, streaming directly from S3. bucket={}, key={}",
+                properties.getBucket(), key);
             return null;
         }
 
@@ -324,7 +329,12 @@ public class S3OptionFlatfileService {
 
             String safePrefix = trimSlashes(minuteAggPrefix).replace('/', '_');
             Path localFile = dateDir.resolve(safePrefix + "-" + date.format(ISO_DAY) + ".csv.gz");
+
+            log.info("S3OptionFlatfileService: resolved s3Location=s3://{}/{} localPath={}",
+                properties.getBucket(), key, localFile.toAbsolutePath());
+
             if (Files.exists(localFile) && Files.size(localFile) > 0L) {
+                log.info("S3OptionFlatfileService: using cached local file. localPath={}", localFile.toAbsolutePath());
                 return localFile;
             }
 
@@ -336,8 +346,14 @@ public class S3OptionFlatfileService {
                 Files.copy(remote, tempFile, StandardCopyOption.REPLACE_EXISTING);
             }
             Files.move(tempFile, localFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+
+            log.info("S3OptionFlatfileService: downloaded and cached s3 object. s3Location=s3://{}/{} localPath={}",
+                properties.getBucket(), key, localFile.toAbsolutePath());
+
             return localFile;
         } catch (Exception ex) {
+            log.error("S3OptionFlatfileService: failed to cache s3 object locally. bucket={}, key={}",
+                properties.getBucket(), key, ex);
             throw new RuntimeException("Failed to cache s3 object locally for key '" + key + "': " + ex.getMessage(), ex);
         }
     }
