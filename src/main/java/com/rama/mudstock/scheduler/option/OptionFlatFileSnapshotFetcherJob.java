@@ -46,7 +46,7 @@ public class OptionFlatFileSnapshotFetcherJob extends AbstractCronjob {
             }
 
             long snapshotVersion = Instant.now().toEpochMilli();
-            int inserted = optionFlatFileSnapshotFetcherFacade.fetchAndStoreSnapshots(snapshotVersion, targetDate);
+            int inserted = optionFlatFileSnapshotFetcherFacade.fetchAndStoreSnapshots(snapshotVersion, targetDate, isForceExecuteEnabled(getPurpose()));
             log.info("{}: inserted {} option_snapshot row(s) from flat file, targetDate={}, snapshotVersion={}",
                 getPurpose(),
                 inserted,

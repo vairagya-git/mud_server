@@ -197,4 +197,13 @@ public final class TypeConverstionUtil {
         }
         return value.multiply(HUNDRED).setScale(scale, RoundingMode.HALF_UP);
     }
+
+    public static Long toMinuteTruncatedEpochNanos(Long epochNanos) {
+        if (epochNanos == null) {
+            return null;
+        }
+        long seconds = Math.floorDiv(epochNanos, 1_000_000_000L);
+        long minuteTruncatedSeconds = seconds - (seconds % 60L);
+        return minuteTruncatedSeconds * 1_000_000_000L;
+    }
 }

@@ -101,6 +101,7 @@ public class OptionAPISnapshotFetcherFacade {
         Timestamp quoteLastUpdatedTs = TypeConverstionUtil.toTimestampFromEpochNanos(snapshot.quoteLastUpdated());
         Timestamp tradeSipTimestampTs = TypeConverstionUtil.toTimestampFromEpochNanos(snapshot.tradeSipTimestamp());
         Timestamp underlyingLastUpdatedTs = TypeConverstionUtil.toTimestampFromEpochNanos(snapshot.underlyingLastUpdated());
+        Long unixTime = TypeConverstionUtil.toMinuteTruncatedEpochNanos(snapshot.quoteLastUpdated());
 
         if (TEMP_LOG) {
             log.info(
@@ -125,6 +126,7 @@ public class OptionAPISnapshotFetcherFacade {
                 quoteLastUpdatedTs,
                 tradeSipTimestampTs,
                 underlyingLastUpdatedTs,
+                unixTime,
                 snapshot.underlyingPrice(),
                 snapshot.breakEvenPrice(),
                 snapshot.changeToBreakEven(),

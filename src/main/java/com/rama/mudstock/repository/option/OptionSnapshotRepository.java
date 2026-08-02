@@ -24,6 +24,7 @@ public class OptionSnapshotRepository {
                       Timestamp optionQuoteTime,
                       Timestamp optionTradeTime,
                       Timestamp underlyingTime,
+                      Long unixTime,
                       BigDecimal underlyingPrice,
                       BigDecimal breakEvenPrice,
                       BigDecimal changeToBreakEven,
@@ -44,11 +45,11 @@ public class OptionSnapshotRepository {
                       String quoteTimeframe,
                       String underlyingTimeframe) {
         String sql = "INSERT INTO option_snapshot "
-            + "(option_contract_id, stock_id, snapshot_version, snapshot_time, option_quote_time, option_trade_time, underlying_time, "
+            + "(option_contract_id, stock_id, snapshot_version, snapshot_time, option_quote_time, option_trade_time, underlying_time, unix_time, "
             + "underlying_price, break_even_price, change_to_break_even, bid, ask, midpoint, last_trade_price, "
             + "bid_size, ask_size, last_trade_size, implied_volatility, delta, gamma, theta, vega, "
             + "open_interest, day_volume, quote_timeframe, underlying_timeframe) "
-            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         return jdbc.update(sql,
             optionContractId,
@@ -58,6 +59,7 @@ public class OptionSnapshotRepository {
             optionQuoteTime,
             optionTradeTime,
             underlyingTime,
+            unixTime,
             underlyingPrice,
             breakEvenPrice,
             changeToBreakEven,
@@ -101,6 +103,19 @@ public class OptionSnapshotRepository {
             + "WHERE os.option_contract_id = ? "
             + "ORDER BY os.option_quote_time DESC";
         return jdbc.queryForList(sql, optionContractId);
+    }
+
+    public Long findNearestIdByContractAndUnixTime(Long optionContractId, Long unixTime) {
+        if (optionContractId == null || unixTime == null) {
+            return null;
+        }
+
+        String sql = "SELECT id FROM option_snapshot "
+            + "WHERE option_contract_id = ? "
+            + "ORDER BY ABS(CAST(unix_time AS SIGNED) - CAST(? AS SIGNED)) ASC "
+            + "LIMIT 1";
+        List<Long> rows = jdbc.queryForList(sql, Long.class, optionContractId, unixTime);
+        return rows.isEmpty() ? null : rows.get(0);
     }
 }
 

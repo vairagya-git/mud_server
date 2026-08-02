@@ -17,6 +17,7 @@ import com.rama.mudstock.model.option.TickerOptionSnapshotData;
 import com.rama.mudstock.model.option.TickerStockSnapshotData;
 import com.rama.mudstock.repository.option.OptionContractRepository;
 import com.rama.mudstock.repository.option.OptionSnapshotFlatfileRepository;
+import com.rama.mudstock.repository.option.OptionSnapshotRepository;
 import com.rama.mudstock.service.OptionDataContractService;
 import com.rama.mudstock.service.S3OptionFlatfileService;
 import com.rama.mudstock.util.TypeConverstionUtil;
@@ -26,9 +27,9 @@ public class OptionFlatFileSnapshotFetcherFacade {
 
     private static final Logger log = LoggerFactory.getLogger(OptionFlatFileSnapshotFetcherFacade.class);
     private static final String SOURCE = OptionSourceEnum.FLAT_FILE.name();
-    private static final List<String> SOURCES = List.of(OptionSourceEnum.FLAT_FILE.name(), OptionSourceEnum.BOTH.name());
     private final OptionContractRepository optionContractRepository;
     private final OptionSnapshotFlatfileRepository optionSnapshotFlatfileRepository;
+    private final OptionSnapshotRepository optionSnapshotRepository;
     private final S3OptionFlatfileService s3OptionFlatfileService;
     private final OptionDataContractService optionDataContractService;
     private Map<String, List<TickerOptionSnapshotData>> optionRowsDaysDataCache;
@@ -36,20 +37,19 @@ public class OptionFlatFileSnapshotFetcherFacade {
 
     public OptionFlatFileSnapshotFetcherFacade(OptionContractRepository optionContractRepository,
                                                OptionSnapshotFlatfileRepository optionSnapshotFlatfileRepository,
+                                               OptionSnapshotRepository optionSnapshotRepository,
                                                S3OptionFlatfileService s3OptionFlatfileService,
                                                OptionDataContractService optionDataContractService) {
         this.optionContractRepository = optionContractRepository;
         this.optionSnapshotFlatfileRepository = optionSnapshotFlatfileRepository;
+        this.optionSnapshotRepository = optionSnapshotRepository;
         this.s3OptionFlatfileService = s3OptionFlatfileService;
         this.optionDataContractService = optionDataContractService;
     }
 
-    /**
-     * Placeholder hook for flat-file snapshot fetch and store logic.
-     */
-    public int fetchAndStoreSnapshots(long snapshotVersion, LocalDate targetDate) {
+    public int fetchAndStoreSnapshots(long snapshotVersion, LocalDate targetDate, boolean forceExecute) {
         try {
-            List<Map<String, Object>> contracts = loadContractsForFlatFileRun();
+            List<Map<String, Object>> contracts = loadContractsForFlatFileRun(forceExecute);
 
             if (optionRowsDaysDataCache == null) {
                 // Load once per execution (all option rows grouped by ticker).
@@ -104,6 +104,10 @@ public class OptionFlatFileSnapshotFetcherFacade {
                         Timestamp localTs = TypeConverstionUtil.toPortugalTimestampFromEpochNanos(windowStart);
 
                         try {
+                            Long nearOptionSnapshotId = optionSnapshotRepository.findNearestIdByContractAndUnixTime(
+                                optionContractId,
+                                windowStart);
+
                             int written = optionSnapshotFlatfileRepository.insert(
                                 optionContractId,
                                 stockId,
@@ -122,7 +126,8 @@ public class OptionFlatFileSnapshotFetcherFacade {
                                 stockRow == null ? null : stockRow.close(),
                                 stockRow == null ? null : stockRow.high(),
                                 stockRow == null ? null : stockRow.low(),
-                                snapshotVersion);
+                                snapshotVersion,
+                                nearOptionSnapshotId);
                             inserted += written;
                             insertedForContract += written;
                         } catch (DuplicateKeyException ex) {
@@ -143,9 +148,13 @@ public class OptionFlatFileSnapshotFetcherFacade {
                 }
             }
 
-            int completedEntries = optionDataContractService.completeExpiredActiveEntries(
-                OptionIntervalAnalyseStatusEnum.FLAT_FILE_COMPLETED.name());
-            log.info("{}: completed {} options_interval_analyse row(s) after flat-file processing", SOURCE, completedEntries);
+            if (!forceExecute) {
+                int completedEntries = optionDataContractService.completeExpiredActiveEntries(
+                    OptionIntervalAnalyseStatusEnum.FLAT_FILE_COMPLETED.name());
+                log.info("{}: completed {} options_interval_analyse row(s) after flat-file processing", SOURCE, completedEntries);
+            } else {
+                log.info("{}: forceExecute=true, skipping completeExpiredActiveEntries", SOURCE);
+            }
 
             log.info("{}: fetchAndStoreSnapshots completed. snapshotVersion={}, targetDate={}, totalInserted={}",
                 SOURCE, snapshotVersion, targetDate, inserted);
@@ -178,14 +187,30 @@ public class OptionFlatFileSnapshotFetcherFacade {
         return text.isEmpty() ? null : text;
     }
 
-    private List<Map<String, Object>> loadContractsForFlatFileRun() {
-        return optionContractRepository.getOptionContractsWithTickerByStatus(
-            List.of(
+    private List<Map<String, Object>> loadContractsForFlatFileRun(boolean forceExecute) {
+        List<String> statuses = forceExecute
+            ? List.of(
                 OptionContractStatusEnum.ACTIVE.name(),
-                OptionContractStatusEnum.API_COMPLETED.name()
-            ),
+                OptionContractStatusEnum.API_COMPLETED.name(),
+                OptionContractStatusEnum.FLAT_FILE_COMPLETED.name(),
+                OptionContractStatusEnum.COMPLETED.name())
+            : List.of(
+                OptionContractStatusEnum.ACTIVE.name(),
+                OptionContractStatusEnum.API_COMPLETED.name());
+
+        List<String> sources = forceExecute
+            ? List.of(
+                OptionSourceEnum.FLAT_FILE.name(),
+                OptionSourceEnum.BOTH.name(),
+                OptionSourceEnum.API.name())
+            : List.of(
+                OptionSourceEnum.FLAT_FILE.name(),
+                OptionSourceEnum.BOTH.name());
+
+        return optionContractRepository.getOptionContractsWithTickerByStatus(
+            statuses,
             true,
-            SOURCES
+            sources
         );
     }
 }

@@ -471,12 +471,6 @@ select * from option_snapshot os
 join option_contract oc on os.option_contract_id = oc.id
 where oc.contract_ticker = "O:INTC260717C00100000";
 
-delete from option_snapshot;
-
-select * from option_snapshot;
-
-ALTER TABLE option_snapshot RENAME TO option_snapshot_flatfile;
-
 CREATE TABLE option_snapshot (
     id bigint unsigned NOT NULL AUTO_INCREMENT,
 
@@ -546,13 +540,29 @@ CREATE TABLE option_snapshot (
     )
 );
 
-select * from option_snapshot_flatfile;
+select * from option_snapshot_flatfile 
+
+select * from option_contract
+order by id desc
+
+
+select * from option_snapshot_flatfile osf 
+join option_contract oc on osf.option_contract_id = oc.id
+-- join option_snapshot os on os.option_contract_id = os.id
+where oc.contract_ticker like "O:BE260807C%"
+
+ALTER TABLE option_snapshot_flatfile
+  ADD COLUMN `near_option_snapshot_id` bigint unsigned NULL after `stock_id`,
+  ADD KEY fk_osf_near_option_snapshot (near_option_snapshot_id),
+  ADD CONSTRAINT fk_osf_near_option_snapshot
+    FOREIGN KEY (near_option_snapshot_id) REFERENCES option_snapshot (id);
 
 CREATE TABLE option_snapshot_flatfile (
     id bigint unsigned NOT NULL AUTO_INCREMENT,
 
     option_contract_id bigint unsigned NOT NULL,
     stock_id bigint unsigned NOT NULL,
+    near_option_snapshot_id bigint unsigned NULL,
 
 -- Option Fields
     contract_ticker VARCHAR(128),
@@ -573,8 +583,6 @@ CREATE TABLE option_snapshot_flatfile (
     stock_high DECIMAL(6,2),
     stock_low DECIMAL(6,2),
 
-
-
     snapshot_version bigint unsigned NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -588,6 +596,10 @@ CREATE TABLE option_snapshot_flatfile (
     CONSTRAINT fk_osf_contract
         FOREIGN KEY (option_contract_id)
         REFERENCES option_contract(id),
+        
+	CONSTRAINT fk_osf_near_option_snapshot
+		FOREIGN KEY (near_option_snapshot_id) 
+        REFERENCES option_snapshot (id),
   
      CONSTRAINT uk_osf_time
         UNIQUE (option_contract_id, unix_time),
@@ -1066,7 +1078,6 @@ CREATE TABLE option_strategy_snapshot (
         snapshot_time
     )
 );
-
 
 CREATE TABLE option_strategy_leg_snapshot (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

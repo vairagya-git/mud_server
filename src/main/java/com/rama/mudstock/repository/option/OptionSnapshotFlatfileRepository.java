@@ -32,11 +32,12 @@ public class OptionSnapshotFlatfileRepository {
                       BigDecimal stockClose,
                       BigDecimal stockHigh,
                       BigDecimal stockLow,
-                      Long snapshotVersion) {
+                      Long snapshotVersion,
+                      Long nearOptionSnapshotId) {
         String sql = "INSERT INTO option_snapshot_flatfile "
             + "(option_contract_id, stock_id, contract_ticker, opt_volume, opt_open, opt_close, opt_high, opt_low, "
-            + "unix_time, unix_utc_time, local_time, stock_ticker, stock_volume, stock_open, stock_close, stock_high, stock_low, snapshot_version) "
-            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            + "unix_time, unix_utc_time, local_time, stock_ticker, stock_volume, stock_open, stock_close, stock_high, stock_low, snapshot_version, near_option_snapshot_id) "
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         return jdbc.update(sql,
             optionContractId,
             stockId,
@@ -55,6 +56,7 @@ public class OptionSnapshotFlatfileRepository {
             stockClose,
             stockHigh,
             stockLow,
-            snapshotVersion);
+            snapshotVersion,
+            nearOptionSnapshotId);
     }
 }
