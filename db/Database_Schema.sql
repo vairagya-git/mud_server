@@ -329,7 +329,7 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('useage', 'useage', 'String', 'DailyAnalystRatingCronjob', 'Pull the Analyst rating details from Benzinga API'),
 ('watchlist-codes', 'MOVING_STOCK,SEMI_WATCHLIST', 'StringArray', 'DailyAnalystRatingCronjob', 'Benzinga Analyst Rating > Watchlist Codes'),
 ('enabled', 'true', 'boolean', 'DailyAnalystRatingCronjob', 'Benzinga Analyst Rating > cronjob Enabled'),
-('execution', 'daily', 'String', 'DailyAnalystRatingCronjob', 'CronExpression for the cronjob'),
+('execution', 'hourly', 'String', 'DailyAnalystRatingCronjob', 'CronExpression for the cronjob'),
 ('minuteHourlyFrequency', '2', 'Integer', 'DailyAnalystRatingCronjob', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'DailyAnalystRatingCronjob', 'LastUpdated dateTime'),
 ('forceExecute', 'false', 'boolean', 'DailyAnalystRatingCronjob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
@@ -567,7 +567,7 @@ where created_at < "2026-08-02 03:00:21"
 order by osf.id desc
 
 select * from option_snapshot_flatfile osf 
-where osf.created_at < "2026-08-02 03:10:21"
+-- where osf.created_at < "2026-08-02 05:10:21"
 order by osf.id desc
 
 select osf.contract_ticker, osf.option_contract_id, osf.unix_time, osf.unix_utc_time, osf.local_time, osf.opt_open, osf.opt_close, osf.opt_high, osf.opt_close,
@@ -585,6 +585,9 @@ ALTER TABLE option_snapshot_flatfile
     FOREIGN KEY (near_option_snapshot_id) REFERENCES option_snapshot (id);
     
 select count(*) from option_snapshot_flatfile;
+
+UPDATE option_snapshot_flatfile
+SET local_time = DATE_ADD(unix_utc_time, INTERVAL 1 HOUR);
 
 CREATE TABLE option_snapshot_flatfile (
     id bigint unsigned NOT NULL AUTO_INCREMENT,

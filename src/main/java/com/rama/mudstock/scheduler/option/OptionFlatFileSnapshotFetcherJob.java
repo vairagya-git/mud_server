@@ -44,9 +44,8 @@ public class OptionFlatFileSnapshotFetcherJob extends AbstractCronjob {
         }
 
         try {
-            LocalDate targetDate = resolveTargetDate(getPurpose());
-            if (targetDate == null && marketCalendarService.isMarketClosed(targetDate)) {
-                log.error("{}: targetDate is required, skipping flat-file snapshot fetch", getPurpose());
+            LocalDate targetDate = resolveValidTargetDate(getPurpose());
+            if (targetDate == null) {
                 return;
             }
 
@@ -73,8 +72,8 @@ public class OptionFlatFileSnapshotFetcherJob extends AbstractCronjob {
         LocalDate end = LocalDate.of(2026, 6, 30);
 
         for (LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
-             if (date == null || marketCalendarService.isMarketClosed(date)) {
-                log.error("{}: targetDate is required, skipping flat-file snapshot fetch", getPurpose());
+            if (marketCalendarService.isMarketClosed(date)) {
+                log.info("{}: market closed on date={}, skipping backfill for this date", getPurpose(), date);
                 continue;
             }
             try {

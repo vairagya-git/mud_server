@@ -47,7 +47,10 @@ public class DayStockMovementCronjob extends AbstractCronjob {
             return;
         }
 
-        LocalDate targetDate = resolveTargetDate(getPurpose());
+        LocalDate targetDate = resolveValidTargetDate(getPurpose());
+        if (targetDate == null) {
+            return;
+        }
 
         log.info("{}: polling for watchlist-based day-stock-movement aggregates for {} unique stock(s) on date={} from watchlist-codes=[{}]",
             getPurpose(),

@@ -46,7 +46,11 @@ public class DailyAnalystRatingCronjob extends AbstractCronjob {
         String watchlistCodes = String.join(",", watchlistCodeList);
         log.info("{}: starting for watchlist-codes=[{}]", getPurpose(), watchlistCodes);
 
-        LocalDate ratingDate = resolveTargetDate(getPurpose());
+        LocalDate ratingDate = resolveExecutionDate(getPurpose());
+        if (ratingDate == null) {
+            log.error("{}: ratingDate is required (forceExecute enabled but date not configured), skipping run", getPurpose());
+            return;
+        }
         String ratingDateStr = ratingDate.toString();
         log.info("{}: using rating date={}", getPurpose(), ratingDateStr);
 

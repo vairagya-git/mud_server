@@ -169,10 +169,7 @@ public abstract class AbstractCronjob {
 
     private boolean hasItBeenExecutedToday(String purpose) {
         LocalDate today = LocalDate.now(ApplicationConfig.LISBON);
-        LocalDate lastUpdatedDate = resolveDateFromConfig(
-            purpose,
-            CronjobConfigEnum.LAST_UPDATED.code(),
-            null);
+        LocalDate lastUpdatedDate = resolveDateFromConfig(purpose, CronjobConfigEnum.LAST_UPDATED.code());
 
         if (lastUpdatedDate != null) {
             if (lastUpdatedDate.isEqual(today)) {
@@ -312,16 +309,11 @@ public abstract class AbstractCronjob {
         return Boolean.TRUE.equals(TypeConverstionUtil.toBoolean(getConfigValue(CronjobConfigEnum.FORCE_EXECUTE.code())));
     }
 
-    private LocalDate resolveDateFromConfig(String purpose,
-                                            String configCode,
-                                            LocalDate fallbackDate) {
-        boolean logOnFallback = fallbackDate != null;
+    private LocalDate resolveDateFromConfig(String purpose, String configCode) {
         String rawDate = TypeConverstionUtil.toString(getConfigValue(configCode));
         if (rawDate == null || rawDate.isBlank()) {
-            if (logOnFallback) {
-                log.warn("{}: {} is empty; using current date {}", purpose, configCode, fallbackDate);
-            }
-            return fallbackDate;
+            log.warn("{}: {} is not configured (empty/missing); date not available", purpose, configCode);
+            return null;
         }
 
         String value = rawDate.trim();
@@ -340,38 +332,66 @@ public abstract class AbstractCronjob {
         try {
             return LocalDate.parse(value.substring(0, Math.min(value.length(), 10)));
         } catch (Exception ignored) {
-            if (logOnFallback) {
-                log.warn("{}: unable to parse {}='{}'; using current date {}",
-                    purpose,
-                    configCode,
-                    rawDate,
-                    fallbackDate);
-            }
-            return fallbackDate;
+            log.warn("{}: unable to parse {}='{}'; date not available", purpose, configCode, rawDate);
+            return null;
         }
     }
 
     /**
      * Resolves execution target date from force execute config.
-     * If forceExecute=false, uses dailyDate when valid, otherwise current Lisbon date.
-     * If forceExecute=true, uses forceExecuteDailyDate when valid, otherwise current Lisbon date.
+     * If forceExecute=false, uses dailyDate.
+     * If forceExecute=true, uses forceExecuteDailyDate.
+     * Returns null if not configured/parseable; caller must handle this and skip execution.
      */
     protected LocalDate resolveTargetDate(String purpose) {
-        LocalDate today = LocalDate.now(ApplicationConfig.LISBON);
         boolean forceExecuteEnabled = isForceExecuteEnabled(purpose);
         String configCode = forceExecuteEnabled
             ? CronjobConfigEnum.FORCE_EXECUTE_DAILY_DATE.code()
             : CronjobConfigEnum.DAILY_DATE.code();
 
-        LocalDate targetDate = resolveDateFromConfig(purpose, configCode, today);
+        LocalDate targetDate = resolveDateFromConfig(purpose, configCode);
         if (TEMP_LOG) {
-            log.info("TEMP_LOG {} resolveTargetDate: forceExecute={} configCode={} resolvedTargetDate={} today={}",
+            log.info("TEMP_LOG {} resolveTargetDate: forceExecute={} configCode={} resolvedTargetDate={}",
                 purpose,
                 forceExecuteEnabled,
                 configCode,
-                targetDate,
-                today);
+                targetDate);
         }
+        if (targetDate == null) {
+            log.error("{}: target date is not configured (code={}); cronjob must skip execution", purpose, configCode);
+        }
+        return targetDate;
+    }
+
+    /**
+     * Resolves the execution/reference date for daily data-fetch jobs.
+     * If forceExecute is enabled, uses the configured target date (forceExecuteDailyDate).
+     * Otherwise, uses the current Lisbon date.
+     */
+    protected LocalDate resolveExecutionDate(String purpose) {
+        if (isForceExecuteEnabled(purpose)) {
+            return resolveTargetDate(purpose);
+        }
+        return LocalDate.now(ApplicationConfig.LISBON);
+    }
+
+    /**
+     * Resolves and validates the target date for execution.
+     * Returns null (after logging) if the date is not configured or the market is closed on that date.
+     * Callers must check for null and skip execution accordingly.
+     */
+    protected LocalDate resolveValidTargetDate(String purpose) {
+        LocalDate targetDate = resolveTargetDate(purpose);
+        if (targetDate == null) {
+            log.error("{}: targetDate is required, skipping execution", purpose);
+            return null;
+        }
+
+        if (marketCalendarService != null && marketCalendarService.isMarketClosed(targetDate)) {
+            log.info("{}: market is closed on targetDate={}, skipping execution", purpose, targetDate);
+            return null;
+        }
+
         return targetDate;
     }
 
@@ -462,7 +482,4 @@ public abstract class AbstractCronjob {
         log.warn("{}: unsupported execution '{}' for schedule evaluation", purpose, execution);
         return false;
     }
-
-
 }
-//Changed For Git
