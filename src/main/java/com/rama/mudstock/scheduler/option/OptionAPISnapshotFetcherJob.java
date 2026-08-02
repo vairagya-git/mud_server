@@ -36,7 +36,7 @@ public class OptionAPISnapshotFetcherJob extends AbstractCronjob {
 
     @Scheduled(cron = "${all-cronjob-schedule}", zone = com.rama.mudstock.config.ApplicationConfig.LISBON_ZONE)
     public void fetchSnapshots() {
-        if (!shouldExecuteBySchedule(getPurpose()) && marketCalendarService.isMarketClosed(LocalDate.now())) {
+        if (!shouldExecuteBySchedule(getPurpose()) || marketCalendarService.isMarketClosed(LocalDate.now())) {
             log.info("{}: market is closed or outside trading hours", getPurpose());
             return;
         }
