@@ -116,7 +116,7 @@ public class OptionsIntervalAnalyseFacade {
 
     public int closeInvalidStrikeIntervals() {
         List<OptionsInternalAnalyseEntity> entries = optionToAnalyseRepository
-            .getOptionsInternalAnalyseByStatus(OptionIntervalAnalyseStatusEnum.ACTIVE.name());
+            .getOptionsInternalAnalyseByStatus(OptionIntervalAnalyseStatusEnum.CREATE_CONTRACT.name());
 
         int closedCount = 0;
         for (OptionsInternalAnalyseEntity entry : entries) {
