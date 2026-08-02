@@ -104,7 +104,7 @@ public class OptionFlatFileSnapshotFetcherFacade {
                         Timestamp localTs = TypeConverstionUtil.toPortugalTimestampFromEpochNanos(windowStart);
 
                         try {
-                            Long nearOptionSnapshotId = optionSnapshotRepository.findNearestIdByContractAndUnixTime(
+                            Long nearOptionSnapshotId = optionSnapshotRepository.findIdByContractAndUnixTime(
                                 optionContractId,
                                 windowStart);
 

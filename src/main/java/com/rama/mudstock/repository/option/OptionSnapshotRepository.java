@@ -105,14 +105,14 @@ public class OptionSnapshotRepository {
         return jdbc.queryForList(sql, optionContractId);
     }
 
-    public Long findNearestIdByContractAndUnixTime(Long optionContractId, Long unixTime) {
+    public Long findIdByContractAndUnixTime(Long optionContractId, Long unixTime) {
         if (optionContractId == null || unixTime == null) {
             return null;
         }
 
         String sql = "SELECT id FROM option_snapshot "
             + "WHERE option_contract_id = ? "
-            + "ORDER BY ABS(CAST(unix_time AS SIGNED) - CAST(? AS SIGNED)) ASC "
+            + "AND unix_time = ? "
             + "LIMIT 1";
         List<Long> rows = jdbc.queryForList(sql, Long.class, optionContractId, unixTime);
         return rows.isEmpty() ? null : rows.get(0);
