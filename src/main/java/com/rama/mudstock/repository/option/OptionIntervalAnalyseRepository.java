@@ -100,6 +100,28 @@ public class OptionIntervalAnalyseRepository {
         return jdbc.query(sql, this::mapRow, status, expirationDate);
     }
 
+    public Map<LocalDate, Long> findExpirationDatesByTicker(String ticker) {
+        String sql = "SELECT o.id, o.expiration_date "
+            + "FROM options_interval_analyse o "
+            + "JOIN stock s ON s.id = o.stock_id "
+            + "WHERE UPPER(s.ticker) = UPPER(?) "
+            + "AND o.expiration_date IS NOT NULL "
+            + "ORDER BY o.expiration_date";
+        List<Map<String, Object>> rows = jdbc.queryForList(sql, ticker);
+
+        Map<LocalDate, Long> result = new java.util.LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            Object rawExpirationDate = row.get("expiration_date");
+            LocalDate expirationDate = rawExpirationDate instanceof java.sql.Date sqlDate
+                ? sqlDate.toLocalDate()
+                : (LocalDate) rawExpirationDate;
+
+            Long id = ((Number) row.get("id")).longValue();
+            result.put(expirationDate, id);
+        }
+        return result;
+    }
+
     private OptionsInternalAnalyseEntity mapRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
         return new OptionsInternalAnalyseEntity(
             rs.getObject("id", Long.class),

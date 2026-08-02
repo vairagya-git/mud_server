@@ -2,6 +2,7 @@ package com.rama.mudstock.service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,6 +119,37 @@ public class OptionDataContractService {
         }
 
         return null;
+    }
+
+    /**
+     * Returns available expiration dates (with options_interval_analyse.id) for a given stock ticker,
+     * intended for frontend expiry-date selection.
+     */
+    public Map<LocalDate, Long> findExpirationDatesForTicker(String ticker) {
+        if (ticker == null || ticker.isBlank()) {
+            return Map.of();
+        }
+        return optionIntervalAnalyseRepository.findExpirationDatesByTicker(ticker.trim());
+    }
+
+    /**
+     * Returns contract_ticker -> option_contract.id for all contracts belonging to
+     * the given options_interval_analyse.id, for later lookup use.
+     */
+    public Map<String, Long> findContractTickerIdsForIntervalAnalyse(Long optionsIntervalAnalyseId) {
+        if (optionsIntervalAnalyseId == null) {
+            return Map.of();
+        }
+
+        List<Map<String, Object>> rows = optionContractRepository.findContractTickersByIntervalAnalyseId(optionsIntervalAnalyseId);
+
+        Map<String, Long> result = new java.util.LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            String contractTicker = (String) row.get("contract_ticker");
+            Long id = ((Number) row.get("id")).longValue();
+            result.put(contractTicker, id);
+        }
+        return result;
     }
 
     public record StatusResolution(String intervalStatus, String contractStatus) {

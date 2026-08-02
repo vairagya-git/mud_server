@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Option Tracking — MudStock</title></head>
+<body>
+<div id="page-content" th:fragment="content">
+
+    <div class="page-header table-sticky-header">
+        <h1>Option Tracking</h1>
+        <div class="subtitle">Select a ticker, expiration, and up to 6 contracts to track.</div>
+    </div>
+
+    <div class="card table-wrap" style="margin:16px">
+        <div class="filter-bar" style="margin-bottom:16px">
+            <span class="filter-bar-label">Tracking Filters</span>
+
+            <div class="table-filter-input">
+                <select id="trackingTicker"
+                        name="ticker"
+                        hx-get="/option-analysis/tracking/expirations"
+                        hx-target="#trackingExpirationWrapper"
+                        hx-trigger="change"
+                        hx-include="this"
+                        aria-label="Select ticker">
+                    <option value="">Select ticker</option>
+                    <option th:each="s : ${stocks}" th:value="${s.ticker}" th:text="${s.ticker}"></option>
+                </select>
+            </div>
+
+            <div class="table-filter-input" id="trackingExpirationWrapper">
+                <select id="trackingExpiration" name="optionsIntervalAnalyseId" disabled aria-label="Select expiration">
+                    <option value="">Select ticker first</option>
+                </select>
+            </div>
+
+            <div class="table-filter-input">
+                <label for="trackingFromDateTime" style="font-size:11px;display:block;margin-bottom:2px;">From</label>
+                <input type="datetime-local" id="trackingFromDateTime" aria-label="Filter from date/time">
+            </div>
+
+            <div class="table-filter-input">
+                <label for="trackingToDateTime" style="font-size:11px;display:block;margin-bottom:2px;">To</label>
+                <input type="datetime-local" id="trackingToDateTime" aria-label="Filter to date/time">
+            </div>
+
+            <span id="trackingSelectionSummary" class="filter-bar-empty">Select 2 to 6 contract(s) below.</span>
+
+            <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+                <button id="trackingSubmitBtn" type="button" class="btn btn-sm btn-secondary" disabled>Submit</button>
+            </div>
+        </div>
+
+        <div id="trackingContractsWrapper">
+            <div class="table-empty">Select ticker and expiration to load contracts.</div>
+        </div>
+    </div>
+
+    <div id="trackingResultWrapper" class="card table-wrap" style="margin:16px; max-height:70vh; overflow:auto;">
+        <div class="table-empty">Submit selected contracts to view tracking data.</div>
+    </div>
+
+    <style>
+        #trackingResultWrapper table { border-collapse: collapse; }
+        #trackingResultWrapper thead th {
+            position: sticky;
+            top: 0;
+            background: #e05e26;
+            color: #fff;
+            z-index: 2;
+            box-shadow: 0 1px 0 var(--border, #ddd);
+        }
+    </style>
+
+    <script>
+    (function () {
+        var MIN_SELECT = 2;
+        var MAX_SELECT = 6;
+        var trackingSubmitBtn = document.getElementById('trackingSubmitBtn');
+        var trackingResultWrapper = document.getElementById('trackingResultWrapper');
+        var STORAGE_KEY = 'option-analysis-tracking-selection';
+
+        function readStoredSelection() {
+            try {
+                var raw = window.sessionStorage.getItem(STORAGE_KEY);
+                if (!raw) {
+                    return null;
+                }
+                var parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object') {
+                    return null;
+                }
+                return parsed;
+            } catch (err) {
+                console.warn('Failed to read tracking selection from sessionStorage', err);
+                return null;
+            }
+        }
+
+        function writeStoredSelection(selection) {
+            try {
+                window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(selection));
+            } catch (err) {
+                console.warn('Failed to persist tracking selection', err);
+            }
+        }
+
+        function getCurrentSelection() {
+            var tickerEl = document.getElementById('trackingTicker');
+            var expirationEl = document.getElementById('trackingExpiration');
+            var fromEl = document.getElementById('trackingFromDateTime');
+            var toEl = document.getElementById('trackingToDateTime');
+            var checkedIds = Array.from(document.querySelectorAll('.tracking-contract-checkbox'))
+                .filter(function (c) { return c.checked; })
+                .map(function (c) { return c.value; });
+
+            return {
+                ticker: tickerEl ? tickerEl.value : '',
+                optionsIntervalAnalyseId: expirationEl ? expirationEl.value : '',
+                contractIds: checkedIds,
+                fromDateTime: fromEl ? fromEl.value : '',
+                toDateTime: toEl ? toEl.value : ''
+            };
+        }
+
+        function persistCurrentSelection() {
+            writeStoredSelection(getCurrentSelection());
+        }
+
+        document.addEventListener('change', function (ev) {
+            if (ev.target && ev.target.id === 'trackingTicker') {
+                writeStoredSelection({ ticker: ev.target.value, optionsIntervalAnalyseId: '', contractIds: [] });
+            }
+        });
+
+        document.addEventListener('change', function (ev) {
+            if (ev.target && ev.target.id === 'trackingExpiration') {
+                var id = ev.target.value;
+                var contractsWrapper = document.getElementById('trackingContractsWrapper');
+
+                var current = readStoredSelection() || {};
+                current.optionsIntervalAnalyseId = id;
+                current.contractIds = [];
+                writeStoredSelection(current);
+
+                if (!id) {
+                    contractsWrapper.innerHTML = '<div class="table-empty">Select ticker and expiration to load contracts.</div>';
+                    return;
+                }
+                htmx.ajax('GET', '/option-analysis/tracking/contracts?optionsIntervalAnalyseId=' + encodeURIComponent(id), {
+                    target: '#trackingContractsWrapper',
+                    swap: 'innerHTML'
+                });
+            }
+        });
+
+        function getCheckedContracts() {
+            return Array.from(document.querySelectorAll('.tracking-contract-checkbox'))
+                .filter(function (c) { return c.checked; });
+        }
+
+        function updateSelectionState() {
+            var checked = getCheckedContracts();
+            var summary = document.getElementById('trackingSelectionSummary');
+            if (summary) {
+                summary.textContent = 'Selected ' + checked.length + ' / ' + MAX_SELECT + ' contract(s) (min ' + MIN_SELECT + ')';
+            }
+            if (trackingSubmitBtn) {
+                trackingSubmitBtn.disabled = checked.length < MIN_SELECT || checked.length > MAX_SELECT;
+            }
+        }
+
+        document.addEventListener('change', function (ev) {
+            if (ev.target && ev.target.classList && ev.target.classList.contains('tracking-contract-checkbox')) {
+                var checkboxes = Array.from(document.querySelectorAll('.tracking-contract-checkbox'));
+                var checked = checkboxes.filter(function (c) { return c.checked; });
+
+                if (checked.length > MAX_SELECT) {
+                    ev.target.checked = false;
+                    checked = checkboxes.filter(function (c) { return c.checked; });
+                }
+
+                checkboxes.forEach(function (c) {
+                    c.disabled = !c.checked && checked.length >= MAX_SELECT;
+                });
+
+                updateSelectionState();
+                persistCurrentSelection();
+            }
+        });
+
+        function restoreSelectionAfterContractsLoaded(storedContractIds) {
+            if (!Array.isArray(storedContractIds) || storedContractIds.length === 0) {
+                updateSelectionState();
+                return;
+            }
+
+            var checkboxes = Array.from(document.querySelectorAll('.tracking-contract-checkbox'));
+            checkboxes.forEach(function (c) {
+                if (storedContractIds.includes(c.value)) {
+                    c.checked = true;
+                }
+            });
+
+            var checked = checkboxes.filter(function (c) { return c.checked; });
+            checkboxes.forEach(function (c) {
+                c.disabled = !c.checked && checked.length >= MAX_SELECT;
+            });
+
+            updateSelectionState();
+        }
+
+        function restoreTrackingSelection() {
+            var stored = readStoredSelection();
+            if (!stored || !stored.ticker) {
+                return;
+            }
+
+            var tickerEl = document.getElementById('trackingTicker');
+            if (tickerEl) {
+                tickerEl.value = stored.ticker;
+            }
+
+            var fromEl = document.getElementById('trackingFromDateTime');
+            var toEl = document.getElementById('trackingToDateTime');
+            if (fromEl && stored.fromDateTime) {
+                fromEl.value = stored.fromDateTime;
+            }
+            if (toEl && stored.toDateTime) {
+                toEl.value = stored.toDateTime;
+            }
+
+            htmx.ajax('GET', '/option-analysis/tracking/expirations?ticker=' + encodeURIComponent(stored.ticker), {
+                target: '#trackingExpirationWrapper',
+                swap: 'innerHTML'
+            }).then(function () {
+                var expirationEl = document.getElementById('trackingExpiration');
+                if (!expirationEl || !stored.optionsIntervalAnalyseId) {
+                    return;
+                }
+
+                expirationEl.disabled = false;
+                expirationEl.value = stored.optionsIntervalAnalyseId;
+
+                htmx.ajax('GET', '/option-analysis/tracking/contracts?optionsIntervalAnalyseId=' + encodeURIComponent(stored.optionsIntervalAnalyseId), {
+                    target: '#trackingContractsWrapper',
+                    swap: 'innerHTML'
+                }).then(function () {
+                    restoreSelectionAfterContractsLoaded(stored.contractIds);
+                });
+            });
+        }
+
+        function formatValue(value) {
+            return (value === null || value === undefined || value === '') ? '-' : value;
+        }
+
+        function resolveLocalTime(row) {
+            return row.localTime || row.local_time || row.localDateTime || row.local_date_time || '-';
+        }
+
+        function resolveUnixTime(row) {
+            var value = row.unixTime !== undefined ? row.unixTime : row.unix_time;
+            return (value === null || value === undefined || value === '') ? '-' : value;
+        }
+
+        function resolveUnixTimeMillis(row) {
+            var value = row.unixTime !== undefined ? row.unixTime : row.unix_time;
+            if (value === null || value === undefined || value === '') {
+                return null;
+            }
+            var numeric = Number(value);
+            if (!Number.isFinite(numeric)) {
+                return null;
+            }
+            // unix_time is expected in nanoseconds; convert to milliseconds for comparison.
+            return numeric > 1e15 ? numeric / 1e6 : numeric;
+        }
+
+        function getDateTimeFilterBoundsMillis() {
+            var fromEl = document.getElementById('trackingFromDateTime');
+            var toEl = document.getElementById('trackingToDateTime');
+
+            var fromMillis = (fromEl && fromEl.value) ? new Date(fromEl.value).getTime() : null;
+            var toMillis = (toEl && toEl.value) ? new Date(toEl.value).getTime() : null;
+
+            return {
+                from: Number.isFinite(fromMillis) ? fromMillis : null,
+                to: Number.isFinite(toMillis) ? toMillis : null
+            };
+        }
+
+        function filterRowsByDateTime(rows) {
+            var bounds = getDateTimeFilterBoundsMillis();
+            if (bounds.from === null && bounds.to === null) {
+                return rows;
+            }
+
+            return rows.filter(function (row) {
+                var rowMillis = resolveUnixTimeMillis(row);
+                if (rowMillis === null) {
+                    return false;
+                }
+                if (bounds.from !== null && rowMillis < bounds.from) {
+                    return false;
+                }
+                if (bounds.to !== null && rowMillis > bounds.to) {
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        function renderTrackingResults(rows, checkedContracts) {
+            if (!trackingResultWrapper) {
+                return;
+            }
+
+            rows = filterRowsByDateTime(Array.isArray(rows) ? rows : []);
+
+            if (!Array.isArray(rows) || rows.length === 0) {
+                trackingResultWrapper.innerHTML = '<div class="table-empty">No tracking data found for selected contracts.</div>';
+                return;
+            }
+
+            if (window.console && rows.length > 0) {
+                console.log('Tracking row keys (debug):', Object.keys(rows[0]), rows[0]);
+            }
+
+            var table = document.createElement('table');
+            var thead = document.createElement('thead');
+            var headRow = document.createElement('tr');
+
+            var timeStockHeader = document.createElement('th');
+            timeStockHeader.textContent = 'Local Time / Stock Open / Stock Close / Unix Time';
+            headRow.appendChild(timeStockHeader);
+
+            checkedContracts.forEach(function (chk) {
+                var th = document.createElement('th');
+                th.textContent = chk.dataset.contractTicker || ('Contract ' + chk.value);
+                headRow.appendChild(th);
+            });
+
+            thead.appendChild(headRow);
+            table.appendChild(thead);
+
+            var tbody = document.createElement('tbody');
+
+            rows.forEach(function (row) {
+                var tr = document.createElement('tr');
+
+                function appendCell(value) {
+                    var td = document.createElement('td');
+                    td.textContent = formatValue(value);
+                    tr.appendChild(td);
+                }
+
+                var timeStockCell = document.createElement('td');
+                [
+                    resolveLocalTime(row),
+                    formatValue(row.stockOpen),
+                    formatValue(row.stockClose),
+                    resolveUnixTime(row)
+                ].forEach(function (line, idx) {
+                    if (idx > 0) {
+                        timeStockCell.appendChild(document.createElement('br'));
+                    }
+                    timeStockCell.appendChild(document.createTextNode(line));
+                });
+                tr.appendChild(timeStockCell);
+
+                checkedContracts.forEach(function (chk) {
+                    var detail = row.contractDetails ? row.contractDetails[chk.value] : null;
+                    var td = document.createElement('td');
+
+                    if (!detail) {
+                        td.textContent = '-';
+                        tr.appendChild(td);
+                        return;
+                    }
+
+                    var lines = [
+                        'O:' + formatValue(detail.optOpen) + ' C:' + formatValue(detail.optClose),
+                        'H:' + formatValue(detail.optHigh) + ' L:' + formatValue(detail.optLow),
+                        'Vol:' + formatValue(detail.optVolume)
+                    ];
+
+                    if (detail.nearOptionSnapshotId) {
+                        lines.push('Bid:' + formatValue(detail.bid) + ' Ask:' + formatValue(detail.ask) + ' Mid:' + formatValue(detail.midpoint));
+                        lines.push('Δ:' + formatValue(detail.delta) + ' Γ:' + formatValue(detail.gamma) + ' Θ:' + formatValue(detail.theta) + ' V:' + formatValue(detail.vega));
+                    }
+
+                    lines.forEach(function (line, idx) {
+                        if (idx > 0) {
+                            td.appendChild(document.createElement('br'));
+                        }
+                        td.appendChild(document.createTextNode(line));
+                    });
+
+                    tr.appendChild(td);
+                });
+
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(tbody);
+
+            trackingResultWrapper.innerHTML = '';
+            trackingResultWrapper.appendChild(table);
+        }
+
+        if (trackingSubmitBtn) {
+            trackingSubmitBtn.addEventListener('click', function () {
+                var checkedContracts = getCheckedContracts();
+                if (checkedContracts.length < MIN_SELECT || checkedContracts.length > MAX_SELECT) {
+                    return;
+                }
+
+                persistCurrentSelection();
+
+                var params = checkedContracts.map(function (c) {
+                    return 'contractIds=' + encodeURIComponent(c.value);
+                }).join('&');
+
+                trackingResultWrapper.innerHTML = '<div class="table-empty">Loading tracking data...</div>';
+
+                window.fetch('/option-analysis/tracking/snapshots?' + params, {
+                    headers: { 'Accept': 'application/json' }
+                }).then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('Failed to load tracking snapshots');
+                    }
+                    return response.json();
+                }).then(function (rows) {
+                    renderTrackingResults(rows, checkedContracts);
+                }).catch(function () {
+                    trackingResultWrapper.innerHTML = '<div class="table-empty">Failed to load tracking data.</div>';
+                });
+            });
+        }
+
+        document.addEventListener('change', function (ev) {
+            if (ev.target && (ev.target.id === 'trackingFromDateTime' || ev.target.id === 'trackingToDateTime')) {
+                persistCurrentSelection();
+            }
+        });
+
+        updateSelectionState();
+        restoreTrackingSelection();
+    })();
+    </script>
+</div>
+
+<select th:fragment="expirationOptions" id="trackingExpiration" name="optionsIntervalAnalyseId">
+    <option value="">Select expiration</option>
+    <option th:each="entry : ${expirations}"
+            th:value="${entry.value}"
+            th:text="${entry.key}"></option>
+</select>
+
+<div th:fragment="contractOptions" id="trackingContractsWrapper">
+    <div th:if="${contractTickerIds == null or contractTickerIds.isEmpty()}" class="table-empty">
+        No contracts found for this expiration.
+    </div>
+    <div th:unless="${contractTickerIds == null or contractTickerIds.isEmpty()}" class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:52px">Select</th>
+                    <th>Contract Ticker</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="entry : ${contractTickerIds}">
+                    <td>
+                        <input type="checkbox"
+                               class="tracking-contract-checkbox"
+                               th:value="${entry.value}"
+                               th:attr="data-contract-ticker=${entry.key}">
+                    </td>
+                    <td><code th:text="${entry.key}"></code></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

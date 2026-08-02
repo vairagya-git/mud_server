@@ -406,7 +406,11 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('execution', 'daily', 'String', 'EarningsDetailCronjob', 'CronExpression for the cronjob'),
 ('lastUpdated', '', 'DateTime', 'EarningsDetailCronjob', 'Create and Close Optoin Contract entry'),
 ('dailyCutOffTime', '22:00', 'DateTime', 'EarningsDetailCronjob', 'Record should only be fetched after the cutoffTime'),
-('forceExecute', 'false', 'boolean', 'EarningsDetailCronjob', 'Set this flag if you want to execute this cronjob by overriding all the other flag');
+('forceExecute', 'false', 'boolean', 'EarningsDetailCronjob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
+
+/*Common System Settings*/
+('SystemWatchlistCodes', 'MOVING_STOCK,SEMI_WATCHLIST', 'StringArray', 'CommonSystemSettings', 'fetch for teh configured watchlist');
+
 
 
 /**** OPTION CONTRACT START ****/

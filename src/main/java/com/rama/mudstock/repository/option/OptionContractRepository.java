@@ -184,4 +184,17 @@ public class OptionContractRepository {
             + "AND status <> ?";
         return jdbc.update(sql, completedStatus, contractId, completedStatus);
     }
+
+    public List<Map<String, Object>> findContractTickersByIntervalAnalyseId(Long optionsIntervalAnalyseId) {
+        if (optionsIntervalAnalyseId == null) {
+            return List.of();
+        }
+
+        String sql = "SELECT id, contract_ticker "
+            + "FROM option_contract "
+            + "WHERE options_interval_analyse_id = ? "
+            + "AND contract_ticker IS NOT NULL AND contract_ticker <> '' "
+            + "ORDER BY contract_ticker";
+        return jdbc.queryForList(sql, optionsIntervalAnalyseId);
+    }
 }
