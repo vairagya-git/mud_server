@@ -5,8 +5,8 @@
 <body>
 <div id="page-content" th:fragment="content">
     <div class="page-header table-sticky-header">
-        <h1>Option Analysis</h1>
-        <div class="subtitle">Contracts. Total: <strong th:text="${contracts.size()}">0</strong></div>
+        <h1>Option Contract</h1>
+        <div class="subtitle">Contracts. Total: <strong id="contractsCount">0</strong></div>
     </div>
 
     <div class="filter-bar table-sticky-filter" style="margin-bottom:16px">
@@ -14,19 +14,30 @@
 
         <div class="table-filter-input">
             <input id="contractTickerSearchInput" class="table-filter-input-uppercase" list="contractTickerOptions" type="text" placeholder="Search ticker" aria-label="Search ticker">
-            <button id="addContractTickerFilterBtn" type="button" class="btn btn-sm btn-secondary">Add ticker</button>
             <datalist id="contractTickerOptions">
-                <option th:each="ticker : ${contractTickers}" th:value="${ticker}"></option>
+                <option th:each="ticker : ${contractTickers}" th:value="${ticker.ticker}"></option>
             </datalist>
         </div>
 
         <div class="table-filter-input">
+            <input id="contractExpiryFilterInput" list="contractExpirationOptions" type="text" placeholder="Expiration" aria-label="Filter by expiry date">
+            <datalist id="contractExpirationOptions">
+                <option th:each="c : ${contractExpirations}" th:value="${c.expirationDate}" th:attr="data-ticker=${c.ticker},data-stock-id=${c.stockId}"></option>
+            </datalist>
+        </div>
+
+        <div class="table-filter-input">
+            <select id="contractStrikeFilterSelect" aria-label="Filter by strike price">
+                <option value="ALL">All Strike</option>
+            </select>
+        </div>
+
+        <div class="table-filter-input">
             <select id="contractTypeFilterSelect" aria-label="Filter contract type">
-                <option value="">Contract type</option>
+                <option value="BOTH">Both (Put &amp; Call)</option>
                 <option value="CALL">CALL</option>
                 <option value="PUT">PUT</option>
             </select>
-            <button id="addContractTypeFilterBtn" type="button" class="btn btn-sm btn-secondary">Add type</button>
         </div>
 
         <div class="table-filter-input">
@@ -34,18 +45,9 @@
                 <option value="">All Sources</option>
                 <option th:each="src : ${contractSources}" th:value="${src}" th:text="${src}"></option>
             </select>
-            <button id="addContractSourceFilterBtn" type="button" class="btn btn-sm btn-secondary">Add source</button>
         </div>
 
-        <div class="table-filter-input">
-            <input id="contractExpiryFilterInput" type="date" aria-label="Filter by expiry date">
-            <button id="addContractExpiryFilterBtn" type="button" class="btn btn-sm btn-secondary">Add expiry</button>
-        </div>
-
-        <div class="table-filter-input">
-            <input id="contractStrikeFilterInput" type="number" step="0.01" placeholder="Strike" aria-label="Filter by strike price">
-            <button id="addContractStrikeFilterBtn" type="button" class="btn btn-sm btn-secondary">Add strike</button>
-        </div>
+        <button id="applyContractSelectionBtn" type="button" class="btn btn-sm btn-secondary">Add</button>
 
         <span id="contractActiveFilters"></span>
 
@@ -57,8 +59,8 @@
     </div>
 
     <div class="card table-wrap">
-        <div th:if="${contracts.isEmpty()}" class="table-empty">No option contracts found.</div>
-        <table id="optionContractTable" th:unless="${contracts.isEmpty()}">
+        <div id="contractTableEmpty" class="table-empty">Select filters and click Add to load contracts.</div>
+        <table id="optionContractTable">
             <thead>
                 <tr>
                     <th>
@@ -93,29 +95,7 @@
                     <th>Updated At</th>
                 </tr>
             </thead>
-            <tbody>
-                <tr th:each="c : ${contracts}">
-                    <td th:attr="data-sort-value=${c.ticker},data-filter-value=${c.ticker}">
-                        <span class="badge badge-grey" th:text="${c.ticker}"></span>
-                        <button type="button" class="filter-btn" data-field="ticker" th:data-value="${c.ticker}" title="Filter by ticker">&#x2295;</button>
-                    </td>
-                    <td th:attr="data-sort-value=${c.contract_type},data-filter-value=${c.contract_type}">
-                        <span th:text="${c.contract_type}"></span>
-                        <button type="button" class="filter-btn" data-field="contractType" th:data-value="${c.contract_type}" title="Filter by contract type">&#x2295;</button>
-                    </td>
-                    <td><span class="badge badge-blue" th:text="${c.status}"></span></td>
-                    <td th:attr="data-sort-value=${c.source != null && !#strings.isEmpty(c.source) ? c.source : 'API'},data-filter-value=${c.source != null && !#strings.isEmpty(c.source) ? c.source : 'API'}">
-                        <span class="badge badge-grey" th:text="${c.source != null && !#strings.isEmpty(c.source) ? c.source : 'API'}"></span>
-                        <button type="button" class="filter-btn" data-field="source" th:data-value="${c.source != null && !#strings.isEmpty(c.source) ? c.source : 'API'}" title="Filter by source">&#x2295;</button>
-                    </td>
-                    <td th:text="${c.exercise_style}"></td>
-                    <td th:attr="data-sort-value=${c.expiration_date},data-filter-value=${c.expiration_date}" th:text="${c.expiration_date}"></td>
-                    <td th:attr="data-sort-value=${c.strike_price},data-filter-value=${c.strike_price}" th:text="${c.strike_price}"></td>
-                    <td th:text="${c.shares_per_contract}"></td>
-                    <td><code th:text="${c.contract_ticker}"></code></td>
-                    <td th:text="${c.updated_at}"></td>
-                </tr>
-            </tbody>
+            <tbody></tbody>
         </table>
     </div>
 
@@ -125,20 +105,24 @@
             if (!table) return;
 
             var tickerSearchInput = document.getElementById('contractTickerSearchInput');
-            var addTickerFilterBtn = document.getElementById('addContractTickerFilterBtn');
-            var contractTypeFilterSelect = document.getElementById('contractTypeFilterSelect');
-            var addContractTypeFilterBtn = document.getElementById('addContractTypeFilterBtn');
-            var contractSourceFilterSelect = document.getElementById('contractSourceFilter');
-            var addContractSourceFilterBtn = document.getElementById('addContractSourceFilterBtn');
             var expiryFilterInput = document.getElementById('contractExpiryFilterInput');
-            var addExpiryFilterBtn = document.getElementById('addContractExpiryFilterBtn');
-            var strikeFilterInput = document.getElementById('contractStrikeFilterInput');
-            var addStrikeFilterBtn = document.getElementById('addContractStrikeFilterBtn');
+            var expirationOptions = document.getElementById('contractExpirationOptions');
+            var strikeFilterSelect = document.getElementById('contractStrikeFilterSelect');
+            var contractTypeFilterSelect = document.getElementById('contractTypeFilterSelect');
+            var contractSourceFilterSelect = document.getElementById('contractSourceFilter');
+            var applySelectionBtn = document.getElementById('applyContractSelectionBtn');
             var activeFiltersWrap = document.getElementById('contractActiveFilters');
             var filterHint = document.getElementById('contractFilterHint');
             var clearFiltersBtn = document.getElementById('clearContractFiltersBtn');
+            var tableEmpty = document.getElementById('contractTableEmpty');
+            var contractsCount = document.getElementById('contractsCount');
             var sortState = { key: null, dir: 'asc' };
-            var filters = { ticker: [], contractType: [], source: [], expiry: [], strike: [] };
+            var selectionLabels = [];
+            var selectedIds = [];
+            var contractsById = new Map();
+            var allExpirationOptions = [];
+            var strikeOptionsRequestToken = 0;
+            var filterStorageKey = 'option-analysis-contract#filters';
 
             function normalizeValue(field, value) {
                 var normalized = (value || '').trim();
@@ -154,35 +138,170 @@
                 return normalized;
             }
 
+            function persistSelections() {
+                try {
+                    window.sessionStorage.setItem(filterStorageKey, JSON.stringify(selectionLabels));
+                } catch (err) {
+                    console.warn('Failed to persist contract selections', err);
+                }
+            }
+
+            function dedupeExpirationOptions() {
+                if (!expirationOptions) {
+                    return;
+                }
+                allExpirationOptions = [];
+                var seenPairs = new Set();
+                Array.from(expirationOptions.querySelectorAll('option')).forEach(function (opt) {
+                    var expirationDate = normalizeValue('expiry', opt.value);
+                    var ticker = normalizeValue('ticker', (opt.dataset && opt.dataset.ticker) ? opt.dataset.ticker : '');
+                    var stockId = ((opt.dataset && opt.dataset.stockId) ? opt.dataset.stockId : '').trim();
+                    var key = ticker + '|' + expirationDate;
+                    if (!expirationDate || seenPairs.has(key)) {
+                        return;
+                    }
+                    seenPairs.add(key);
+                    allExpirationOptions.push({ ticker: ticker, expirationDate: expirationDate, stockId: stockId });
+                });
+            }
+
+            function refreshExpirationOptionsByTicker() {
+                if (!expirationOptions) {
+                    return;
+                }
+
+                var selectedTicker = normalizeValue('ticker', tickerSearchInput ? tickerSearchInput.value : '');
+                var allowed = allExpirationOptions.filter(function (entry) {
+                    return !selectedTicker || entry.ticker === selectedTicker;
+                });
+
+                var seen = new Set();
+                expirationOptions.innerHTML = '';
+                allowed.forEach(function (entry) {
+                    if (seen.has(entry.expirationDate)) {
+                        return;
+                    }
+                    seen.add(entry.expirationDate);
+                    var option = document.createElement('option');
+                    option.value = entry.expirationDate;
+                    expirationOptions.appendChild(option);
+                });
+
+                var current = normalizeValue('expiry', expiryFilterInput ? expiryFilterInput.value : '');
+                if (current && !seen.has(current) && expiryFilterInput) {
+                    expiryFilterInput.value = '';
+                }
+                refreshStrikeOptionsForSelection();
+            }
+
+            function resolveStockIdForSelection() {
+                var ticker = normalizeValue('ticker', tickerSearchInput ? tickerSearchInput.value : '');
+                var expiration = normalizeValue('expiry', expiryFilterInput ? expiryFilterInput.value : '');
+                if (!ticker || !expiration) {
+                    return '';
+                }
+                var matched = allExpirationOptions.find(function (entry) {
+                    return entry.ticker === ticker && entry.expirationDate === expiration;
+                });
+                return matched ? (matched.stockId || '') : '';
+            }
+
+            function refreshStrikeOptionsForSelection() {
+                if (!strikeFilterSelect) {
+                    return Promise.resolve();
+                }
+
+                var requestToken = ++strikeOptionsRequestToken;
+                strikeFilterSelect.innerHTML = '';
+                var defaultOption = document.createElement('option');
+                defaultOption.value = 'ALL';
+                defaultOption.textContent = 'All Strike';
+                strikeFilterSelect.appendChild(defaultOption);
+
+                var stockId = resolveStockIdForSelection();
+                var expiration = normalizeValue('expiry', expiryFilterInput ? expiryFilterInput.value : '');
+                if (!stockId || !expiration) {
+                    return Promise.resolve();
+                }
+
+                var params = new URLSearchParams({ stockId: stockId, expirationDate: expiration });
+                return window.fetch('/option-analysis/snapshot/strikes?' + params.toString(), {
+                    headers: { 'Accept': 'application/json' }
+                }).then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('Failed to load strikes');
+                    }
+                    return response.json();
+                }).then(function (rows) {
+                    if (requestToken !== strikeOptionsRequestToken) {
+                        return;
+                    }
+                    if (!Array.isArray(rows)) {
+                        return;
+                    }
+
+                    var uniqueMap = new Map();
+                    rows.forEach(function (row) {
+                        var normalized = normalizeValue('strike', row.strikePrice == null ? '' : String(row.strikePrice));
+                        if (!normalized) {
+                            return;
+                        }
+                        if (!uniqueMap.has(normalized)) {
+                            uniqueMap.set(normalized, row.strikePrice == null ? normalized : String(row.strikePrice));
+                        }
+                    });
+
+                    var strikes = Array.from(uniqueMap.keys());
+                    strikes.sort(function (a, b) {
+                        var av = Number(a);
+                        var bv = Number(b);
+                        if (Number.isFinite(av) && Number.isFinite(bv)) {
+                            return av - bv;
+                        }
+                        return String(a).localeCompare(String(b));
+                    });
+
+                    strikes.forEach(function (strike) {
+                        var option = document.createElement('option');
+                        option.value = strike;
+                        option.textContent = uniqueMap.get(strike);
+                        strikeFilterSelect.appendChild(option);
+                    });
+                }).catch(function (err) {
+                    if (requestToken !== strikeOptionsRequestToken) {
+                        return;
+                    }
+                    console.warn('Failed to load strikes for contract selection', err);
+                });
+            }
+
             function renderFilterChips() {
                 activeFiltersWrap.innerHTML = '';
-                Object.keys(filters).forEach(function (field) {
-                    filters[field].forEach(function (value) {
-                        var chip = document.createElement('span');
-                        chip.className = 'chip';
+                selectionLabels.forEach(function (label) {
+                    var chip = document.createElement('span');
+                    chip.className = 'chip';
 
-                        var typeSpan = document.createElement('span');
-                        typeSpan.className = 'chip-type';
-                        typeSpan.textContent = field;
+                    var typeSpan = document.createElement('span');
+                    typeSpan.className = 'chip-type';
+                    typeSpan.textContent = 'contract';
 
-                        var strong = document.createElement('strong');
-                        strong.textContent = value;
+                    var strong = document.createElement('strong');
+                    strong.textContent = label;
 
-                        var rmBtn = document.createElement('button');
-                        rmBtn.type = 'button';
-                        rmBtn.className = 'chip-remove';
-                        rmBtn.title = 'Remove';
-                        rmBtn.dataset.field = field;
-                        rmBtn.dataset.value = value;
-                        rmBtn.textContent = '\u2715';
+                    var rmBtn = document.createElement('button');
+                    rmBtn.type = 'button';
+                    rmBtn.className = 'chip-remove';
+                    rmBtn.title = 'Remove';
+                    rmBtn.dataset.field = 'selection';
+                    rmBtn.dataset.value = label;
+                    rmBtn.textContent = '\u2715';
 
-                        chip.appendChild(typeSpan);
-                        chip.appendChild(document.createTextNode('\u00a0'));
-                        chip.appendChild(strong);
-                        chip.appendChild(document.createTextNode('\u00a0'));
-                        chip.appendChild(rmBtn);
-                        activeFiltersWrap.appendChild(chip);
-                    });
+                    chip.appendChild(typeSpan);
+                    chip.appendChild(document.createTextNode('\u00a0'));
+                    chip.appendChild(strong);
+                    chip.appendChild(document.createTextNode('\u00a0'));
+                    chip.appendChild(rmBtn);
+                    activeFiltersWrap.appendChild(chip);
                 });
 
                 filterHint.style.display = activeFiltersWrap.children.length === 0 ? '' : 'none';
@@ -191,47 +310,226 @@
             function applyFilters() {
                 var rows = Array.from(table.tBodies[0].rows);
                 rows.forEach(function (row) {
-                    var ticker = normalizeValue('ticker', row.children[0].dataset.filterValue || '');
-                    var contractType = normalizeValue('contractType', row.children[1].dataset.filterValue || '');
-                    var source = normalizeValue('source', row.children[3].dataset.filterValue || '');
-                    var expiry = normalizeValue('expiry', row.children[5].dataset.filterValue || '');
-                    var strike = normalizeValue('strike', row.children[6].dataset.filterValue || '');
-                    var show = true;
-
-                    if (filters.ticker.length > 0 && !filters.ticker.includes(ticker)) {
-                        show = false;
-                    }
-                    if (show && filters.contractType.length > 0 && !filters.contractType.includes(contractType)) {
-                        show = false;
-                    }
-                    if (show && filters.source.length > 0 && !filters.source.includes(source)) {
-                        show = false;
-                    }
-                    if (show && filters.expiry.length > 0 && !filters.expiry.includes(expiry)) {
-                        show = false;
-                    }
-                    if (show && filters.strike.length > 0 && !filters.strike.includes(strike)) {
-                        show = false;
-                    }
-
+                    var show = selectedIds.length === 0 || selectedIds.includes(row.dataset.contractId);
                     row.style.display = show ? '' : 'none';
+                });
+                renderTableState();
+            }
+
+            function parseSelectionLabel(label) {
+                var parts = (label || '').split(' | ');
+                if (parts.length !== 5) {
+                    return null;
+                }
+                return {
+                    ticker: normalizeValue('ticker', parts[0]),
+                    expiry: normalizeValue('expiry', parts[1]),
+                    strike: normalizeValue('strike', parts[2] === 'ALL' ? '' : parts[2]),
+                    contractType: normalizeValue('contractType', parts[3] === 'BOTH' ? '' : parts[3]),
+                    source: normalizeValue('source', parts[4] === 'ALL' ? '' : parts[4])
+                };
+            }
+
+            function rebuildSelectedIds() {
+                selectedIds = [];
+                var rows = Array.from(table.tBodies[0].rows);
+                selectionLabels.forEach(function (label) {
+                    var parsed = parseSelectionLabel(label);
+                    if (!parsed) {
+                        return;
+                    }
+
+                    rows.forEach(function (row) {
+                        var rowTicker = normalizeValue('ticker', row.dataset.ticker || '');
+                        var rowExpiry = normalizeValue('expiry', row.dataset.expiration || '');
+                        var rowStrike = normalizeValue('strike', row.dataset.strike || '');
+                        var rowType = normalizeValue('contractType', row.dataset.contractType || '');
+                        var rowSource = normalizeValue('source', row.dataset.source || '');
+
+                        var matches = rowTicker === parsed.ticker
+                            && rowExpiry === parsed.expiry
+                            && (!parsed.strike || rowStrike === parsed.strike)
+                            && (!parsed.contractType || rowType === parsed.contractType)
+                            && (!parsed.source || rowSource === parsed.source);
+
+                        if (matches && !selectedIds.includes(row.dataset.contractId)) {
+                            selectedIds.push(row.dataset.contractId);
+                        }
+                    });
                 });
             }
 
-            function addFilter(field, value) {
-                var normalized = normalizeValue(field, value);
-                if (!normalized) return;
-                if (!filters[field].includes(normalized)) {
-                    filters[field].push(normalized);
-                    renderFilterChips();
-                    applyFilters();
+            function renderTableState() {
+                var visibleCount = Array.from(table.tBodies[0].rows).filter(function (row) {
+                    return row.style.display !== 'none';
+                }).length;
+                if (contractsCount) {
+                    contractsCount.textContent = String(visibleCount);
+                }
+                if (tableEmpty) {
+                    tableEmpty.style.display = visibleCount === 0 ? '' : 'none';
                 }
             }
 
-            function removeFilter(field, value) {
-                filters[field] = filters[field].filter(function (entry) { return entry !== value; });
-                renderFilterChips();
+            function loadContractsForCurrentSelection() {
+                var stockId = resolveStockIdForSelection();
+                var expiration = normalizeValue('expiry', expiryFilterInput ? expiryFilterInput.value : '');
+                var strike = normalizeValue('strike', strikeFilterSelect ? strikeFilterSelect.value : '');
+                var contractType = normalizeValue('contractType', contractTypeFilterSelect ? contractTypeFilterSelect.value : 'BOTH');
+                var source = normalizeValue('source', contractSourceFilterSelect ? contractSourceFilterSelect.value : '');
+
+                if (!stockId || !expiration) {
+                    return Promise.resolve([]);
+                }
+
+                var params = new URLSearchParams({ stockId: stockId, expirationDate: expiration });
+                if (strike && strike !== 'ALL') {
+                    params.append('strikePrice', strike);
+                }
+                if (contractType && contractType !== 'BOTH') {
+                    params.append('contractType', contractType);
+                }
+                if (source) {
+                    params.append('source', source);
+                }
+
+                return window.fetch('/option-analysis/contract/contracts/filter?' + params.toString(), {
+                    headers: { 'Accept': 'application/json' }
+                }).then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('Failed to load contracts');
+                    }
+                    return response.json();
+                }).then(function (rows) {
+                    rows = Array.isArray(rows) ? rows : [];
+                    upsertContracts(rows);
+                    return rows;
+                }).catch(function (err) {
+                    console.warn('Failed to load contract rows', err);
+                    return [];
+                });
+            }
+
+            function upsertContracts(rows) {
+                var tbody = table.tBodies[0];
+                rows.forEach(function (c) {
+                    var contractId = normalizeValue('id', c.id == null ? '' : String(c.id));
+                    if (!contractId || contractsById.has(contractId)) {
+                        return;
+                    }
+                    contractsById.set(contractId, c);
+
+                    var tr = document.createElement('tr');
+                    tr.setAttribute('data-contract-id', contractId);
+                    tr.setAttribute('data-ticker', c.ticker || '');
+                    tr.setAttribute('data-expiration', c.expirationDate || '');
+                    tr.setAttribute('data-strike', c.strikePrice == null ? '' : String(c.strikePrice));
+                    tr.setAttribute('data-contract-type', c.contractType || '');
+                    tr.setAttribute('data-source', c.source || '');
+
+                    function appendCell(text, sortValue) {
+                        var td = document.createElement('td');
+                        td.textContent = text == null ? '' : text;
+                        if (sortValue != null) {
+                            td.dataset.sortValue = String(sortValue);
+                        }
+                        tr.appendChild(td);
+                    }
+
+                    appendCell(c.ticker, c.ticker);
+                    appendCell(c.contractType, c.contractType);
+                    appendCell(c.status);
+                    appendCell(c.source || 'API', c.source || 'API');
+                    appendCell(c.exerciseStyle);
+                    appendCell(c.expirationDate, c.expirationDate);
+                    appendCell(c.strikePrice, c.strikePrice);
+                    appendCell(c.sharesPerContract);
+                    appendCell(c.contractTicker);
+                    appendCell(c.updatedAt);
+
+                    tbody.appendChild(tr);
+                });
+
+                if (sortState.key) {
+                    sortTable(sortState.key, true);
+                }
+                rebuildSelectedIds();
                 applyFilters();
+            }
+
+            function addSelection() {
+                var ticker = normalizeValue('ticker', tickerSearchInput ? tickerSearchInput.value : '');
+                var expiry = normalizeValue('expiry', expiryFilterInput ? expiryFilterInput.value : '');
+                var strike = normalizeValue('strike', strikeFilterSelect ? strikeFilterSelect.value : '');
+                var contractType = normalizeValue('contractType', contractTypeFilterSelect ? contractTypeFilterSelect.value : 'BOTH') || 'BOTH';
+                var source = normalizeValue('source', contractSourceFilterSelect ? contractSourceFilterSelect.value : '');
+
+                if (!ticker || !expiry) {
+                    return;
+                }
+
+                var label = ticker + ' | ' + expiry + ' | ' + ((strike && strike !== 'ALL') ? strike : 'ALL') + ' | ' + contractType + ' | ' + (source || 'ALL');
+                if (!selectionLabels.includes(label)) {
+                    selectionLabels.push(label);
+                }
+
+                loadContractsForCurrentSelection().then(function (rows) {
+                    var fetchedIds = rows
+                        .map(function (row) { return normalizeValue('id', row.id == null ? '' : String(row.id)); })
+                        .filter(Boolean);
+                    fetchedIds.forEach(function (id) {
+                        if (!selectedIds.includes(id)) {
+                            selectedIds.push(id);
+                        }
+                    });
+
+                    persistSelections();
+                    renderFilterChips();
+                    applyFilters();
+                });
+            }
+
+            function restoreSelections() {
+                try {
+                    var raw = window.sessionStorage.getItem(filterStorageKey);
+                    if (!raw) {
+                        return;
+                    }
+                    var saved = JSON.parse(raw);
+                    if (!Array.isArray(saved)) {
+                        return;
+                    }
+                    selectionLabels = saved.filter(function (entry) {
+                        return typeof entry === 'string' && entry.trim() !== '';
+                    });
+
+                    var loads = selectionLabels.map(function (label) {
+                        var parsed = parseSelectionLabel(label);
+                        if (!parsed) {
+                            return Promise.resolve([]);
+                        }
+
+                        if (tickerSearchInput) tickerSearchInput.value = parsed.ticker;
+                        refreshExpirationOptionsByTicker();
+                        if (expiryFilterInput) expiryFilterInput.value = parsed.expiry;
+
+                        var strikeLoad = refreshStrikeOptionsForSelection();
+                        return Promise.resolve(strikeLoad).then(function () {
+                            if (strikeFilterSelect) strikeFilterSelect.value = parsed.strike || 'ALL';
+                            if (contractTypeFilterSelect) contractTypeFilterSelect.value = parsed.contractType || 'BOTH';
+                            if (contractSourceFilterSelect) contractSourceFilterSelect.value = parsed.source || '';
+                            return loadContractsForCurrentSelection();
+                        });
+                    });
+
+                    Promise.all(loads).then(function () {
+                        rebuildSelectedIds();
+                        renderFilterChips();
+                        applyFilters();
+                    });
+                } catch (err) {
+                    console.warn('Failed to restore contract selections', err);
+                }
             }
 
             function parseSortValue(row, key) {
@@ -265,12 +563,12 @@
                 });
             }
 
-            function sortTable(key) {
+            function sortTable(key, keepDirection) {
                 var tbody = table.tBodies[0];
                 if (!tbody) return;
 
                 if (sortState.key === key) {
-                    sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+                    sortState.dir = keepDirection ? sortState.dir : (sortState.dir === 'asc' ? 'desc' : 'asc');
                 } else {
                     sortState.key = key;
                     sortState.dir = 'asc';
@@ -290,55 +588,46 @@
                 applyFilters();
             }
 
-            addTickerFilterBtn.addEventListener('click', function () {
-                addFilter('ticker', tickerSearchInput.value);
-                tickerSearchInput.value = '';
-            });
+            if (applySelectionBtn) {
+                applySelectionBtn.addEventListener('click', addSelection);
+            }
 
-            tickerSearchInput.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addFilter('ticker', tickerSearchInput.value);
-                    tickerSearchInput.value = '';
-                }
-            });
+            if (tickerSearchInput) {
+                tickerSearchInput.addEventListener('input', refreshExpirationOptionsByTicker);
+                tickerSearchInput.addEventListener('change', refreshExpirationOptionsByTicker);
+            }
 
-            addContractTypeFilterBtn.addEventListener('click', function () {
-                addFilter('contractType', contractTypeFilterSelect.value);
-                contractTypeFilterSelect.value = '';
-            });
-
-            addContractSourceFilterBtn.addEventListener('click', function () {
-                addFilter('source', contractSourceFilterSelect.value);
-                contractSourceFilterSelect.value = '';
-            });
-
-            addExpiryFilterBtn.addEventListener('click', function () {
-                addFilter('expiry', expiryFilterInput.value);
-                expiryFilterInput.value = '';
-            });
-
-            addStrikeFilterBtn.addEventListener('click', function () {
-                addFilter('strike', strikeFilterInput.value);
-                strikeFilterInput.value = '';
-            });
+            if (expiryFilterInput) {
+                expiryFilterInput.addEventListener('input', refreshStrikeOptionsForSelection);
+                expiryFilterInput.addEventListener('change', refreshStrikeOptionsForSelection);
+            }
 
             clearFiltersBtn.addEventListener('click', function () {
-                filters = { ticker: [], contractType: [], source: [], expiry: [], strike: [] };
+                selectionLabels = [];
+                selectedIds = [];
+                contractsById.clear();
+                table.tBodies[0].innerHTML = '';
+                if (tickerSearchInput) tickerSearchInput.value = '';
+                if (expiryFilterInput) expiryFilterInput.value = '';
+                if (strikeFilterSelect) strikeFilterSelect.value = 'ALL';
+                if (contractTypeFilterSelect) contractTypeFilterSelect.value = 'BOTH';
+                if (contractSourceFilterSelect) contractSourceFilterSelect.value = '';
+                persistSelections();
                 renderFilterChips();
                 applyFilters();
+                refreshStrikeOptionsForSelection();
             });
 
             document.addEventListener('click', function (e) {
                 var removeBtn = e.target.closest('.chip-remove[data-field]');
                 if (removeBtn) {
-                    removeFilter(removeBtn.dataset.field, removeBtn.dataset.value);
-                    return;
-                }
-
-                var filterBtn = e.target.closest('.filter-btn[data-field]');
-                if (filterBtn) {
-                    addFilter(filterBtn.dataset.field, filterBtn.dataset.value);
+                    if (removeBtn.dataset.field === 'selection') {
+                        selectionLabels = selectionLabels.filter(function (entry) { return entry !== removeBtn.dataset.value; });
+                        rebuildSelectedIds();
+                        persistSelections();
+                        renderFilterChips();
+                        applyFilters();
+                    }
                     return;
                 }
             });
@@ -349,6 +638,9 @@
                 });
             });
 
+            dedupeExpirationOptions();
+            refreshExpirationOptionsByTicker();
+            restoreSelections();
             renderFilterChips();
             applyFilters();
         })();

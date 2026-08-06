@@ -19,7 +19,7 @@ import com.rama.mudstock.repository.option.OptionContractRepository;
 import com.rama.mudstock.repository.option.OptionSnapshotFlatfileRepository;
 import com.rama.mudstock.repository.option.OptionSnapshotRepository;
 import com.rama.mudstock.service.OptionDataContractService;
-import com.rama.mudstock.service.S3OptionFlatfileService;
+import com.rama.mudstock.service.s3.AbstractFlatfileService;
 import com.rama.mudstock.util.TypeConverstionUtil;
 
 @Service
@@ -30,7 +30,7 @@ public class OptionFlatFileSnapshotFetcherFacade {
     private final OptionContractRepository optionContractRepository;
     private final OptionSnapshotFlatfileRepository optionSnapshotFlatfileRepository;
     private final OptionSnapshotRepository optionSnapshotRepository;
-    private final S3OptionFlatfileService s3OptionFlatfileService;
+    private final AbstractFlatfileService optionFlatfileService;
     private final OptionDataContractService optionDataContractService;
     private Map<String, List<TickerOptionSnapshotData>> optionRowsDaysDataCache;
     private Map<String, Map<Long, TickerStockSnapshotData>> stockRowsDaysDataCache;
@@ -38,12 +38,12 @@ public class OptionFlatFileSnapshotFetcherFacade {
     public OptionFlatFileSnapshotFetcherFacade(OptionContractRepository optionContractRepository,
                                                OptionSnapshotFlatfileRepository optionSnapshotFlatfileRepository,
                                                OptionSnapshotRepository optionSnapshotRepository,
-                                               S3OptionFlatfileService s3OptionFlatfileService,
+                                               AbstractFlatfileService optionFlatfileService,
                                                OptionDataContractService optionDataContractService) {
         this.optionContractRepository = optionContractRepository;
         this.optionSnapshotFlatfileRepository = optionSnapshotFlatfileRepository;
         this.optionSnapshotRepository = optionSnapshotRepository;
-        this.s3OptionFlatfileService = s3OptionFlatfileService;
+        this.optionFlatfileService = optionFlatfileService;
         this.optionDataContractService = optionDataContractService;
     }
 
@@ -52,10 +52,10 @@ public class OptionFlatFileSnapshotFetcherFacade {
             List<Map<String, Object>> contracts = loadContractsForFlatFileRun(forceExecute);
           
             // Load once per execution (all option rows grouped by ticker).
-            optionRowsDaysDataCache = s3OptionFlatfileService.loadOptionRowsDaysData(targetDate);
+            optionRowsDaysDataCache = optionFlatfileService.loadOptionRowsDaysData(targetDate);
            
             // Load once per execution (all stock rows grouped by ticker -> window_start).
-            stockRowsDaysDataCache = s3OptionFlatfileService.loadStockRowsDaysData(targetDate);
+            stockRowsDaysDataCache = optionFlatfileService.loadStockRowsDaysData(targetDate);
 
             if (optionRowsDaysDataCache.isEmpty() || stockRowsDaysDataCache.isEmpty()) {
                 log.warn("{}: no flat-file data available for targetDate={}. optionTickerGroups={}, stockTickerGroups={}. Skipping run.",

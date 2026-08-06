@@ -1,7 +1,5 @@
 package com.rama.mudstock.config;
 
-import java.time.LocalDate;
-
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
@@ -265,15 +263,67 @@ public class ApplicationProperties {
     }
 
     public static class S3Flatfiles {
+        private boolean readLocal;
+        private String localDirectory;
+        private String localFileLocationPattern;
+        private String localStock;
+        private String localOption;
+        private String stockMinuteAgg;
         private String bucket;
         private String endpoint;
         private String accessKey;
         private String secretKey;
         private String minuteAgg;
         private String fileLocationPattern;
-        private String testTicker;
-        private LocalDate testDay;
         private String localFilePath;
+
+        public boolean isReadLocal() {
+            return readLocal;
+        }
+
+        public void setReadLocal(boolean readLocal) {
+            this.readLocal = readLocal;
+        }
+
+        public String getLocalDirectory() {
+            return localDirectory;
+        }
+
+        public void setLocalDirectory(String localDirectory) {
+            this.localDirectory = localDirectory;
+        }
+
+        public String getLocalFileLocationPattern() {
+            return localFileLocationPattern;
+        }
+
+        public void setLocalFileLocationPattern(String localFileLocationPattern) {
+            this.localFileLocationPattern = localFileLocationPattern;
+        }
+
+        public String getLocalStock() {
+            return localStock;
+        }
+
+        public void setLocalStock(String localStock) {
+            this.localStock = localStock;
+        }
+
+        public String getLocalOption() {
+            return localOption;
+        }
+
+        public void setLocalOption(String localOption) {
+            this.localOption = localOption;
+        }
+
+        public String getStockMinuteAgg() {
+            return stockMinuteAgg;
+        }
+
+        public void setStockMinuteAgg(String stockMinuteAgg) {
+            this.stockMinuteAgg = stockMinuteAgg;
+        }
 
         public String getBucket() {
             return bucket;
@@ -321,22 +371,6 @@ public class ApplicationProperties {
 
         public void setFileLocationPattern(String fileLocationPattern) {
             this.fileLocationPattern = fileLocationPattern;
-        }
-
-        public String getTestTicker() {
-            return testTicker;
-        }
-
-        public void setTestTicker(String testTicker) {
-            this.testTicker = testTicker;
-        }
-
-        public LocalDate getTestDay() {
-            return testDay;
-        }
-
-        public void setTestDay(LocalDate testDay) {
-            this.testDay = testDay;
         }
 
         public String getLocalFilePath() {

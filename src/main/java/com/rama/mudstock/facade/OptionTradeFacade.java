@@ -6,31 +6,26 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
-import com.rama.mudstock.enums.SystemRepositoryEnum.OptionContractStatusEnum;
-import com.rama.mudstock.repository.option.OptionContractRepository;
-import com.rama.mudstock.repository.option.OptionStrategyRepository;
+import com.rama.mudstock.service.ApplicationFilterService;
 
 @Service
 public class OptionTradeFacade {
 
-    private final OptionStrategyRepository optionStrategyRepository;
-    private final OptionContractRepository optionContractRepository;
+    private final ApplicationFilterService applicationFilterService;
 
-    public OptionTradeFacade(OptionStrategyRepository optionStrategyRepository,
-                             OptionContractRepository optionContractRepository) {
-        this.optionStrategyRepository = optionStrategyRepository;
-        this.optionContractRepository = optionContractRepository;
+    public OptionTradeFacade(ApplicationFilterService applicationFilterService) {
+        this.applicationFilterService = applicationFilterService;
     }
 
     public OptionTradeFilterData loadFilterData() {
-        List<Map<String, Object>> strategyDefinitions = optionStrategyRepository.listActiveStrategyDefinitions();
-        List<Map<String, Object>> strategyDefinitionLegs = optionStrategyRepository.listActiveStrategyDefinitionLegs();
-        List<String> tickers = optionContractRepository.listDistinctTickersByStatus(OptionContractStatusEnum.ACTIVE.name());
-        List<LocalDate> expirationDates = optionContractRepository
-            .listDistinctExpirationDatesByStatus(OptionContractStatusEnum.ACTIVE.name());
-        List<Map<String, Object>> contracts = optionContractRepository.listActiveContractsForSimulator();
+        ApplicationFilterService.OptionTradeFilters filters = applicationFilterService.optionTradeFilters();
 
-        return new OptionTradeFilterData(strategyDefinitions, strategyDefinitionLegs, tickers, expirationDates, contracts);
+        return new OptionTradeFilterData(
+            filters.strategyDefinitions(),
+            filters.strategyDefinitionLegs(),
+            filters.tickers(),
+            filters.expirationDates(),
+            filters.contracts());
     }
 
     public record OptionTradeFilterData(List<Map<String, Object>> strategyDefinitions,

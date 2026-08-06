@@ -1,8 +1,6 @@
 package com.rama.mudstock.controller;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.rama.mudstock.facade.OptionTrackingFacade;
 import com.rama.mudstock.model.option.OptionTrackingSnapshotRow;
+import com.rama.mudstock.service.ApplicationFilterService;
 
 @Controller
 @RequestMapping("/option-analysis/tracking")
@@ -28,25 +27,25 @@ public class OptionTrackingController {
     private static final Logger log = LoggerFactory.getLogger(OptionTrackingController.class);
 
     private final OptionTrackingFacade optionTrackingFacade;
+    private final ApplicationFilterService applicationFilterService;
 
-    public OptionTrackingController(OptionTrackingFacade optionTrackingFacade) {
+    public OptionTrackingController(OptionTrackingFacade optionTrackingFacade,
+                                    ApplicationFilterService applicationFilterService) {
         this.optionTrackingFacade = optionTrackingFacade;
+        this.applicationFilterService = applicationFilterService;
     }
 
     @GetMapping
     public String trackingPage(Model model,
                                @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
-        List<com.rama.mudstock.model.stockwatchlist.Stock> stocks = new ArrayList<>(optionTrackingFacade.getTrackableStocks());
-        stocks.sort(Comparator.comparing(s -> s.getTicker() == null ? "" : s.getTicker(), String.CASE_INSENSITIVE_ORDER));
-
-        model.addAttribute("stocks", stocks);
+        model.addAttribute("stocks", applicationFilterService.listOptionTrackingStocksSorted());
         return hxRequest != null ? "option_analysis/tracking :: content" : "option_analysis/tracking";
     }
 
     @GetMapping("/expirations")
     public String expirationOptions(@RequestParam String ticker, Model model) {
         log.info("OptionTrackingController: expirationOptions called with ticker={}", ticker);
-        Map<LocalDate, Long> expirations = optionTrackingFacade.getExpirationDatesForTicker(ticker);
+        Map<LocalDate, Long> expirations = applicationFilterService.listOptionTrackingExpirations(ticker);
         log.info("OptionTrackingController: expirationOptions resolved {} expiration(s) for ticker={} -> {}",
             expirations.size(), ticker, expirations);
         model.addAttribute("expirations", expirations);
@@ -55,7 +54,7 @@ public class OptionTrackingController {
 
     @GetMapping("/contracts")
     public String contractOptions(@RequestParam Long optionsIntervalAnalyseId, Model model) {
-        Map<String, Long> contractTickerIds = optionTrackingFacade.getContractTickerIdsForIntervalAnalyse(optionsIntervalAnalyseId);
+        Map<String, Long> contractTickerIds = applicationFilterService.listOptionTrackingContractTickerIds(optionsIntervalAnalyseId);
         model.addAttribute("contractTickerIds", contractTickerIds);
         return "option_analysis/tracking :: contractOptions";
     }

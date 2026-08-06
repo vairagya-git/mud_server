@@ -25,6 +25,11 @@ public class OptionAPISnapshotFetcherFacade {
 
     private static final Logger log = LoggerFactory.getLogger(OptionAPISnapshotFetcherFacade.class);
     private static final boolean TEMP_LOG = true;
+    private static final List<String> CONTRACT_STATUSES = List.of(
+        OptionContractStatusEnum.ACTIVE.name(),
+        OptionContractStatusEnum.FLAT_FILE_COMPLETED.name(),
+        //Added to pull the local mock data, remove completed once done. 
+        OptionContractStatusEnum.COMPLETED.name());
     private static final List<String> SOURCES = List.of(
         OptionSourceEnum.API.name(),
         OptionSourceEnum.BOTH.name());
@@ -45,10 +50,7 @@ public class OptionAPISnapshotFetcherFacade {
 
     public int fetchAndStoreSnapshots(long snapshotVersion) {
         List<Map<String, Object>> contracts = optionContractRepository.getOptionContractsWithTickerByStatus(
-            List.of(
-                OptionContractStatusEnum.ACTIVE.name(),
-                OptionContractStatusEnum.FLAT_FILE_COMPLETED.name()
-            ),
+            CONTRACT_STATUSES,
             true,
             SOURCES);
         int inserted = 0;

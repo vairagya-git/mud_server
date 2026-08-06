@@ -8,6 +8,8 @@ import java.util.Map;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import com.rama.mudstock.model.option.OptionSnapshot;
+
 @Repository
 public class OptionSnapshotRepository {
 
@@ -103,6 +105,33 @@ public class OptionSnapshotRepository {
             + "WHERE os.option_contract_id = ? "
             + "ORDER BY os.option_quote_time DESC";
         return jdbc.queryForList(sql, optionContractId);
+    }
+
+    public List<OptionSnapshot> listOptionSnapshotsByContractId(Long optionContractId) {
+        String sql = "SELECT os.option_quote_time, os.underlying_price, os.bid, os.ask, os.midpoint, os.implied_volatility, "
+            + "os.delta, os.gamma, os.theta, os.vega, os.open_interest, os.day_volume "
+            + "FROM option_snapshot os "
+            + "WHERE os.option_contract_id = ? "
+            + "ORDER BY os.option_quote_time DESC";
+
+        return jdbc.query(sql, (rs, rowNum) -> {
+            OptionSnapshot row = new OptionSnapshot();
+            row.setOptionQuoteTime(rs.getTimestamp("option_quote_time"));
+            row.setUnderlyingPrice(rs.getBigDecimal("underlying_price"));
+            row.setBid(rs.getBigDecimal("bid"));
+            row.setAsk(rs.getBigDecimal("ask"));
+            row.setMidpoint(rs.getBigDecimal("midpoint"));
+            row.setImpliedVolatility(rs.getBigDecimal("implied_volatility"));
+            row.setDelta(rs.getBigDecimal("delta"));
+            row.setGamma(rs.getBigDecimal("gamma"));
+            row.setTheta(rs.getBigDecimal("theta"));
+            row.setVega(rs.getBigDecimal("vega"));
+            int openInterest = rs.getInt("open_interest");
+            row.setOpenInterest(rs.wasNull() ? null : openInterest);
+            int dayVolume = rs.getInt("day_volume");
+            row.setDayVolume(rs.wasNull() ? null : dayVolume);
+            return row;
+        }, optionContractId);
     }
 
     public Long findIdByContractAndUnixTime(Long optionContractId, Long unixTime) {

@@ -1,7 +1,5 @@
 package com.rama.mudstock.controller;
 
-import java.util.Comparator;
-
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -12,36 +10,32 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import com.rama.mudstock.enums.OptionStrategyEnum;
 import com.rama.mudstock.repository.option.OptionStrategyRepository;
-import com.rama.mudstock.repository.stockwatchlist.StockRepository;
+import com.rama.mudstock.service.ApplicationFilterService;
 
 @Controller
 @RequestMapping("/option-strategy")
 public class OptionStrategyController {
 
-    private final StockRepository stockRepository;
     private final OptionStrategyRepository optionStrategyRepository;
+    private final ApplicationFilterService applicationFilterService;
 
-    public OptionStrategyController(StockRepository stockRepository,
-                                    OptionStrategyRepository optionStrategyRepository) {
-        this.stockRepository = stockRepository;
+    public OptionStrategyController(OptionStrategyRepository optionStrategyRepository,
+                                    ApplicationFilterService applicationFilterService) {
         this.optionStrategyRepository = optionStrategyRepository;
+        this.applicationFilterService = applicationFilterService;
     }
 
     @GetMapping
     public String list(Model model,
                        @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
-        var stocks = stockRepository.findAll();
-        stocks.sort(Comparator.comparing(s -> s.getTicker() == null ? "" : s.getTicker(), String.CASE_INSENSITIVE_ORDER));
-
-        model.addAttribute("stocks", stocks);
+        model.addAttribute("stocks", applicationFilterService.listOptionStrategyStocksSorted());
         model.addAttribute("strategies", optionStrategyRepository.listAllWithTicker());
-        model.addAttribute("strategyNames", optionStrategyRepository.listStrategyNameOptions());
-        model.addAttribute("strategyTypes", OptionStrategyEnum.StrategyType.values());
-        model.addAttribute("strategyModes", OptionStrategyEnum.StrategyMode.values());
-        model.addAttribute("strategyActions", OptionStrategyEnum.StrategyAction.values());
-        model.addAttribute("strategyStatuses", OptionStrategyEnum.StrategyStatus.values());
+        model.addAttribute("strategyNames", applicationFilterService.listOptionStrategyNameOptions());
+        model.addAttribute("strategyTypes", applicationFilterService.listOptionStrategyTypes());
+        model.addAttribute("strategyModes", applicationFilterService.listOptionStrategyModes());
+        model.addAttribute("strategyActions", applicationFilterService.listOptionStrategyActions());
+        model.addAttribute("strategyStatuses", applicationFilterService.listOptionStrategyStatuses());
 
         return hxRequest != null ? "option_strategy/list :: content" : "option_strategy/list";
     }

@@ -2,7 +2,6 @@ package com.rama.mudstock.controller;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -19,50 +18,26 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import com.rama.mudstock.config.ApplicationProperties;
-import com.rama.mudstock.enums.SystemRepositoryEnum.OptionContractStatusEnum;
+import com.rama.mudstock.facade.OptionContractAnalysisFacade;
 import com.rama.mudstock.enums.SystemRepositoryEnum.OptionIntervalAnalyseStatusEnum;
 import com.rama.mudstock.enums.SystemRepositoryEnum.OptionSourceEnum;
-import com.rama.mudstock.repository.option.OptionContractRepository;
-import com.rama.mudstock.repository.option.OptionIntervalAnalyseRepository;
-import com.rama.mudstock.repository.option.OptionSnapshotIVMetricRepository;
-import com.rama.mudstock.repository.option.OptionSnapshotRepository;
-import com.rama.mudstock.repository.stockwatchlist.StockRepository;
-import com.rama.mudstock.util.MudDateUtil;
+import com.rama.mudstock.model.option.OptionContract;
 
 @Controller
 @RequestMapping("/option-analysis")
 public class OptionAnalysisController {
 
-    private final StockRepository stockRepository;
-    private final OptionIntervalAnalyseRepository optionToAnalyseRepository;
-    private final OptionContractRepository optionContractRepository;
-    private final OptionSnapshotRepository optionSnapshotRepository;
-    private final OptionSnapshotIVMetricRepository optionSnapshotIVMetricRepository;
-    private final ApplicationProperties applicationProperties;
+    private final OptionContractAnalysisFacade optionContractAnalysisFacade;
 
-    public OptionAnalysisController(StockRepository stockRepository,
-                                    OptionIntervalAnalyseRepository optionToAnalyseRepository,
-                                    OptionContractRepository optionContractRepository,
-                                    OptionSnapshotRepository optionSnapshotRepository,
-                                    OptionSnapshotIVMetricRepository optionSnapshotIVMetricRepository,
-                                    ApplicationProperties applicationProperties) {
-        this.stockRepository = stockRepository;
-        this.optionToAnalyseRepository = optionToAnalyseRepository;
-        this.optionContractRepository = optionContractRepository;
-        this.optionSnapshotRepository = optionSnapshotRepository;
-        this.optionSnapshotIVMetricRepository = optionSnapshotIVMetricRepository;
-        this.applicationProperties = applicationProperties;
+    public OptionAnalysisController(OptionContractAnalysisFacade optionContractAnalysisFacade) {
+        this.optionContractAnalysisFacade = optionContractAnalysisFacade;
     }
 
     @GetMapping("/analyse")
     public String analyseForm(Model model,
                               @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
-        var stocks = stockRepository.findAll();
-        stocks.sort(Comparator.comparing(s -> s.getTicker() == null ? "" : s.getTicker(), String.CASE_INSENSITIVE_ORDER));
-
-        model.addAttribute("stocks", stocks);
-        model.addAttribute("entries", optionToAnalyseRepository.getOptionsInternalAnalyseByStatus(null));
+        model.addAttribute("stocks", optionContractAnalysisFacade.listOptionAnalysisStocksSorted());
+        model.addAttribute("entries", optionContractAnalysisFacade.listAnalyseEntries());
 
         return hxRequest != null ? "option_analysis/analyse :: content" : "option_analysis/analyse";
     }
@@ -81,7 +56,7 @@ public class OptionAnalysisController {
             String normalizedSource = normalizeAnalyseSource(source);
             String normalizedStatus = OptionIntervalAnalyseStatusEnum.CREATE_CONTRACT.name();
 
-            optionToAnalyseRepository.insert(
+            optionContractAnalysisFacade.createAnalyseEntry(
                 stockId,
                 normalizedContractType,
                 normalizedSource,
@@ -106,11 +81,9 @@ public class OptionAnalysisController {
                                   Model model,
                                   RedirectAttributes redirectAttributes,
                                   @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
-        var stocks = stockRepository.findAll();
-        stocks.sort(Comparator.comparing(s -> s.getTicker() == null ? "" : s.getTicker(), String.CASE_INSENSITIVE_ORDER));
-        model.addAttribute("stocks", stocks);
+        model.addAttribute("stocks", optionContractAnalysisFacade.listOptionAnalysisStocksSorted());
 
-        var entry = optionToAnalyseRepository.findByIdWithTicker(id);
+        var entry = optionContractAnalysisFacade.findAnalyseEntryById(id);
         if (entry == null) {
             redirectAttributes.addFlashAttribute("error", "Option analysis entry not found: " + id);
             return "redirect:/option-analysis/analyse";
@@ -134,7 +107,7 @@ public class OptionAnalysisController {
             String normalizedContractType = contractType == null ? "" : contractType.trim().toUpperCase();
             String normalizedStatus = normalizeAnalyseStatus(status);
 
-            int updated = optionToAnalyseRepository.updateById(
+            int updated = optionContractAnalysisFacade.updateAnalyseEntry(
                 id,
                 stockId,
                 normalizedContractType,
@@ -163,7 +136,7 @@ public class OptionAnalysisController {
                                       @RequestParam String status,
                                       RedirectAttributes redirectAttributes) {
         try {
-            Map<String, Object> entry = optionToAnalyseRepository.findByIdWithTicker(id);
+            Map<String, Object> entry = optionContractAnalysisFacade.findAnalyseEntryById(id);
             if (entry == null) {
                 redirectAttributes.addFlashAttribute("error", "Option analysis entry not found: " + id);
                 return "redirect:/option-analysis/analyse#pane-entries";
@@ -174,7 +147,7 @@ public class OptionAnalysisController {
 
             if (OptionIntervalAnalyseStatusEnum.ACTIVE.name().equals(currentStatus)
                 && OptionIntervalAnalyseStatusEnum.CLOSE.name().equals(requestedStatus)) {
-                optionToAnalyseRepository.updateStatusById(id, requestedStatus);
+                optionContractAnalysisFacade.updateAnalyseStatus(id, requestedStatus);
                 redirectAttributes.addFlashAttribute("message", "Status updated to CLOSE.");
             } else {
                 redirectAttributes.addFlashAttribute("error", "Only ACTIVE entries can be changed to CLOSE from this screen.");
@@ -199,48 +172,58 @@ public class OptionAnalysisController {
     @GetMapping("/contract")
     public String contractList(Model model,
                                @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
-        model.addAttribute("contracts", optionContractRepository.getOptionContractsWithTickerByStatus(List.of(), false, null));
-        model.addAttribute("contractTickers", listDistinctContractTickers(null));
-        model.addAttribute("contractSources", List.of(
-            OptionSourceEnum.API.name(),
-            OptionSourceEnum.FLAT_FILE.name(),
-            OptionSourceEnum.BOTH.name()
-        ));
+        OptionContractAnalysisFacade.OptionContractFilterContainer filters = optionContractAnalysisFacade.loadOptionContractFilterContainer();
+        model.addAttribute("contracts", java.util.List.of());
+        model.addAttribute("contractTickers", filters.contractTickers());
+        model.addAttribute("contractSources", filters.contractSources());
+        model.addAttribute("contractExpirations", filters.contractExpirations());
         return hxRequest != null ? "option_analysis/contract :: content" : "option_analysis/contract";
+    }
+
+    @GetMapping("/contract/contracts/filter")
+    @ResponseBody
+    public List<OptionContract> contractContractsFilter(@RequestParam Long stockId,
+                                                        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate expirationDate,
+                                                        @RequestParam(required = false) BigDecimal strikePrice,
+                                                        @RequestParam(defaultValue = "BOTH") String contractType,
+                                                        @RequestParam(defaultValue = "BOTH") String source) {
+        String normalizedContractType = contractType == null || contractType.isBlank() ? "BOTH" : contractType.trim().toUpperCase();
+        String normalizedSource = source == null || source.isBlank() ? "BOTH" : source.trim().toUpperCase();
+        return optionContractAnalysisFacade.listContractsForContractSelection(stockId, expirationDate, strikePrice, normalizedContractType, normalizedSource);
     }
 
     @GetMapping("/snapshot")
     public String snapshotList(Model model,
                                @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
-        model.addAttribute("activeContracts", optionContractRepository.getOptionContractsWithTickerByStatus(
-            java.util.List.of(OptionContractStatusEnum.ACTIVE.name()),
-            false,
-            null));
-        model.addAttribute("activeContractTickers", listDistinctContractTickers(OptionContractStatusEnum.ACTIVE.name()));
-        model.addAttribute("snapshotRefreshIntervalMs", applicationProperties.getSnapshotRefreshMs());
+        OptionContractAnalysisFacade.OptionContractFilterContainer filters = optionContractAnalysisFacade.loadOptionContractFilterContainer();
+        model.addAttribute("activeContractTickers", filters.contractTickers());
+        model.addAttribute("contractExpirations", filters.contractExpirations());
+        model.addAttribute("snapshotRefreshIntervalMs", filters.snapshotRefreshIntervalMs());
         return hxRequest != null ? "option_analysis/snapshot :: content" : "option_analysis/snapshot";
     }
 
     @GetMapping("/metrics")
     public String metricsList(Model model,
                               @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
-        model.addAttribute("metrics", optionSnapshotIVMetricRepository.listAllWithTickerAndContract());
+        model.addAttribute("metrics", optionContractAnalysisFacade.listMetrics());
         return hxRequest != null ? "option_analysis/metrics :: content" : "option_analysis/metrics";
     }
 
-    @GetMapping("/snapshot/contracts/{contractId}")
+    @GetMapping("/snapshot/strikes")
     @ResponseBody
-    public List<Map<String, Object>> snapshotByContract(@PathVariable Long contractId) {
-        List<Map<String, Object>> rows = optionSnapshotRepository.listByContractId(contractId);
-        rows.forEach(row -> row.put(
-            "option_quote_time",
-            MudDateUtil.utcToLocalDateTimeMinuteString(row.get("option_quote_time"))));
-        return rows;
+    public List<OptionContract> snapshotStrikeOptions(@RequestParam Long stockId,
+                                                      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate expirationDate) {
+        return optionContractAnalysisFacade.listStrikeOptions(stockId, expirationDate);
     }
 
-    private List<String> listDistinctContractTickers(String status) {
-        return optionContractRepository.listDistinctTickersByStatus(status);
+    @GetMapping("/snapshot/contracts/filter")
+    @ResponseBody
+    public List<OptionContract> snapshotContractsForStrike(@RequestParam Long stockId,
+                                                           @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate expirationDate,
+                                                           @RequestParam BigDecimal strikePrice) {
+        return optionContractAnalysisFacade.listContractsWithSnapshotFlatFileForStrike(stockId, expirationDate, strikePrice);
     }
+
 }
 
 //Changed For Git

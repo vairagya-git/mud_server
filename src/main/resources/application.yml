@@ -35,14 +35,18 @@ massive:
   apikey: ${MASSIVE_API_KEY:0jSwNlbvfYIgQ8OAVJsZ7T1sEmpWm7JV}
 
 s3-flatfiles:
+  read-local: true
+  local-directory: "/Users/I753307/Library/Mobile Documents/com~apple~CloudDocs/Tech-util/s3"
+  local-file-location-pattern: YYYY-MM-DD.csv.gz
+  local-stock: stocks
+  local-option: options
   bucket: flatfiles
   endpoint: https://files.massive.com
   access-key: ad198cac-4804-4fdd-b780-dfde45245f74
   secret-key: 0jSwNlbvfYIgQ8OAVJsZ7T1sEmpWm7JV
   minute-agg: us_options_opra/minute_aggs_v1
+  stock-minute-agg: us_stocks_sip/minute_aggs_v1
   file-location-pattern: YYYY/MM/YYYY-MM-DD.csv.gz
-  test-ticker: MU
-  test-day: 2026-07-27
   local-file-path: /Users/rama/dev-mud-stock/S3_FlatFiles
 
 

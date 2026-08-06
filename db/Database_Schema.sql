@@ -129,7 +129,7 @@ CREATE TABLE `earnings_date_entry` (
 ) ENGINE=InnoDB;
 
 
-select * from day_stock_movement_entry;
+drop table day_stock_movement_key;
 
 /*  Day Stock Movement */
 
@@ -313,9 +313,6 @@ CREATE TABLE `system_config` (
   CONSTRAINT unique_day_event_master UNIQUE (`code`, `purpose`)
 ) ENGINE=InnoDB;
 
-delete from system_config where purpose in ("DayStockMovementKeyMapEntry", "DayStockMovementCleanup");
- 
-
 INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VALUES
 /* WeeklyAnalystFirmUpdateCronjob Settings*/
 ('useage', 'useage', 'String', 'WeeklyAnalystFirmUpdateCronjob', 'Populate weekly analyst firm details from Benzinga API'),
@@ -415,8 +412,6 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 
 /**** OPTION CONTRACT START ****/
 
-select * from options_interval_analyse;
-
 CREATE TABLE options_interval_analyse (
     id  bigint unsigned NOT NULL AUTO_INCREMENT,
     stock_id bigint unsigned NOT NULL,
@@ -428,7 +423,7 @@ CREATE TABLE options_interval_analyse (
     strike_to DECIMAL(12,4) NOT NULL,
     `interval` DECIMAL(12,2) NOT NULL,
     created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
   KEY `fk_ota_stock` (`stock_id`),
   CONSTRAINT `fk_ota_stock` FOREIGN KEY (`stock_id`) REFERENCES `stock` (`id`),
@@ -546,7 +541,8 @@ CREATE TABLE option_snapshot (
     )
 );
 
-select * from option_snapshot_flatfile 
+select * from option_snapshot_flatfile ;
+
 where unix_time = '1785256800000000000'
 
 select * from option_contract

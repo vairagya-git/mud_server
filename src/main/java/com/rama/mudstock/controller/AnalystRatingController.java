@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.rama.mudstock.repository.analyst.FirmAnalystQueryRepository;
+import com.rama.mudstock.service.ApplicationFilterService;
 import com.rama.mudstock.service.BenzingaFirmService;
 
 // Sync
@@ -21,11 +22,14 @@ public class AnalystRatingController {
 
     private final BenzingaFirmService benzingaFirmService;
     private final FirmAnalystQueryRepository firmAnalystQueryRepository;
+    private final ApplicationFilterService applicationFilterService;
 
     public AnalystRatingController(BenzingaFirmService benzingaFirmService,
-                                   FirmAnalystQueryRepository firmAnalystQueryRepository) {
+                                   FirmAnalystQueryRepository firmAnalystQueryRepository,
+                                   ApplicationFilterService applicationFilterService) {
         this.benzingaFirmService = benzingaFirmService;
         this.firmAnalystQueryRepository = firmAnalystQueryRepository;
+        this.applicationFilterService = applicationFilterService;
     }
 
     /** List all firms stored in the database. */
@@ -63,10 +67,11 @@ public class AnalystRatingController {
             @RequestParam(required = false) List<String> analyst,
             @RequestParam(required = false) List<String> firm,
             @RequestHeader(value = "HX-Request", required = false) String hxRequest) {
+        ApplicationFilterService.AnalystRatingFilters filters = applicationFilterService.analystRatingFilters();
         model.addAttribute("ratings", firmAnalystQueryRepository.listAllRatingsWithMeta(ticker, analyst, firm));
-        model.addAttribute("tickers", firmAnalystQueryRepository.listDistinctRatingTickers());
-        model.addAttribute("analysts", firmAnalystQueryRepository.listDistinctRatingAnalysts());
-        model.addAttribute("firms", firmAnalystQueryRepository.listDistinctRatingFirms());
+        model.addAttribute("tickers", filters.tickers());
+        model.addAttribute("analysts", filters.analysts());
+        model.addAttribute("firms", filters.firms());
         model.addAttribute("selectedTickers", ticker != null ? ticker : java.util.Collections.emptyList());
         model.addAttribute("selectedAnalysts", analyst != null ? analyst : java.util.Collections.emptyList());
         model.addAttribute("selectedFirms", firm != null ? firm : java.util.Collections.emptyList());

@@ -37,7 +37,7 @@ public class OptionFlatFileSnapshotFetcherJob extends AbstractCronjob {
     @Scheduled(cron = "${all-cronjob-schedule}", zone = com.rama.mudstock.config.ApplicationConfig.LISBON_ZONE)
     public void fetchSnapshots() {
 
-        // backfillJulyOnce(); // Uncomment this line to run the backfill for July 2026
+    //    backfillJulyOnce(); // Uncomment this line to run the backfill for July 2026
 
         if (!shouldExecuteBySchedule(getPurpose())) {
             return;
@@ -68,8 +68,8 @@ public class OptionFlatFileSnapshotFetcherJob extends AbstractCronjob {
      * from 2025-07-01 to 2025-07-31 (inclusive), with a 3-minute delay after each day.
      */
     public void backfillJulyOnce() {
-        LocalDate start = LocalDate.of(2026, 6, 24);
-        LocalDate end = LocalDate.of(2026, 6, 30);
+        LocalDate start = LocalDate.of(2026, 7, 13);
+        LocalDate end = LocalDate.of(2026, 7, 24);
 
         for (LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
             if (marketCalendarService.isMarketClosed(date)) {
@@ -86,7 +86,7 @@ public class OptionFlatFileSnapshotFetcherJob extends AbstractCronjob {
             }
 
             try {
-                Thread.sleep(1 * 60 * 1000L);
+                Thread.sleep(1 * 10 * 1000L);
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
                 log.warn("{}: backfill delay interrupted, stopping backfill loop", getPurpose());

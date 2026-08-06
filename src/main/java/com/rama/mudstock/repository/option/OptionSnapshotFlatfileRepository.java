@@ -2,9 +2,12 @@ package com.rama.mudstock.repository.option;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.util.List;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+
+import com.rama.mudstock.model.option.OptionFlatFile;
 
 @Repository
 public class OptionSnapshotFlatfileRepository {
@@ -58,5 +61,31 @@ public class OptionSnapshotFlatfileRepository {
             stockLow,
             snapshotVersion,
             nearOptionSnapshotId);
+    }
+
+    public List<OptionFlatFile> listByContractId(Long optionContractId) {
+        String sql = "SELECT local_time, opt_volume, opt_open, opt_close, opt_high, opt_low, "
+            + "stock_volume, stock_open, stock_close, stock_high, stock_low "
+            + "FROM option_snapshot_flatfile "
+            + "WHERE option_contract_id = ? "
+            + "ORDER BY local_time DESC";
+
+        return jdbc.query(sql, (rs, rowNum) -> {
+            OptionFlatFile row = new OptionFlatFile();
+            row.setLocalTime(rs.getTimestamp("local_time"));
+            int optVolume = rs.getInt("opt_volume");
+            row.setOptVolume(rs.wasNull() ? null : optVolume);
+            row.setOptOpen(rs.getBigDecimal("opt_open"));
+            row.setOptClose(rs.getBigDecimal("opt_close"));
+            row.setOptHigh(rs.getBigDecimal("opt_high"));
+            row.setOptLow(rs.getBigDecimal("opt_low"));
+            int stockVolume = rs.getInt("stock_volume");
+            row.setStockVolume(rs.wasNull() ? null : stockVolume);
+            row.setStockOpen(rs.getBigDecimal("stock_open"));
+            row.setStockClose(rs.getBigDecimal("stock_close"));
+            row.setStockHigh(rs.getBigDecimal("stock_high"));
+            row.setStockLow(rs.getBigDecimal("stock_low"));
+            return row;
+        }, optionContractId);
     }
 }
