@@ -223,21 +223,16 @@ group by created_at;
 
 delete from day_stock_movement_entry where day_stock_movement_map_id  is null;
 
-select count(*) from day_stock_movement_entry
+select * from day_stock_movement_entry
+order by id desc;
+
 where day_stock_movement_date IS NULL;
-
-ALTER TABLE day_stock_movement_entry
-ADD CONSTRAINT unique_dsme_stock_movement
-UNIQUE (stock_id, day_stock_movement_date);
-
-
-ALTER TABLE day_stock_movement_entry
-    DROP FOREIGN KEY fk_dsme_day_stock_movement_map,
-    DROP INDEX fk_dsme_day_stock_movement_map;
+    
     
 ALTER TABLE day_stock_movement_entry
-    DROP INDEX unique_day_stock_movement_entry,
-    DROP COLUMN day_stock_movement_map_id;
+    ADD COLUMN cur_day_high_snap_shot_datetime varchar(256) DEFAULT NULL after `cur_day_low`;
+ALTER TABLE day_stock_movement_entry
+    ADD COLUMN cur_day_low_datetime timestamp NULL DEFAULT NULL after `cur_day_high_datetime`;
 
 CREATE TABLE `day_stock_movement_entry` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -248,6 +243,10 @@ CREATE TABLE `day_stock_movement_entry` (
   `cur_day_close` decimal(20,2) NOT NULL,
   `cur_day_high` decimal(20,2) NOT NULL,
   `cur_day_low` decimal(20,2) NOT NULL,
+  `cur_day_high_snap_shot_datetime` varchar(256) DEFAULT NULL,
+  `cur_day_low_snap_shot_datetime` varchar(256) DEFAULT NULL,
+  `cur_day_high_flat_file_datetime` varchar(256) DEFAULT NULL,
+  `cur_day_low_flat_file_datetime` varchar(256) DEFAULT NULL,
   `cur_day_vol_weight` decimal(20,2) NOT NULL,
   `cur_day_volume` bigint unsigned NOT NULL,
   `change_percent` decimal(20,2) DEFAULT NULL,
@@ -351,6 +350,19 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('dailyDate', '2026-07-30', 'DateTime', 'DayStockMovementData', 'Use this date for the current date for the cronjob'),
 ('forceExecute', 'false', 'boolean', 'DayStockMovementData', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
 ('forceExecuteDailyDate', '', 'DateTime', 'DayStockMovementData', 'Set the date for forceExecute'),
+('pullStockHistory', '', 'StringArray', 'DayStockMovementData', 'Pull the stock history for the ticker for the period pullStockHistoryDays'),
+('pullStockHistoryDays', '', 'Integer', 'DayStockMovementData', 'No of Days to pull the stock history'),
+
+/*DayStockMovementDataEnrichement Settings*/
+('useage', 'useage', 'String', 'DayStockMovementDataEnrichement', 'Populated the day stock movment data for the current day'),
+('enabled', 'true', 'boolean', 'DayStockMovementDataEnrichement', 'Day Stock Movement Data > cronjob Enabled'),
+('watchlist-codes', 'MOVING_STOCK,SEMI_WATCHLIST', 'StringArray', 'DayStockMovementDataEnrichement', 'fetch for teh configured watchlist'),
+('execution', 'daily', 'String', 'DayStockMovementDataEnrichement', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'DayStockMovementDataEnrichement', 'LastUpdated dateTime'),
+('dailyCutOffTime', '22:00', 'DateTime', 'DayStockMovementDataEnrichement', 'Record should only be fetched after the cutoffTime'),
+('dailyDate', '2026-07-30', 'DateTime', 'DayStockMovementDataEnrichement', 'Use this date for the current date for the cronjob'),
+('forceExecute', 'false', 'boolean', 'DayStockMovementDataEnrichement', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
+('forceExecuteDailyDate', '', 'DateTime', 'DayStockMovementDataEnrichement', 'Set the date for forceExecute'),
 
 /*MYSQL DB Dump Settings*/
 ('useage', 'useage', 'String', 'DailyMysqlDBDump', 'Dump the Mysql and write into the location'),
@@ -433,7 +445,8 @@ CREATE TABLE options_interval_analyse (
 select * from options_interval_analyse
 order by id desc
 
-select * from option_contract 
+select * from option_contract ;
+
 where options_interval_analyse_id is null
 order by id desc
 
@@ -466,7 +479,14 @@ CREATE TABLE option_contract (
   CONSTRAINT `unique_optcon_option_contract` UNIQUE (contract_ticker, source)
 );
 
-select * from option_snapshot os
+select * from option_snapshot os;
+
+
+SELECT DATE(option_quote_time) AS data_date, COUNT(*) AS row_count
+FROM option_snapshot
+GROUP BY DATE(option_quote_time)
+ORDER BY data_date;
+
 join option_contract oc on os.option_contract_id = oc.id
 where oc.contract_ticker = "O:INTC260717C00100000";
 
@@ -541,12 +561,18 @@ CREATE TABLE option_snapshot (
     )
 );
 
-select * from option_snapshot_flatfile ;
+ALTER TABLE option_snapshot
+  ADD COLUMN unix_time bigint unsigned NOT NULL after `snapshot_time`;
 
-where unix_time = '1785256800000000000'
+select * from option_contract;
+where contract_ticker like "O:MU260814C%";
 
-select * from option_contract
-where contract_ticker like "O:MU260814C%"
+
+SELECT DATE(expiration_date) AS data_date, COUNT(*) AS row_count
+FROM option_contract
+GROUP BY DATE(expiration_date)
+ORDER BY data_date;
+
 
 UPDATE option_snapshot
 SET unix_time = CAST(
@@ -554,13 +580,24 @@ SET unix_time = CAST(
         DATE_FORMAT(option_quote_time, '%Y-%m-%d %H:%i:00')
     ) * 1000000000
 AS UNSIGNED)
-WHERE option_quote_time IS NOT NULL
+WHERE option_quote_time IS NOT NULL;
+
 and id in (364687, 365695)
 
 select * from option_snapshot_flatfile osf 
+order by id DESC;
+
 join option_contract oc on osf.option_contract_id = oc.id
 join option_snapshot os on os.option_contract_id = oc.id
-where oc.contract_ticker like "O:MU260814C%"
+where oc.contract_ticker like "O:MU%";
+
+
+SELECT DATE(local_time) AS data_date, COUNT(*) AS row_count
+FROM option_snapshot_flatfile
+GROUP BY DATE(local_time)
+ORDER BY data_date;
+
+
 
 delete from option_snapshot_flatfile osf 
 where created_at < "2026-08-02 03:00:21"
@@ -584,7 +621,12 @@ ALTER TABLE option_snapshot_flatfile
   ADD CONSTRAINT fk_osf_near_option_snapshot
     FOREIGN KEY (near_option_snapshot_id) REFERENCES option_snapshot (id);
     
-select count(*) from option_snapshot_flatfile;
+select oc.expiration_date, oc.contract_ticker from option_snapshot_flatfile osf
+join option_contract oc on osf.option_contract_id = oc.id;
+
+
+join option_snapshot os on os.option_contract_id = oc.id
+where near_option_snapshot_id is not null;
 
 UPDATE option_snapshot_flatfile
 SET local_time = DATE_ADD(unix_utc_time, INTERVAL 1 HOUR);

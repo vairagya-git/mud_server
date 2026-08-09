@@ -302,6 +302,7 @@ th {
 tbody tr:nth-child(even) { background: var(--table-row-alt); }
 tbody tr:hover { background: #f0f6ff; }
 .table-empty { text-align: center; color: var(--text-muted); font-style: italic; padding: 24px 0; }
+.cell-subtext { margin-top: 2px; font-size: 0.78rem; color: var(--text-muted); }
 
 /* --- Badges ------------------------------------------------------- */
 .badge {

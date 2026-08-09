@@ -58,21 +58,37 @@
                 </tr>
             </thead>
             <tbody>
-                <tr th:each="e : ${entries}" th:attr="data-ticker=${e['ticker']}, data-date=${e['master_event_date']}, data-sort-ticker=${e['ticker']}, data-sort-date=${e['master_event_date']}">
-                    <td th:attr="data-sort-value=${e['ticker']},data-filter-value=${e['ticker']}">
-                        <span class="badge badge-grey" th:text="${e['ticker']}"></span>
-                        <button type="button" class="filter-btn" data-field="ticker" th:data-value="${e['ticker']}" title="Filter by ticker">⊕</button>
+                <tr th:each="e : ${entries}" th:attr="data-ticker=${e.ticker}, data-date=${e.masterEventDate}, data-sort-ticker=${e.ticker}, data-sort-date=${e.masterEventDate}">
+                    <td th:attr="data-sort-value=${e.ticker},data-filter-value=${e.ticker}">
+                        <span class="badge badge-grey" th:text="${e.ticker}"></span>
+                        <button type="button" class="filter-btn" data-field="ticker" th:data-value="${e.ticker}" title="Filter by ticker">⊕</button>
                     </td>
-                    <td th:attr="data-sort-value=${e['master_event_date']},data-filter-value=${e['master_event_date']}">
-                        <span th:text="${e['master_event_date']}"></span>
+                    <td th:attr="data-sort-value=${e.masterEventDate},data-filter-value=${e.masterEventDate}">
+                        <span th:text="${e.masterEventDate}"></span>
                     </td>
-                    <td th:text="${e['cur_day_open']}"></td>
-                    <td th:text="${e['cur_day_close']}"></td>
-                    <td th:text="${e['cur_day_high']}"></td>
-                    <td th:text="${e['cur_day_low']}"></td>
-                    <td th:text="${e['change_percent']}"></td>
-                    <td th:text="${e['day_opening_change_percent']}"></td>
-                    <td th:text="${e['cur_day_volume']}"></td>
+                    <td th:text="${e.curDayOpen}"></td>
+                    <td th:text="${e.curDayClose}"></td>
+                    <td>
+                        <div th:text="${e.curDayHigh}"></div>
+                        <div class="cell-subtext"
+                            th:if="${e.curDayHighSnapShotDatetime != null and !#strings.isEmpty(e.curDayHighSnapShotDatetime)}"
+                            th:text="${'S > ' + e.curDayHighSnapShotDatetime}"></div>
+                        <div class="cell-subtext"
+                            th:if="${e.curDayHighFlatFileDatetime != null and !#strings.isEmpty(e.curDayHighFlatFileDatetime)}"
+                            th:text="${'F>' + e.curDayHighFlatFileDatetime}"></div>
+                    </td>
+                    <td>
+                        <div th:text="${e.curDayLow}"></div>
+                        <div class="cell-subtext"
+                             th:if="${e.curDayLowSnapShotDatetime != null and !#strings.isEmpty(e.curDayLowSnapShotDatetime)}"
+                             th:text="${'S > ' + e.curDayLowSnapShotDatetime}"></div>
+                        <div class="cell-subtext"
+                            th:if="${e.curDayLowFlatFileDatetime != null and !#strings.isEmpty(e.curDayLowFlatFileDatetime)}"
+                            th:text="${'F>' + e.curDayLowFlatFileDatetime}"></div>
+                    </td>
+                    <td th:text="${e.changePercent}"></td>
+                    <td th:text="${e.dayOpeningChangePercent}"></td>
+                    <td th:text="${e.curDayVolume}"></td>
                 </tr>
             </tbody>
         </table>

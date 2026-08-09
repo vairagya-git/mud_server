@@ -15,6 +15,8 @@ public enum CronjobConfigEnum {
     START_TIME("startTime", "Time", ApplicationConfig.TIME_FORMAT_HH_MM, "Start Time"),
     END_TIME("endTime", "Time", ApplicationConfig.TIME_FORMAT_HH_MM, "End Time"),
     WATCHLIST_CODES("watchlist-codes", "StringArray", "Watchlist Codes"),
+    PULL_STOCK_HISTORY("pullStockHistory", "StringArray", "Pull the stock history for the ticker for the period pullStockHistoryDays"),
+    PULL_STOCK_HISTORY_DAYS("pullStockHistoryDays", "Integer", "No of Days to pull the stock history"),
     LOCATION("location", "String", "Output Location");
 
     private final String code;
@@ -98,6 +100,7 @@ public enum CronjobConfigEnum {
         WEEKLY_UPCOMING_EARNING_CRONJOB("WeeklyUpcomingEarningCronjob"),
         EARNINGS_DETAIL_CRONJOB("EarningsDetailCronjob"),
         DAY_STOCK_MOVEMENT_DATA("DayStockMovementData"),
+        DAY_STOCK_MOVEMENT_DATA_ENRICHEMENT("DayStockMovementDataEnrichement"),
         DAILY_MY_SQL_DB_DUMP("DailyMysqlDBDump"),
         OPTIONS_INTERVAL_ANALYSE_DAILY_JOB("OptionsIntervalAnalyseDailyJob"),
         OPTION_SNAPSHOT_IV_METRICS("OptionSnapshotIVMetrics"),

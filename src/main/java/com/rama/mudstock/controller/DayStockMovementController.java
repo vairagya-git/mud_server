@@ -34,7 +34,7 @@ public class DayStockMovementController {
     }
 
     private String showEntries(Model model, String hxRequest) {
-        model.addAttribute("entries", dayStockMovementService.listEntriesWithMeta());
+        model.addAttribute("entries", dayStockMovementService.listStockMovementData());
         model.addAttribute("tickers", applicationFilterService.listDayStockMovementTickers());
         return hxRequest != null ? "day_stock_movement/day_stock_movement_entries :: content" : "day_stock_movement/day_stock_movement_entries";
     }

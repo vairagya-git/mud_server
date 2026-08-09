@@ -2,7 +2,6 @@ package com.rama.mudstock.service;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.rama.mudstock.enums.CronjobConfigEnum;
+import com.rama.mudstock.model.daystock.StockMovementData;
 import com.rama.mudstock.repository.daystock.DayStockMovementEntryRepository;
 import com.rama.mudstock.repository.stockwatchlist.WatchlistRepository;
 
@@ -56,8 +56,8 @@ public class DayStockMovementService {
                 .orElse(Collections.emptyList());
     }
 
-    public List<Map<String, Object>> listEntriesWithMeta() {
-        return entryRepository.listAllEntriesWithMeta();
+    public List<StockMovementData> listStockMovementData() {
+        return entryRepository.listStockMovementData();
     }
 
     public List<String> listDistinctEntryTickers() {

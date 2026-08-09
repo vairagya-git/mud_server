@@ -13,6 +13,30 @@ mvn spring-boot:run -Dspring-boot.run.profiles=server
 mvn spring-boot:run -Dspring-boot.run.profiles=local,cronjob
 ```
 
+CSV Data Import
+
+mvn -q -DskipTests exec:java   -Dexec.mainClass=com.rama.mudstock.util.TestDataCsvImportUtil   -Dexec.args="--spring.profiles.active=local"
+
+
+Local Development details available Data Dates 
+
+option_snapshot_flatfile >  13 to 17 July 2026, 20 to 24 July 2026
+option_snapshot > 10 July 2026
+option_contract > 17 July, 24-July
+day_stock_movement_entry > 
+  Adjusted for MU 20, 21, 22, 23 & 24 July 2026. 23 & 24 data adjusted for snapshot & flatfile. 
+
+
+
+
+
+SAMPLE QUERY:  
+SELECT DATE(local_time) AS data_date, COUNT(*) AS row_count
+FROM option_snapshot_flatfile
+GROUP BY DATE(local_time)
+ORDER BY data_date;
+
+
 The app exposes a small REST API at `GET /api/stocks` and `POST /api/stocks`.
 
 

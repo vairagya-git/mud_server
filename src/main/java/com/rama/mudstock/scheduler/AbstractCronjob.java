@@ -6,9 +6,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +27,6 @@ public abstract class AbstractCronjob {
     private final SystemConfigService systemConfigService;
     private final MarketCalendarService marketCalendarService;
     private String currentPurpose;
-    private Map<String, Object> currentPurposeConfig = new HashMap<>();
 
     protected AbstractCronjob(SystemConfigService systemConfigService, String purpose) {
         this(systemConfigService, purpose, null);
@@ -44,11 +41,10 @@ public abstract class AbstractCronjob {
     }
 
     /**
-     * Loads all typed system_config values for a purpose into an in-memory map for this run.
+     * Sets the active purpose context for this cronjob instance.
      */
     protected void loadPurposeConfig(String purpose) {
         this.currentPurpose = purpose;
-        this.currentPurposeConfig = new HashMap<>(systemConfigService.findAllByPurpose(purpose));
     }
 
     protected String getPurpose() {
@@ -56,7 +52,10 @@ public abstract class AbstractCronjob {
     }
 
     protected Object getConfigValue(String code) {
-        return currentPurposeConfig.get(code);
+        if (currentPurpose == null || currentPurpose.isBlank() || code == null || code.isBlank()) {
+            return null;
+        }
+        return systemConfigService.findByPurposeAndCode(currentPurpose, code).orElse(null);
     }
 
     protected List<String> resolveConfiguredWatchlistCodes(String purpose, String code) {
@@ -263,9 +262,6 @@ public abstract class AbstractCronjob {
             log.warn("AbstractCronjob: failed to update lastUpdated config (purpose={}, code={})", purpose, lastUpdatedCode);
             return;
         }
-        if (purpose.equals(currentPurpose)) {
-            currentPurposeConfig.put(lastUpdatedCode, nowUtc);
-        }
     }
 
     protected LocalDate resolveNextEligibleDate(LocalDate fromDate) {
@@ -296,10 +292,6 @@ public abstract class AbstractCronjob {
                 dailyDateCode,
                 nextEligibleDateText);
             return;
-        }
-
-        if (purpose.equals(currentPurpose)) {
-            currentPurposeConfig.put(dailyDateCode, nextEligibleDateText);
         }
 
         log.info("{}: updated {} to next eligible market date {}", purpose, dailyDateCode, nextEligibleDateText);
@@ -396,7 +388,10 @@ public abstract class AbstractCronjob {
     }
 
     private boolean hasSystemConfigProperty(CronjobConfigEnum config) {
-        return currentPurposeConfig.containsKey(config.code());
+        if (currentPurpose == null || currentPurpose.isBlank()) {
+            return false;
+        }
+        return systemConfigService.findByPurposeAndCode(currentPurpose, config.code()).isPresent();
     }
 
     /**

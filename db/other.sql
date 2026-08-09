@@ -84,54 +84,98 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 
 
 
+select * from stock;
 
-CREATE TABLE option_snapshot_flatfile (
-    id bigint unsigned NOT NULL AUTO_INCREMENT,
+MU = 1
 
-    option_contract_id bigint unsigned NOT NULL,
-    stock_id bigint unsigned NOT NULL,
-    near_option_snapshot_id bigint unsigned NULL,
+select * from day_stock_movement_entry;
 
-    contract_ticker VARCHAR(128),
-    opt_volume INT,
-    opt_open DECIMAL(6,2),
-    opt_close DECIMAL(6,2),
-    opt_high DECIMAL(6,2),
-    opt_low DECIMAL(6,2),
-    unix_time bigint unsigned NOT NULL,
-    unix_utc_time DATETIME(6) NOT NULL,
-    local_time DATETIME(6) NOT NULL,
-    
-    stock_ticker VARCHAR(128),
-    stock_volume INT,
-    stock_open DECIMAL(6,2),
-    stock_close DECIMAL(6,2),
-    stock_high DECIMAL(6,2),
-    stock_low DECIMAL(6,2),
+select * from options_interval_analyse;
 
-    snapshot_version bigint unsigned NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    PRIMARY KEY (`id`),
-    
-    CONSTRAINT fk_osf_stock 
-    FOREIGN KEY (stock_id) 
-        REFERENCES stock (id),
+select * from option_snapshot_flatfile;
 
-    CONSTRAINT fk_osf_contract
-        FOREIGN KEY (option_contract_id)
-        REFERENCES option_contract(id),
-        
-	CONSTRAINT fk_osf_near_option_snapshot
-		FOREIGN KEY (near_option_snapshot_id) 
-        REFERENCES option_snapshot (id),
-  
-     CONSTRAINT uk_osf_time
-        UNIQUE (option_contract_id, unix_time),
+select * from option_contract
+where stock_id = 1 and expiration_date = '2026-07-31' ;
 
-    INDEX idx_osf_time (
-        option_contract_id,
-        unix_time
-    )
+select * from option_snapshot where stock_id = 1;
+
+LOAD DATA LOCAL INFILE '/Users/I753307/Downloads/stockmovement_data_mu.csv'
+INTO TABLE day_stock_movement_entry
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES
+(
+  stock_id,
+  earnings_date_id,
+  pre_day_close,
+  cur_day_open,
+  cur_day_close,
+  cur_day_high,
+  cur_day_low,
+  cur_day_vol_weight,
+  cur_day_volume,
+  change_percent,
+  earnings,
+  day_opening_change_percent,
+  day_stock_movement_date
 );
+
+
+
+
+SELECT
+  dsme.id,
+  dsme.stock_id,
+  DATE(dsme.day_stock_movement_date) AS movement_day,
+  dsme.cur_day_high,
+  dsme.cur_day_low,
+  (
+    SELECT GROUP_CONCAT(DISTINCT DATE_FORMAT(os.option_quote_time, '%H:%i')
+                        ORDER BY DATE_FORMAT(os.option_quote_time, '%H:%i') SEPARATOR ',')
+    FROM option_snapshot os
+    WHERE os.stock_id = dsme.stock_id
+      AND DATE(os.option_quote_time) = DATE(dsme.day_stock_movement_date)
+      AND ROUND(os.underlying_price, 2) = dsme.cur_day_high
+  ) AS calc_cur_day_high_snap_shot_datetime,
+  (
+    SELECT GROUP_CONCAT(DISTINCT DATE_FORMAT(os.option_quote_time, '%H:%i')
+                        ORDER BY DATE_FORMAT(os.option_quote_time, '%H:%i') SEPARATOR ',')
+    FROM option_snapshot os
+    WHERE os.stock_id = dsme.stock_id
+      AND DATE(os.option_quote_time) = DATE(dsme.day_stock_movement_date)
+      AND ROUND(os.underlying_price, 2) = dsme.cur_day_low
+  ) AS calc_cur_day_low_snap_shot_datetime,
+  (
+    SELECT GROUP_CONCAT(DISTINCT DATE_FORMAT(osf.local_time, '%H:%i')
+                        ORDER BY DATE_FORMAT(osf.local_time, '%H:%i') SEPARATOR ',')
+    FROM option_snapshot_flatfile osf
+    WHERE osf.stock_id = dsme.stock_id
+      AND DATE(osf.local_time) = DATE(dsme.day_stock_movement_date)
+      AND ROUND(osf.stock_open, 2) = dsme.cur_day_high
+  ) AS calc_cur_day_high_flat_file_datetime,
+  (
+    SELECT GROUP_CONCAT(DISTINCT DATE_FORMAT(osf.local_time, '%H:%i')
+                        ORDER BY DATE_FORMAT(osf.local_time, '%H:%i') SEPARATOR ',')
+    FROM option_snapshot_flatfile osf
+    WHERE osf.stock_id = dsme.stock_id
+      AND DATE(osf.local_time) = DATE(dsme.day_stock_movement_date)
+      AND ROUND(osf.stock_open, 2) = dsme.cur_day_low
+  ) AS calc_cur_day_low_flat_file_datetime
+FROM day_stock_movement_entry dsme
+WHERE DATE(dsme.day_stock_movement_date) = '2026-07-31'
+  AND dsme.stock_id IN (1, 2, 3, 4, 5, 6);
+
+
+
+
+  SELECT GROUP_CONCAT(DISTINCT DATE_FORMAT(os.option_quote_time, '%H:%i')
+                        ORDER BY DATE_FORMAT(os.option_quote_time, '%H:%i') SEPARATOR ',')
+    FROM option_snapshot os
+    WHERE os.stock_id IN (1, 2, 3, 4, 5, 6)
+      AND DATE(os.option_quote_time) = DATE('2026-07-31')
+      AND TRUNCATE(os.underlying_price, 0) = TRUNCATE(836.3400, 0);
+
+      AND ROUND(os.underlying_price, 2) = 930.88;
+
+select * from option_snapshot where stock_id = 1  ;
