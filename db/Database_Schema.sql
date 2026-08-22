@@ -1033,10 +1033,7 @@ WHERE strategy_code = 'REVERSE_IRON_CONDOR';
 
 
 
-select * from option_strategy;
-
-Alter table option_trade
-ADD COLUMN with_historic_data tinyint(1) DEFAULT '0';
+select * from option_trade;
 
 CREATE TABLE option_trade (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -1074,25 +1071,6 @@ CREATE TABLE option_trade (
         FOREIGN KEY (stock_id)
         REFERENCES stock(id)
 );
-
-
-ALTER TABLE option_strategy
-ADD COLUMN option_trade_id BIGINT UNSIGNED NOT NULL AFTER stock_id,
-
-ADD CONSTRAINT fk_option_strategy_trade
-    FOREIGN KEY (option_trade_id)
-    REFERENCES option_trade(id);
-
-
-
-ALTER TABLE option_strategy
-ADD COLUMN trade_group_id BIGINT UNSIGNED NULL AFTER stock_id,
-ADD COLUMN trade_group_name VARCHAR(150) NULL AFTER trade_group_id;
-
-
-ALTER TABLE option_strategy
-DROP COLUMN current_price;
-
 
 
 CREATE TABLE option_strategy (
@@ -1150,55 +1128,6 @@ CREATE TABLE option_strategy (
         FOREIGN KEY (previous_strategy_id)
         REFERENCES option_strategy (id)
 );
-
-
-ALTER TABLE option_strategy_leg
-ADD COLUMN current_snapshot_id BIGINT UNSIGNED NULL,
-ADD COLUMN current_price DECIMAL(14,4) DEFAULT NULL;
-
-ALTER TABLE option_strategy_leg
-ADD CONSTRAINT fk_strategy_leg_current_snapshot
-        FOREIGN KEY (current_snapshot_id)
-        REFERENCES option_snapshot(id);
-
-ALTER TABLE option_strategy_leg
-ADD COLUMN entry_flat_file_id BIGINT UNSIGNED NULL,
-ADD COLUMN entry_flat_file_price DECIMAL(14,4) DEFAULT NULL;
-
-ALTER TABLE option_strategy_leg
-ADD CONSTRAINT fk_strategy_leg_entry_flat_file
-        FOREIGN KEY (entry_flat_file_id)
-        REFERENCES option_snapshot_flatfile(id);
-
-ALTER TABLE option_strategy_leg
-ADD COLUMN current_flat_file_id BIGINT UNSIGNED NULL,
-ADD COLUMN current_flat_file_price DECIMAL(14,4) DEFAULT NULL;
-
-ALTER TABLE option_strategy_leg
-ADD CONSTRAINT fk_strategy_leg_current_flat_file
-        FOREIGN KEY (current_flat_file_id)
-        REFERENCES option_snapshot_flatfile(id);
-
-ALTER TABLE option_strategy_leg
-ADD COLUMN exit_flat_file_id BIGINT UNSIGNED NULL,
-ADD COLUMN exit_flat_file_price DECIMAL(14,4) DEFAULT NULL;
-
-ALTER TABLE option_strategy_leg
-ADD CONSTRAINT fk_strategy_leg_exit_flat_file
-        FOREIGN KEY (exit_flat_file_id)
-        REFERENCES option_snapshot_flatfile(id);
-
-ALTER TABLE option_strategy_leg
-ADD COLUMN entry_manual_price DECIMAL(14,4) DEFAULT NULL,
-ADD COLUMN current_manual_price DECIMAL(14,4) DEFAULT NULL,
-ADD COLUMN exit_manual_price DECIMAL(14,4) DEFAULT NULL;
-
-
-ALTER TABLE option_strategy_leg
-DROP COLUMN current_price, 
-DROP COLUMN current_flat_file_price, 
-DROP COLUMN exit_flat_file_price;
-
 
 
 CREATE TABLE option_strategy_leg (
@@ -1327,19 +1256,6 @@ CREATE TABLE option_strategy_snapshot (
     )
 );
 
-
-ALTER TABLE option_strategy_leg_snapshot
-ADD COLUMN option_flat_file_id BIGINT UNSIGNED NULL;
-
-ALTER TABLE option_strategy_leg_snapshot
-ADD CONSTRAINT fk_leg_snapshot_strategy_flat_file
-        FOREIGN KEY (option_flat_file_id)
-        REFERENCES option_snapshot_flatfile(id);
-
-ALTER TABLE option_strategy_leg_snapshot
-ADD COLUMN manual_price DECIMAL(14,4) DEFAULT NULL;
-
-
 CREATE TABLE option_strategy_leg_snapshot (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 
@@ -1379,11 +1295,6 @@ CREATE TABLE option_strategy_leg_snapshot (
             option_strategy_leg_id
         )
 );
-
-
-
- max_iv_stock_distance DECIMAL(10,2),
-  min_iv_stock_distance DECIMAL(10,2),
 
 /*** Metrics tables ***/
 
