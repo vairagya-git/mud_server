@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Trade Summary - MudStock</title></head>
+<body>
+<div id="page-content" th:fragment="content">
+    <style>
+        .summary-shell {
+            max-width: 1120px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 12px;
+        }
+
+        .strategy-list {
+            margin-top: 12px;
+            display: grid;
+            gap: 10px;
+        }
+
+        .strategy-card {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            background: #fafdf8;
+        }
+
+        .strategy-title {
+            font-weight: 700;
+            color: #285f28;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .toggle-btn {
+            border: 1px solid var(--border);
+            background: #ffffff;
+            border-radius: 6px;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .strategy-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 8px;
+            font-size: .86rem;
+        }
+
+        .summary-empty {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: #fff7e6;
+            border: 1px solid #f4d39c;
+            color: #7b4e00;
+            font-size: .86rem;
+        }
+
+        .nested-box {
+            margin-top: 10px;
+            border-top: 1px dashed var(--border);
+            padding-top: 10px;
+        }
+
+        .nested-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-size: .86rem;
+            color: #285f28;
+            font-weight: 700;
+        }
+
+        .legs-row,
+        .snapshot-row,
+        .snapshot-leg-row {
+            border: 1px solid #edf2ea;
+            border-radius: 8px;
+            padding: 8px;
+            margin-top: 8px;
+            background: #ffffff;
+            font-size: .84rem;
+        }
+
+        .snapshot-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 8px;
+            margin-top: 6px;
+            font-size: .83rem;
+        }
+
+        .legs-empty {
+            font-size: .84rem;
+            color: #6b6b6b;
+            margin-top: 6px;
+        }
+
+        .leg-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .snapshot-leg-time {
+            color: #496649;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+    </style>
+
+    <div class="page-header">
+        <h1>Trade Summary</h1>
+        <div class="subtitle">Trade -> Strategy -> Legs with expandable snapshots</div>
+    </div>
+
+    <div class="card summary-shell" style="padding:16px 18px 14px;">
+        <h3 style="margin:0 0 10px">Trade Summary</h3>
+
+        <div th:if="${#lists.isEmpty(aliveTrades)}" class="subtitle">No active trade found in option_trade.</div>
+
+        <div th:if="${!#lists.isEmpty(aliveTrades)}">
+            <div class="summary-grid">
+                <div class="form-group" style="margin:0;">
+                    <label>Trade</label>
+                    <select id="tradeSelect">
+                        <option value="" selected>-- select trade --</option>
+                        <option th:each="t : ${aliveTrades}"
+                                th:value="${t.id}"
+                                th:text="${t.tradeName + ' | ' + t.ticker + ' | ' + t.tradeMode + ' | ' + t.status + (t.withHistoricData ? ' | History' : '')}">
+                        </option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="strategyList" class="strategy-list"></div>
+            <div id="strategyEmpty" class="summary-empty" style="display:none"></div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        (function () {
+            var tradeSelect = document.getElementById('tradeSelect');
+            var strategyList = document.getElementById('strategyList');
+            var strategyEmpty = document.getElementById('strategyEmpty');
+            var optionStrategies = /*[[${optionStrategies}]]*/ [];
+            var optionStrategyLegs = /*[[${optionStrategyLegs}]]*/ [];
+            var optionStrategySnapshots = /*[[${optionStrategySnapshots}]]*/ [];
+            var optionStrategySnapshotLegs = /*[[${optionStrategySnapshotLegs}]]*/ [];
+
+            if (!tradeSelect) {
+                return;
+            }
+
+            function toLong(value) {
+                if (value === null || value === undefined || value === '') return null;
+                var parsed = Number(String(value));
+                return Number.isFinite(parsed) ? parsed : null;
+            }
+
+            function toEpoch(value) {
+                if (!value) return Number.NEGATIVE_INFINITY;
+                var parsed = Date.parse(value);
+                return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
+            }
+
+            function esc(value) {
+                return String(value == null ? '' : value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function normalizeStrategies(rows) {
+                return (rows || []).map(function (row) {
+                    return {
+                        id: toLong(row.id),
+                        optionTradeId: toLong(row.optionTradeId),
+                        strategyCode: row.strategyCode || '',
+                        displayName: row.displayName || '',
+                        strategyAction: row.strategyAction || '',
+                        status: row.status || '',
+                        tradeMode: row.tradeMode || '',
+                        entryTime: row.entryTime || ''
+                    };
+                });
+            }
+
+            function normalizeStrategyLegs(rows) {
+                return (rows || []).map(function (row) {
+                    return {
+                        id: toLong(row.id),
+                        optionStrategyId: toLong(row.optionStrategyId),
+                        legNumber: row.legNumber,
+                        contractTicker: row.contractTicker || '',
+                        contractType: row.contractType || '',
+                        positionSide: row.positionSide || '',
+                        quantity: row.quantity,
+                        entryPrice: row.entryPrice
+                    };
+                });
+            }
+
+            function normalizeStrategySnapshots(rows) {
+                return (rows || []).map(function (row) {
+                    return {
+                        id: toLong(row.id),
+                        optionStrategyId: toLong(row.optionStrategyId),
+                        snapshotTime: row.snapshotTime || '',
+                        underlyingPrice: row.underlyingPrice,
+                        entryCost: row.entryCost,
+                        currentMarketValue: row.currentMarketValue,
+                        unrealizedPnl: row.unrealizedPnl,
+                        unrealizedPnlPct: row.unrealizedPnlPct,
+                        totalPnl: row.totalPnl,
+                        netDelta: row.netDelta,
+                        netGamma: row.netGamma,
+                        netTheta: row.netTheta,
+                        netVega: row.netVega,
+                        averageIv: row.averageIv,
+                        totalOpenInterest: row.totalOpenInterest,
+                        totalDayVolume: row.totalDayVolume
+                    };
+                });
+            }
+
+            function normalizeStrategySnapshotLegs(rows) {
+                return (rows || []).map(function (row) {
+                    return {
+                        id: toLong(row.id),
+                        optionStrategySnapshotId: toLong(row.optionStrategySnapshotId),
+                        optionStrategyLegId: toLong(row.optionStrategyLegId),
+                        legNumber: row.legNumber,
+                        contractTicker: row.contractTicker || '',
+                        currentMarketValue: row.currentMarketValue,
+                        unrealizedPnl: row.unrealizedPnl,
+                        unrealizedPnlPct: row.unrealizedPnlPct
+                    };
+                });
+            }
+
+            var strategyRows = normalizeStrategies(optionStrategies);
+            var strategyLegRows = normalizeStrategyLegs(optionStrategyLegs);
+            var strategySnapshotRows = normalizeStrategySnapshots(optionStrategySnapshots);
+            var strategySnapshotLegRows = normalizeStrategySnapshotLegs(optionStrategySnapshotLegs);
+
+            var snapshotsById = new Map();
+            strategySnapshotRows.forEach(function (snapshot) {
+                snapshotsById.set(snapshot.id, snapshot);
+            });
+
+            function strategyLegRowsHtml(strategyId) {
+                var rows = strategyLegRows
+                    .filter(function (row) { return row.optionStrategyId === strategyId; })
+                    .sort(function (a, b) { return (Number(a.legNumber) || 0) - (Number(b.legNumber) || 0); });
+
+                if (!rows.length) {
+                    return '<div class="legs-empty">No strategy legs for this strategy.</div>';
+                }
+
+                return rows.map(function (leg) {
+                    return ''
+                        + '<div class="legs-row">'
+                        + '<div class="leg-header">'
+                        + '<span><strong>Leg ' + esc(leg.legNumber) + '</strong> | '
+                        + esc(leg.positionSide) + ' ' + esc(leg.contractType)
+                        + ' | Qty: ' + esc(leg.quantity)
+                        + ' | Contract: ' + esc(leg.contractTicker)
+                        + ' | Entry: ' + esc(leg.entryPrice)
+                        + '</span>'
+                        + '<button type="button" class="toggle-btn" data-toggle-leg-snapshots data-leg-id="' + esc(leg.id) + '" aria-expanded="false">+</button>'
+                        + '</div>'
+                        + '<div class="nested-box" data-leg-snapshots-box="' + esc(leg.id) + '" style="display:none">'
+                        + '<div class="nested-header"><span>Strategy Leg Snapshots</span></div>'
+                        + strategyLegSnapshotRowsHtml(leg.id)
+                        + '</div>'
+                        + '</div>';
+                }).join('');
+            }
+
+            function strategyLegSnapshotRowsHtml(legId) {
+                var rows = strategySnapshotLegRows
+                    .filter(function (row) { return row.optionStrategyLegId === legId; })
+                    .sort(function (a, b) {
+                        var sa = snapshotsById.get(a.optionStrategySnapshotId);
+                        var sb = snapshotsById.get(b.optionStrategySnapshotId);
+                        return toEpoch(sb && sb.snapshotTime) - toEpoch(sa && sa.snapshotTime);
+                    });
+
+                if (!rows.length) {
+                    return '<div class="legs-empty">No strategy leg snapshots for this leg.</div>';
+                }
+
+                return rows.map(function (row) {
+                    var snapshot = snapshotsById.get(row.optionStrategySnapshotId);
+                    return ''
+                        + '<div class="snapshot-leg-row">'
+                        + '<div class="snapshot-leg-time">Snapshot Time: ' + esc(snapshot ? snapshot.snapshotTime : '') + '</div>'
+                        + '<div><strong>Leg:</strong> ' + esc(row.legNumber)
+                        + ' | <strong>Contract:</strong> ' + esc(row.contractTicker)
+                        + ' | MV: ' + esc(row.currentMarketValue)
+                        + ' | UPNL: ' + esc(row.unrealizedPnl)
+                        + ' | UPNL%: ' + esc(row.unrealizedPnlPct)
+                        + '</div>'
+                        + '</div>';
+                }).join('');
+            }
+
+            function strategySnapshotRowsHtml(strategyId) {
+                var rows = strategySnapshotRows
+                    .filter(function (row) { return row.optionStrategyId === strategyId; })
+                    .sort(function (a, b) { return toEpoch(b.snapshotTime) - toEpoch(a.snapshotTime); });
+
+                if (!rows.length) {
+                    return '<div class="legs-empty">No option_strategy_snapshot rows for this strategy.</div>';
+                }
+
+                return rows.map(function (snapshot) {
+                    return ''
+                        + '<div class="snapshot-row">'
+                        + '<div><strong>Snapshot ID:</strong> ' + esc(snapshot.id) + '</div>'
+                        + '<div class="snapshot-meta">'
+                        + '<div><strong>Time:</strong> ' + esc(snapshot.snapshotTime) + '</div>'
+                        + '<div><strong>Underlying:</strong> ' + esc(snapshot.underlyingPrice) + '</div>'
+                        + '<div><strong>Entry Cost:</strong> ' + esc(snapshot.entryCost) + '</div>'
+                        + '<div><strong>Market Value:</strong> ' + esc(snapshot.currentMarketValue) + '</div>'
+                        + '<div><strong>Unrealized PnL:</strong> ' + esc(snapshot.unrealizedPnl) + '</div>'
+                        + '<div><strong>Unrealized PnL%:</strong> ' + esc(snapshot.unrealizedPnlPct) + '</div>'
+                        + '<div><strong>Total PnL:</strong> ' + esc(snapshot.totalPnl) + '</div>'
+                        + '<div><strong>Delta:</strong> ' + esc(snapshot.netDelta) + '</div>'
+                        + '<div><strong>Gamma:</strong> ' + esc(snapshot.netGamma) + '</div>'
+                        + '<div><strong>Theta:</strong> ' + esc(snapshot.netTheta) + '</div>'
+                        + '<div><strong>Vega:</strong> ' + esc(snapshot.netVega) + '</div>'
+                        + '<div><strong>Avg IV:</strong> ' + esc(snapshot.averageIv) + '</div>'
+                        + '<div><strong>Open Interest:</strong> ' + esc(snapshot.totalOpenInterest) + '</div>'
+                        + '<div><strong>Day Volume:</strong> ' + esc(snapshot.totalDayVolume) + '</div>'
+                        + '</div>'
+                        + '</div>';
+                }).join('');
+            }
+
+            function renderStrategies() {
+                var selectedTradeId = toLong(tradeSelect.value);
+                strategyList.innerHTML = '';
+                strategyEmpty.style.display = 'none';
+
+                if (!selectedTradeId) {
+                    strategyEmpty.textContent = 'Select trade to view option_strategy rows.';
+                    strategyEmpty.style.display = '';
+                    return;
+                }
+
+                var rows = strategyRows
+                    .filter(function (row) { return row.optionTradeId === selectedTradeId; })
+                    .sort(function (a, b) { return toEpoch(b.entryTime) - toEpoch(a.entryTime); });
+
+                if (!rows.length) {
+                    strategyEmpty.textContent = 'No option_strategy rows for selected trade.';
+                    strategyEmpty.style.display = '';
+                    return;
+                }
+
+                strategyList.innerHTML = rows.map(function (strategy) {
+                    var title = strategy.displayName || strategy.strategyCode || ('Strategy #' + strategy.id);
+                    return ''
+                        + '<div class="strategy-card">'
+                        + '<div class="strategy-title">'
+                        + '<span>Strategy: ' + esc(title) + '.</span>'
+                        + '<button type="button" class="toggle-btn" data-toggle-strategy-snapshots data-strategy-id="' + esc(strategy.id) + '" aria-expanded="false">+</button>'
+                        + '</div>'
+                        + '<div class="strategy-meta">'
+                        + '<div><strong>ID:</strong> ' + esc(strategy.id) + '</div>'
+                        + '<div><strong>Code:</strong> ' + esc(strategy.strategyCode) + '</div>'
+                        + '<div><strong>Action:</strong> ' + esc(strategy.strategyAction) + '</div>'
+                        + '<div><strong>Status:</strong> ' + esc(strategy.status) + '</div>'
+                        + '<div><strong>Mode:</strong> ' + esc(strategy.tradeMode) + '</div>'
+                        + '<div><strong>Entry Time:</strong> ' + esc(strategy.entryTime) + '</div>'
+                        + '</div>'
+                        + '<div class="nested-box" data-strategy-snapshots-box="' + esc(strategy.id) + '" style="display:none">'
+                        + '<div class="nested-header"><span>Strategy Snapshots</span></div>'
+                        + strategySnapshotRowsHtml(strategy.id)
+                        + '</div>'
+                        + '<div class="nested-box" data-strategy-legs-box="' + esc(strategy.id) + '">'
+                        + '<div class="nested-header"><span>Strategy Legs</span></div>'
+                        + strategyLegRowsHtml(strategy.id)
+                        + '</div>'
+                        + '</div>';
+                }).join('');
+            }
+
+            tradeSelect.addEventListener('change', renderStrategies);
+
+            strategyList.addEventListener('click', function (event) {
+                var strategyBtn = event.target.closest('[data-toggle-strategy-snapshots]');
+                if (strategyBtn) {
+                    var strategyId = strategyBtn.getAttribute('data-strategy-id');
+                    var snapshotsBox = strategyList.querySelector('[data-strategy-snapshots-box="' + strategyId + '"]');
+                    if (!snapshotsBox) {
+                        return;
+                    }
+
+                    var isOpen = snapshotsBox.style.display !== 'none';
+                    snapshotsBox.style.display = isOpen ? 'none' : '';
+                    strategyBtn.textContent = isOpen ? '+' : '-';
+                    strategyBtn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+                    return;
+                }
+
+                var legBtn = event.target.closest('[data-toggle-leg-snapshots]');
+                if (!legBtn) {
+                    return;
+                }
+
+                var legId = legBtn.getAttribute('data-leg-id');
+                var legSnapshotsBox = strategyList.querySelector('[data-leg-snapshots-box="' + legId + '"]');
+                if (!legSnapshotsBox) {
+                    return;
+                }
+
+                var legOpen = legSnapshotsBox.style.display !== 'none';
+                legSnapshotsBox.style.display = legOpen ? 'none' : '';
+                legBtn.textContent = legOpen ? '+' : '-';
+                legBtn.setAttribute('aria-expanded', legOpen ? 'false' : 'true');
+            });
+
+            renderStrategies();
+        })();
+    </script>
+</div>
+</body>
+</html>

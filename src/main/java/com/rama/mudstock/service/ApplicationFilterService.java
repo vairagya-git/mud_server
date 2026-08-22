@@ -8,7 +8,6 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 
 import com.rama.mudstock.enums.OptionStrategyEnum;
-import com.rama.mudstock.enums.SystemRepositoryEnum.OptionContractStatusEnum;
 import com.rama.mudstock.enums.SystemRepositoryEnum.OptionSourceEnum;
 import com.rama.mudstock.model.option.OptionContract;
 import com.rama.mudstock.model.stockwatchlist.Stock;
@@ -142,15 +141,14 @@ public class ApplicationFilterService {
         return OptionStrategyEnum.StrategyStatus.values();
     }
 
-    public OptionTradeFilters optionTradeFilters() {
+    public OptionTradeFilters optionTradeFilters(String contractStatus) {
         List<Map<String, Object>> strategyDefinitions = optionStrategyRepository.listActiveStrategyDefinitions();
         List<Map<String, Object>> strategyDefinitionLegs = optionStrategyRepository.listActiveStrategyDefinitionLegs();
-        List<String> tickers = optionContractRepository.listDistinctTickersByStatus(OptionContractStatusEnum.ACTIVE.name());
+        List<String> tickers = optionContractRepository.listDistinctTickersByStatus(contractStatus);
         List<LocalDate> expirationDates = optionContractRepository
-            .listDistinctExpirationDatesByStatus(OptionContractStatusEnum.ACTIVE.name());
-        List<Map<String, Object>> contracts = optionContractRepository.listActiveContractsForSimulator();
+            .listDistinctExpirationDatesByStatus(contractStatus);
 
-        return new OptionTradeFilters(strategyDefinitions, strategyDefinitionLegs, tickers, expirationDates, contracts);
+        return new OptionTradeFilters(strategyDefinitions, strategyDefinitionLegs, tickers, expirationDates, null);
     }
 
     public record AnalystRatingFilters(List<String> tickers,
@@ -162,6 +160,6 @@ public class ApplicationFilterService {
                                      List<Map<String, Object>> strategyDefinitionLegs,
                                      List<String> tickers,
                                      List<LocalDate> expirationDates,
-                                     List<Map<String, Object>> contracts) {
+                                     Object contracts) {
     }
 }

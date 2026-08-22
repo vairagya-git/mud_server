@@ -391,6 +391,34 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('minuteHourlyFrequency', '5', 'Integer', 'OptionAPISnapshotFetcherJob', 'CronExpression for the cronjob'),
 ('forceExecute', 'false', 'boolean', 'OptionAPISnapshotFetcherJob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
 
+/*OptionStrategySnapshotRefinementJob Settings*/
+('useage', 'useage', 'String', 'OptionStrategySnapshotRefinementJob', 'Fetch Option snapshot data for the given ticker, strike and expiration date'),
+('enabled', 'true', 'boolean', 'OptionStrategySnapshotRefinementJob', 'OptionStrategySnapshotRefinementJob  Enable property'),
+('execution', 'minutes', 'String', 'OptionStrategySnapshotRefinementJob', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'OptionStrategySnapshotRefinementJob', 'Create and Close Optoin Contract entry'),
+('startTime', '14:30', 'Time', 'OptionStrategySnapshotRefinementJob', 'Cronjob Start Time'),
+('endTime', '21:00', 'Time', 'OptionStrategySnapshotRefinementJob', 'Cronjob End Time'),
+('minuteHourlyFrequency', '5', 'Integer', 'OptionStrategySnapshotRefinementJob', 'CronExpression for the cronjob'),
+('optionSnapshotInterval', '5', 'Integer', 'OptionStrategySnapshotRefinementJob', 'Option Snapshot Data Interval'),
+('forceExecute', 'false', 'boolean', 'OptionStrategySnapshotRefinementJob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
+
+
+
+/*OptionStrategySnapshotRefinementHistoryDataJob Settings*/
+('useage', 'useage', 'String', 'OptionStrategySnapshotRefinementHistoryDataJob', 'Fetch Option snapshot data for the given ticker, strike and expiration date'),
+('enabled', 'true', 'boolean', 'OptionStrategySnapshotRefinementHistoryDataJob', 'OptionStrategySnapshotRefinementHistoryDataJob  Enable property'),
+('execution', 'minutes', 'String', 'OptionStrategySnapshotRefinementHistoryDataJob', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'OptionStrategySnapshotRefinementHistoryDataJob', 'Create and Close Optoin Contract entry'),
+('startTime', '14:30', 'Time', 'OptionStrategySnapshotRefinementHistoryDataJob', 'Cronjob Start Time'),
+('endTime', '21:00', 'Time', 'OptionStrategySnapshotRefinementHistoryDataJob', 'Cronjob End Time'),
+('minuteHourlyFrequency', '5', 'Integer', 'OptionStrategySnapshotRefinementHistoryDataJob', 'CronExpression for the cronjob'),
+('optionSnapshotInterval', '5', 'Integer', 'OptionStrategySnapshotRefinementHistoryDataJob', 'Option Snapshot Data Interval'),
+('lastFetchedSnapshotTime', '', 'DateTime', 'OptionStrategySnapshotRefinementHistoryDataJob', 'Last fetched option_snapshot data time'),
+('lastFetchedFlatFileTime', '', 'DateTime', 'OptionStrategySnapshotRefinementHistoryDataJob', 'Last fetched option_flat_file data time'),
+('lastFetchedManualEntryTime', '', 'DateTime', 'OptionStrategySnapshotRefinementHistoryDataJob', 'Last fetched option_manual_entry data time'),
+('forceExecute', 'false', 'boolean', 'OptionStrategySnapshotRefinementHistoryDataJob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
+
+
 /*OptionFlatFileSnapshotFetcherJob Settings*/
 ('useage', 'useage', 'String', 'OptionFlatFileSnapshotFetcherJob', 'Fetch Option snapshot data for the given ticker, strike and expiration date'),
 ('enabled', 'true', 'boolean', 'OptionFlatFileSnapshotFetcherJob', 'OptionFlatFileSnapshotFetcherJob  Enable property'),
@@ -1005,12 +1033,77 @@ WHERE strategy_code = 'REVERSE_IRON_CONDOR';
 
 
 
+select * from option_strategy;
+
+Alter table option_trade
+ADD COLUMN with_historic_data tinyint(1) DEFAULT '0';
+
+CREATE TABLE option_trade (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+    stock_id BIGINT UNSIGNED NOT NULL,
+
+    trade_name VARCHAR(150) NOT NULL,
+
+    trade_mode ENUM(
+        'LIVE',
+        'SIMULATION'
+    ) NOT NULL,
+
+    status ENUM(
+        'OPEN',
+        'CLOSED',
+        'CANCELLED'
+    ) NOT NULL DEFAULT 'OPEN',
+
+    opened_at DATETIME(6) NOT NULL,
+    closed_at DATETIME(6) NULL,
+
+    with_historic_data tinyint(1) DEFAULT '0',
+    realized_pnl DECIMAL(18,6) NULL,
+
+    notes TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    CONSTRAINT fk_option_trade_stock
+        FOREIGN KEY (stock_id)
+        REFERENCES stock(id)
+);
+
+
+ALTER TABLE option_strategy
+ADD COLUMN option_trade_id BIGINT UNSIGNED NOT NULL AFTER stock_id,
+
+ADD CONSTRAINT fk_option_strategy_trade
+    FOREIGN KEY (option_trade_id)
+    REFERENCES option_trade(id);
+
+
+
+ALTER TABLE option_strategy
+ADD COLUMN trade_group_id BIGINT UNSIGNED NULL AFTER stock_id,
+ADD COLUMN trade_group_name VARCHAR(150) NULL AFTER trade_group_id;
+
+
+ALTER TABLE option_strategy
+DROP COLUMN current_price;
+
+
+
 CREATE TABLE option_strategy (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 
     strategy_definition_id BIGINT UNSIGNED NOT NULL,
 
     stock_id BIGINT UNSIGNED NOT NULL,
+    option_trade_id BIGINT UNSIGNED NOT NULL,
+    trade_group_id BIGINT UNSIGNED NULL, 
+    trade_group_name VARCHAR(150) NULL, 
 
     trade_mode ENUM(
         'LIVE',
@@ -1059,6 +1152,55 @@ CREATE TABLE option_strategy (
 );
 
 
+ALTER TABLE option_strategy_leg
+ADD COLUMN current_snapshot_id BIGINT UNSIGNED NULL,
+ADD COLUMN current_price DECIMAL(14,4) DEFAULT NULL;
+
+ALTER TABLE option_strategy_leg
+ADD CONSTRAINT fk_strategy_leg_current_snapshot
+        FOREIGN KEY (current_snapshot_id)
+        REFERENCES option_snapshot(id);
+
+ALTER TABLE option_strategy_leg
+ADD COLUMN entry_flat_file_id BIGINT UNSIGNED NULL,
+ADD COLUMN entry_flat_file_price DECIMAL(14,4) DEFAULT NULL;
+
+ALTER TABLE option_strategy_leg
+ADD CONSTRAINT fk_strategy_leg_entry_flat_file
+        FOREIGN KEY (entry_flat_file_id)
+        REFERENCES option_snapshot_flatfile(id);
+
+ALTER TABLE option_strategy_leg
+ADD COLUMN current_flat_file_id BIGINT UNSIGNED NULL,
+ADD COLUMN current_flat_file_price DECIMAL(14,4) DEFAULT NULL;
+
+ALTER TABLE option_strategy_leg
+ADD CONSTRAINT fk_strategy_leg_current_flat_file
+        FOREIGN KEY (current_flat_file_id)
+        REFERENCES option_snapshot_flatfile(id);
+
+ALTER TABLE option_strategy_leg
+ADD COLUMN exit_flat_file_id BIGINT UNSIGNED NULL,
+ADD COLUMN exit_flat_file_price DECIMAL(14,4) DEFAULT NULL;
+
+ALTER TABLE option_strategy_leg
+ADD CONSTRAINT fk_strategy_leg_exit_flat_file
+        FOREIGN KEY (exit_flat_file_id)
+        REFERENCES option_snapshot_flatfile(id);
+
+ALTER TABLE option_strategy_leg
+ADD COLUMN entry_manual_price DECIMAL(14,4) DEFAULT NULL,
+ADD COLUMN current_manual_price DECIMAL(14,4) DEFAULT NULL,
+ADD COLUMN exit_manual_price DECIMAL(14,4) DEFAULT NULL;
+
+
+ALTER TABLE option_strategy_leg
+DROP COLUMN current_price, 
+DROP COLUMN current_flat_file_price, 
+DROP COLUMN exit_flat_file_price;
+
+
+
 CREATE TABLE option_strategy_leg (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 
@@ -1077,8 +1219,24 @@ CREATE TABLE option_strategy_leg (
     entry_snapshot_id BIGINT UNSIGNED NULL,
     entry_price DECIMAL(14,4) NOT NULL,
 
+    entry_flat_file_id BIGINT UNSIGNED NULL,
+    entry_flat_file_price DECIMAL(14,4) DEFAULT NULL,
+
+    current_snapshot_id BIGINT UNSIGNED NULL,
+    current_price DECIMAL(14,4) DEFAULT NULL,
+
+    current_flat_file_id BIGINT UNSIGNED NULL,
+    current_flat_file_price DECIMAL(14,4) DEFAULT NULL,
+
     exit_snapshot_id BIGINT UNSIGNED NULL,
     exit_price DECIMAL(14,4) NULL,
+
+    exit_flat_file_id BIGINT UNSIGNED NULL,
+    exit_flat_file_price DECIMAL(14,4) DEFAULT NULL,
+
+    entry_manual_price DECIMAL(14,4) DEFAULT NULL,
+    current_manual_price DECIMAL(14,4) DEFAULT NULL,
+    exit_manual_price DECIMAL(14,4) DEFAULT NULL,
 
     realized_pnl DECIMAL(18,4) NULL,
 
@@ -1100,9 +1258,25 @@ CREATE TABLE option_strategy_leg (
         FOREIGN KEY (entry_snapshot_id)
         REFERENCES option_snapshot(id),
 
+    CONSTRAINT fk_strategy_leg_entry_flat_file
+        FOREIGN KEY (entry_flat_file_id)
+        REFERENCES option_snapshot_flatfile(id),
+
+    CONSTRAINT fk_strategy_leg_current_snapshot
+        FOREIGN KEY (current_snapshot_id)
+        REFERENCES option_snapshot(id),
+
+    CONSTRAINT fk_strategy_leg_current_flat_file
+        FOREIGN KEY (current_flat_file_id)
+        REFERENCES option_snapshot_flatfile(id),
+
     CONSTRAINT fk_strategy_leg_exit_snapshot
         FOREIGN KEY (exit_snapshot_id)
         REFERENCES option_snapshot(id),
+      
+    CONSTRAINT fk_strategy_leg_exit_flat_file
+        FOREIGN KEY (exit_flat_file_id)
+        REFERENCES option_snapshot_flatfile(id),
 
     CONSTRAINT uk_strategy_leg_number
         UNIQUE (option_strategy_id, leg_number)
@@ -1153,13 +1327,28 @@ CREATE TABLE option_strategy_snapshot (
     )
 );
 
+
+ALTER TABLE option_strategy_leg_snapshot
+ADD COLUMN option_flat_file_id BIGINT UNSIGNED NULL;
+
+ALTER TABLE option_strategy_leg_snapshot
+ADD CONSTRAINT fk_leg_snapshot_strategy_flat_file
+        FOREIGN KEY (option_flat_file_id)
+        REFERENCES option_snapshot_flatfile(id);
+
+ALTER TABLE option_strategy_leg_snapshot
+ADD COLUMN manual_price DECIMAL(14,4) DEFAULT NULL;
+
+
 CREATE TABLE option_strategy_leg_snapshot (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 
     option_strategy_snapshot_id BIGINT UNSIGNED NOT NULL,
     option_strategy_leg_id BIGINT UNSIGNED NOT NULL,
     option_snapshot_id BIGINT UNSIGNED NOT NULL,
+    option_flat_file_id BIGINT UNSIGNED NULL,
 
+    manual_price DECIMAL(14,4) DEFAULT NULL,
     current_market_value DECIMAL(18,4) NOT NULL,
     unrealized_pnl DECIMAL(18,4) NOT NULL,
     unrealized_pnl_pct DECIMAL(12,4),
@@ -1171,6 +1360,10 @@ CREATE TABLE option_strategy_leg_snapshot (
     CONSTRAINT fk_leg_snapshot_strategy_snapshot
         FOREIGN KEY (option_strategy_snapshot_id)
         REFERENCES option_strategy_snapshot(id),
+
+     CONSTRAINT fk_leg_snapshot_strategy_flat_file
+        FOREIGN KEY (option_flat_file_id)
+        REFERENCES option_snapshot_flatfile(id),
 
     CONSTRAINT fk_leg_snapshot_strategy_leg
         FOREIGN KEY (option_strategy_leg_id)
@@ -1186,6 +1379,7 @@ CREATE TABLE option_strategy_leg_snapshot (
             option_strategy_leg_id
         )
 );
+
 
 
  max_iv_stock_distance DECIMAL(10,2),

@@ -399,17 +399,6 @@ public class OptionContractRepository {
         }, params.toArray());
     }
 
-    public List<Map<String, Object>> listActiveContractsForSimulator() {
-        String sql = "SELECT o.id, s.ticker, o.contract_ticker, o.contract_type, o.expiration_date, o.strike_price "
-            + "FROM option_contract o "
-            + "JOIN stock s ON s.id = o.stock_id "
-            + "WHERE UPPER(o.status) = UPPER(?) "
-            + "AND s.ticker IS NOT NULL AND s.ticker <> '' "
-            + "AND o.expiration_date IS NOT NULL "
-            + "ORDER BY s.ticker, o.expiration_date, o.contract_type, o.strike_price";
-        return jdbc.queryForList(sql, OptionIntervalAnalyseStatusEnum.ACTIVE.name());
-    }
-
     public int markContractsStatusForInterval(Long optionsIntervalAnalyseId, String status) {
         if (optionsIntervalAnalyseId == null || status == null || status.isBlank()) {
             return 0;
@@ -442,5 +431,28 @@ public class OptionContractRepository {
             + "AND contract_ticker IS NOT NULL AND contract_ticker <> '' "
             + "ORDER BY contract_ticker";
         return jdbc.queryForList(sql, optionsIntervalAnalyseId);
+    }
+
+    public List<OptionContract> listContractsByTickers(List<String> contractTickers) {
+        if (contractTickers == null || contractTickers.isEmpty()) {
+            return List.of();
+        }
+
+        String placeholders = String.join(",", java.util.Collections.nCopies(contractTickers.size(), "UPPER(?)"));
+        String sql = "SELECT id, stock_id, contract_ticker, contract_type, shares_per_contract "
+            + "FROM option_contract "
+            + "WHERE contract_ticker IS NOT NULL AND contract_ticker <> '' "
+            + "AND UPPER(contract_ticker) IN (" + placeholders + ")";
+
+        return jdbc.query(sql, (rs, rowNum) -> {
+            OptionContract contract = new OptionContract();
+            contract.setId(rs.getLong("id"));
+            contract.setStockId(rs.getLong("stock_id"));
+            contract.setContractTicker(rs.getString("contract_ticker"));
+            contract.setContractType(rs.getString("contract_type"));
+            int shares = rs.getInt("shares_per_contract");
+            contract.setSharesPerContract(rs.wasNull() ? null : shares);
+            return contract;
+        }, contractTickers.toArray());
     }
 }

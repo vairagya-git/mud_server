@@ -199,6 +199,36 @@
         </div>
 
         <div class="nav-group">
+            <div class="nav-group-label">Trade</div>
+            <div class="nav-group-items">
+                <a href="/trade"
+                   hx-get="/trade"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                   data-path="/trade">
+                    <i class="nav-icon">🧭</i> Strategies
+                </a>
+                     <a href="/trade/openoptiontrade"
+                         hx-get="/trade/openoptiontrade"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                         data-path="/trade/openoptiontrade">
+                    <i class="nav-icon">💹</i> Open Trade
+                </a>
+                     <a href="/trade/tradesummary"
+                         hx-get="/trade/tradesummary"
+                   hx-target="#page-content"
+                   hx-swap="outerHTML"
+                   hx-push-url="true"
+                         data-path="/trade/tradesummary">
+                    <i class="nav-icon">🧾</i> Summary
+                </a>
+            </div>
+        </div>
+
+        <div class="nav-group">
             <div class="nav-group-label">Administration</div>
             <div class="nav-group-items">
                 <a href="/system-config"

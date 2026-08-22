@@ -5,11 +5,16 @@ import java.sql.Timestamp;
 
 public class OptionSnapshot {
 
+    private Long id;
+    private Long optionContractId;
+    private Long stockId;
+    private Timestamp snapshotTime;
     private Timestamp optionQuoteTime;
     private BigDecimal underlyingPrice;
     private BigDecimal bid;
     private BigDecimal ask;
     private BigDecimal midpoint;
+    private BigDecimal lastTradePrice;
     private BigDecimal impliedVolatility;
     private BigDecimal delta;
     private BigDecimal gamma;
@@ -17,6 +22,38 @@ public class OptionSnapshot {
     private BigDecimal vega;
     private Integer openInterest;
     private Integer dayVolume;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Long getOptionContractId() {
+        return optionContractId;
+    }
+
+    public void setOptionContractId(Long optionContractId) {
+        this.optionContractId = optionContractId;
+    }
+
+    public Long getStockId() {
+        return stockId;
+    }
+
+    public void setStockId(Long stockId) {
+        this.stockId = stockId;
+    }
+
+    public Timestamp getSnapshotTime() {
+        return snapshotTime;
+    }
+
+    public void setSnapshotTime(Timestamp snapshotTime) {
+        this.snapshotTime = snapshotTime;
+    }
 
     public Timestamp getOptionQuoteTime() {
         return optionQuoteTime;
@@ -56,6 +93,14 @@ public class OptionSnapshot {
 
     public void setMidpoint(BigDecimal midpoint) {
         this.midpoint = midpoint;
+    }
+
+    public BigDecimal getLastTradePrice() {
+        return lastTradePrice;
+    }
+
+    public void setLastTradePrice(BigDecimal lastTradePrice) {
+        this.lastTradePrice = lastTradePrice;
     }
 
     public BigDecimal getImpliedVolatility() {

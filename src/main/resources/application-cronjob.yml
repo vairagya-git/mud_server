@@ -19,5 +19,7 @@ logging:
       weeklyUpcomingEarning: logs/weekly-upcoming-earnings.log
       dailyAnalystRating: logs/daily-analyst-rating.log
       optionApiSnapshotFetcher: logs/option-snapshot-fetcher.log
+      optionStrategySnapshotRefinement: logs/option-strategy-snapshot-refinement.log
+      optionStrategySnapshotRefinementHistoryData: logs/option-strategy-snapshot-refinement-history-data.log
 
 

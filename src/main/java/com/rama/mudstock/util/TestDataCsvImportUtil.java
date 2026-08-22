@@ -245,13 +245,38 @@ public final class TestDataCsvImportUtil {
             List<String> row = parseCsvLine(raw);
             try {
                 rowHandler.handle(row, headerIndex);
+                inserted++;
             } catch (Exception ex) {
+                if (isDuplicateKeyViolation(ex)) {
+                    System.err.println("Skipping duplicate CSV row " + (i + 1) + ": " + ex.getMessage());
+                    continue;
+                }
                 throw new IllegalArgumentException("Failed to process CSV row " + (i + 1) + ": " + ex.getMessage(), ex);
             }
-            inserted++;
         }
 
         return inserted;
+    }
+
+    private static boolean isDuplicateKeyViolation(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            String className = current.getClass().getName();
+            String message = current.getMessage();
+
+            if ("java.sql.SQLIntegrityConstraintViolationException".equals(className)) {
+                return true;
+            }
+            if (message != null) {
+                String normalized = message.toLowerCase(Locale.ROOT);
+                if (normalized.contains("duplicate entry") || normalized.contains("duplicate key")) {
+                    return true;
+                }
+            }
+
+            current = current.getCause();
+        }
+        return false;
     }
 
     private static Map<String, Integer> buildHeaderIndex(List<String> headers) {

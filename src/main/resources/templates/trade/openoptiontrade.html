@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Option Trade - MudStock</title></head>
+<body>
+<div id="page-content" th:fragment="content">
+    <style>
+        .option-trade-shell {
+            max-width: 1120px;
+        }
+
+        .option-trade-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 14px;
+            margin-bottom: 12px;
+        }
+
+        .contract-selection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .contract-selection-card {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            background: #fafdf8;
+        }
+
+        .contract-selection-title {
+            font-size: .92rem;
+            font-weight: 700;
+            color: #285f28;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .contract-selection-title-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .inline-strike-select {
+            width: 120px;
+            min-width: 120px;
+            padding: 4px 8px;
+            height: 30px;
+            font-size: .84rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .trade-empty {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: #fff7e6;
+            border: 1px solid #f4d39c;
+            color: #7b4e00;
+            font-size: .86rem;
+        }
+
+        .trade-name-shell {
+            margin-top: 0;
+            border-top: 0;
+            padding-top: 0;
+            max-width: none;
+        }
+
+        .trade-time-shell {
+            margin-top: 14px;
+            border-top: 1px solid var(--border);
+            padding-top: 12px;
+            max-width: 760px;
+        }
+
+        .trade-box {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #fbfcff;
+            padding: 12px;
+            margin-top: 10px;
+        }
+
+        .trade-time-shell .trade-box {
+            margin-top: 0;
+        }
+
+        .trade-box-title {
+            margin: 0 0 8px;
+            font-size: .9rem;
+            font-weight: 700;
+            color: #2f4f7f;
+        }
+
+        .trade-inline-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+        }
+
+        .trade-inline-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .snapshot-quotes {
+            margin-top: 8px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fff;
+            width: 100%;
+            font-size: .84rem;
+            line-height: 1.4;
+            padding: 6px 8px;
+        }
+
+        .snapshot-quote-empty {
+            font-size: .82rem;
+            color: #6b6b6b;
+        }
+    </style>
+
+    <div class="page-header">
+        <h1>Option Trade</h1>
+        <div class="subtitle">Select strategy, ticker, and expiration date to choose contracts.</div>
+    </div>
+
+    <div class="card option-trade-shell" style="padding:16px 18px 14px;">
+        <h3 style="margin:0 0 10px">Option Trade Form</h3>
+
+        <div class="form-group" style="margin-bottom:10px;">
+            <label style="display:flex; align-items:center; gap:8px; font-weight:600; margin:0;">
+                <input id="expiredDateHistoryCheckbox" type="checkbox">
+                History
+            </label>
+        </div>
+
+        <div class="option-trade-grid">
+            <div class="form-group">
+                <label>Strategy</label>
+                <select id="tradeStrategyDefinition" required>
+                    <option value="" selected>-- select strategy --</option>
+                    <option th:each="d : ${strategyDefinitions}"
+                            th:value="${d.id}"
+                            th:text="${d.display_name}">
+                    </option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Ticker</label>
+                <input id="tradeTickerInput" list="tradeTickerOptions" type="text" placeholder="Search ticker" autocomplete="off">
+                <datalist id="tradeTickerOptions">
+                    <option th:each="ticker : ${tradeTickers}" th:value="${ticker}"></option>
+                </datalist>
+            </div>
+
+            <div class="form-group">
+                <label>Expiration Date</label>
+                <select id="tradeExpirationDateSelect">
+                    <option value="" selected>-- select expiration --</option>
+                    <option th:each="d : ${tradeExpirationDates}" th:value="${d}" th:text="${d}"></option>
+                </select>
+            </div>
+
+            <div id="tradeNameShell" class="trade-name-shell form-group" style="display:none">
+                <label>Trade Name</label>
+                <select id="existingTradeSelect">
+                    <option value="" selected>-- select trade --</option>
+                </select>
+
+                <div id="newTradeForm" style="display:none; margin-top:8px;">
+                    <div class="trade-inline-grid">
+                        <div class="form-group">
+                            <label>New Trade Name</label>
+                            <input id="newTradeNameInput" type="text" maxlength="150" placeholder="Enter trade name">
+                        </div>
+                        <div class="form-group">
+                            <label>Trade Mode</label>
+                            <select id="newTradeModeSelect">
+                                <option value="LIVE">LIVE</option>
+                                <option value="SIMULATION">SIMULATION</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="display:flex; align-items:flex-end;">
+                            <label style="display:flex; align-items:center; gap:8px; font-weight:600; margin:0 0 6px;">
+                                <input id="newTradeWithHistoricData" type="checkbox">
+                                With Historic Data
+                            </label>
+                        </div>
+                    </div>
+                    <div class="trade-inline-actions">
+                        <button id="saveNewTradeBtn" type="button" class="btn btn-primary">Save Trade</button>
+                        <button id="cancelNewTradeBtn" type="button" class="btn">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="optionTradeHint" class="subtitle"></div>
+        <div id="contractSelectionContainer" class="contract-selection-grid"></div>
+        <div id="optionTradeEmptyState" class="trade-empty" style="display:none"></div>
+
+        <div id="optionTimeShell" class="trade-time-shell" style="display:none">
+            <div class="trade-box">
+                <h4 class="trade-box-title">Option Time</h4>
+                <div class="form-group" style="margin-bottom:8px;">
+                    <label>Option Time</label>
+                    <input id="optionTimeInput" type="text" placeholder="DD:MM:YYYY HH:MM">
+                    <div class="subtitle" style="margin-top:4px;">Format: DD:MM:YYYY HH:MM</div>
+                </div>
+
+                <div class="trade-inline-actions" style="margin-top:10px;">
+                    <button id="createStrategySnapshotBtn" type="button" class="btn btn-primary">Create Strategy Snapshot</button>
+                </div>
+            </div>
+
+            <div id="tradeNameMessage" class="subtitle" style="margin-top:8px;"></div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        (function () {
+            var tradeStrategyDefinition = document.getElementById('tradeStrategyDefinition');
+            var tradeTickerInput = document.getElementById('tradeTickerInput');
+            var tradeExpirationDateSelect = document.getElementById('tradeExpirationDateSelect');
+            var optionTradeHint = document.getElementById('optionTradeHint');
+            var contractSelectionContainer = document.getElementById('contractSelectionContainer');
+            var optionTradeEmptyState = document.getElementById('optionTradeEmptyState');
+            var tradeNameShell = document.getElementById('tradeNameShell');
+            var optionTimeShell = document.getElementById('optionTimeShell');
+            var existingTradeSelect = document.getElementById('existingTradeSelect');
+            var newTradeForm = document.getElementById('newTradeForm');
+            var newTradeNameInput = document.getElementById('newTradeNameInput');
+            var newTradeModeSelect = document.getElementById('newTradeModeSelect');
+            var newTradeWithHistoricData = document.getElementById('newTradeWithHistoricData');
+            var saveNewTradeBtn = document.getElementById('saveNewTradeBtn');
+            var cancelNewTradeBtn = document.getElementById('cancelNewTradeBtn');
+            var optionTimeInput = document.getElementById('optionTimeInput');
+            var createStrategySnapshotBtn = document.getElementById('createStrategySnapshotBtn');
+            var tradeNameMessage = document.getElementById('tradeNameMessage');
+            var expiredDateHistoryCheckbox = document.getElementById('expiredDateHistoryCheckbox');
+            var strategyDefinitions = /*[[${strategyDefinitions}]]*/ [];
+            var strategyDefinitionLegs = /*[[${strategyDefinitionLegs}]]*/ [];
+            var serverExpiredDateHistory = /*[[${expiredDateHistory}]]*/ false;
+            var openTradesCache = [];
+            var snapshotQuotesCache = {};
+            var selectedStockId = null;
+            var HISTORY_STORAGE_KEY = 'expired_date_history';
+
+            function toBoolean(value) {
+                return String(value).trim().toLowerCase() === 'true';
+            }
+
+            function historyReloadUrl(enabled) {
+                return '/trade/openoptiontrade?expired_date_history=' + (enabled ? 'true' : 'false');
+            }
+
+            function reloadOpenOptionTrade(enabled) {
+                var nextUrl = historyReloadUrl(enabled);
+                if (window.htmx && document.getElementById('page-content')) {
+                    window.htmx.ajax('GET', nextUrl, {
+                        target: '#page-content',
+                        swap: 'outerHTML'
+                    });
+                    return;
+                }
+                window.location.assign(nextUrl);
+            }
+
+            function initializeHistoryPreference() {
+                if (!expiredDateHistoryCheckbox) {
+                    return;
+                }
+
+                var storedHistory = sessionStorage.getItem(HISTORY_STORAGE_KEY);
+                var hasStoredHistory = storedHistory !== null;
+                var resolvedHistory = hasStoredHistory ? toBoolean(storedHistory) : toBoolean(serverExpiredDateHistory);
+
+                if (!hasStoredHistory) {
+                    sessionStorage.setItem(HISTORY_STORAGE_KEY, resolvedHistory ? 'true' : 'false');
+                }
+
+                expiredDateHistoryCheckbox.checked = resolvedHistory;
+
+                if (resolvedHistory !== toBoolean(serverExpiredDateHistory)) {
+                    reloadOpenOptionTrade(resolvedHistory);
+                    return;
+                }
+
+                expiredDateHistoryCheckbox.addEventListener('change', function () {
+                    var historyEnabled = !!expiredDateHistoryCheckbox.checked;
+                    sessionStorage.setItem(HISTORY_STORAGE_KEY, historyEnabled ? 'true' : 'false');
+                    reloadOpenOptionTrade(historyEnabled);
+                });
+            }
+
+            function toInt(value) {
+                if (value === null || value === undefined || value === '') return null;
+                var parsed = parseInt(String(value), 10);
+                return Number.isNaN(parsed) ? null : parsed;
+            }
+
+            function toLong(value) {
+                if (value === null || value === undefined || value === '') return null;
+                var parsed = Number(String(value));
+                return Number.isFinite(parsed) ? parsed : null;
+            }
+
+            function normalizeDefinitions(definitions) {
+                return (definitions || []).map(function (d) {
+                    return {
+                        id: toInt(d.id),
+                        strategyCode: d.strategy_code || '',
+                        displayName: d.display_name || ''
+                    };
+                });
+            }
+
+            function normalizeLegs(legs) {
+                return (legs || []).map(function (l) {
+                    return {
+                        id: toLong(l.id),
+                        strategyDefinitionId: toInt(l.strategy_definition_id),
+                        displayName: l.display_name || '',
+                        contractType: (l.contract_type || '').trim().toUpperCase(),
+                        positionSide: l.position_side || '',
+                        strategyLegNumber: toInt(l.leg_order) || 0
+                    };
+                });
+            }
+
+            function normalizeContracts(contracts) {
+                return (contracts || []).map(function (c) {
+                    return {
+                        stockId: toLong(c.stock_id || c.stockId),
+                        ticker: (c.ticker || '').trim().toUpperCase(),
+                        contractTicker: c.contract_ticker || c.contractTicker || '',
+                        contractType: (c.contract_type || c.contractType || '').trim().toUpperCase(),
+                        expirationDate: c.expiration_date ? String(c.expiration_date) : (c.expirationDate ? String(c.expirationDate) : ''),
+                        strikePrice: c.strike_price != null ? c.strike_price : c.strikePrice
+                    };
+                });
+            }
+
+            function escapeHtml(value) {
+                return String(value == null ? '' : value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            var defRows = normalizeDefinitions(strategyDefinitions);
+            var legRows = normalizeLegs(strategyDefinitionLegs);
+            var contractRows = [];
+
+            function strategyById(definitionId) {
+                return defRows.find(function (d) { return d.id === definitionId; });
+            }
+
+            function legsByDefinitionId(definitionId) {
+                return legRows
+                    .filter(function (l) { return l.strategyDefinitionId === definitionId; })
+                    .sort(function (a, b) { return a.strategyLegNumber - b.strategyLegNumber; });
+            }
+
+            function renderContractSelector(leg, index, contracts) {
+                var contractOptions = contracts.map(function (contract) {
+                    var label = contract.strikePrice == null ? '' : String(contract.strikePrice);
+                    return '<option value="' + escapeHtml(contract.contractTicker) + '">' + escapeHtml(label) + '</option>';
+                }).join('');
+
+                var legName = leg.displayName || ('Leg ' + (index + 1));
+                var legType = (leg.positionSide + ' ' + leg.contractType).trim();
+                var headerLine = legName + (legType ? ' (' + legType + ')' : '') + ':';
+
+                return ''
+                    + '<div class="contract-selection-card">'
+                    + '<div class="contract-selection-title">'
+                    + '<span class="contract-selection-title-text">' + escapeHtml(headerLine) + '</span>'
+                    + '<select class="contract-choice inline-strike-select" data-option-strategy-definition-leg-id="' + escapeHtml(leg.id) + '">'
+                    + contractOptions
+                    + '</select>'
+                    + '</div>'
+                    + '<div class="form-group" style="margin:0">'
+                    + '<select class="snapshot-quotes" style="display:none" data-snapshot-quotes disabled>'
+                    + '<option value="">-- snapshots --</option>'
+                    + '</select>'
+                    + '</div>'
+                    + '</div>';
+            }
+
+            function parseOptionDateTime(value) {
+                if (!value || typeof value !== 'string') {
+                    return Number.NEGATIVE_INFINITY;
+                }
+
+                var raw = value.trim();
+                var parts = raw.split(' ');
+                if (parts.length !== 2) {
+                    return Number.NEGATIVE_INFINITY;
+                }
+
+                var dateParts = parts[0].split(':');
+                var timeParts = parts[1].split(':');
+                if (dateParts.length !== 3 || timeParts.length !== 2) {
+                    return Number.NEGATIVE_INFINITY;
+                }
+
+                var day = parseInt(dateParts[0], 10);
+                var month = parseInt(dateParts[1], 10);
+                var year = parseInt(dateParts[2], 10);
+                var hour = parseInt(timeParts[0], 10);
+                var minute = parseInt(timeParts[1], 10);
+
+                if (!Number.isFinite(day) || !Number.isFinite(month) || !Number.isFinite(year)
+                    || !Number.isFinite(hour) || !Number.isFinite(minute)) {
+                    return Number.NEGATIVE_INFINITY;
+                }
+
+                return new Date(year, month - 1, day, hour, minute, 0, 0).getTime();
+            }
+
+            function sortSnapshotRows(rows) {
+                return (rows || []).slice().sort(function (a, b) {
+                    var left = parseOptionDateTime(a && a.optionQuoteTime ? a.optionQuoteTime : '');
+                    var right = parseOptionDateTime(b && b.optionQuoteTime ? b.optionQuoteTime : '');
+                    return left - right;
+                });
+            }
+
+            function snapshotSelectForContractSelect(selectEl) {
+                if (!selectEl) {
+                    return null;
+                }
+
+                var card = selectEl.closest('.contract-selection-card');
+                return card ? card.querySelector('[data-snapshot-quotes]') : null;
+            }
+
+            function clearSnapshotQuotesForSelect(selectEl) {
+                var quotesEl = snapshotSelectForContractSelect(selectEl);
+                if (!quotesEl) {
+                    return;
+                }
+                quotesEl.style.display = 'none';
+                quotesEl.disabled = true;
+                quotesEl.innerHTML = '<option value="">-- snapshots --</option>';
+            }
+
+            function renderSnapshotQuotes(selectEl, rows) {
+                var quotesEl = snapshotSelectForContractSelect(selectEl);
+                if (!quotesEl) {
+                    return;
+                }
+
+                if (!rows || !rows.length) {
+                    quotesEl.disabled = true;
+                    quotesEl.innerHTML = '<option value="">No snapshots available</option>';
+                    quotesEl.style.display = '';
+                    return;
+                }
+
+                var sortedRows = sortSnapshotRows(rows);
+                quotesEl.disabled = false;
+                quotesEl.innerHTML = sortedRows.map(function (row, index) {
+                    var displayValue = row && row.displayValue ? row.displayValue : '';
+                    var selected = index === 0 ? ' selected' : '';
+                    return '<option value="' + escapeHtml(displayValue) + '"' + selected + '>' + escapeHtml(displayValue) + '</option>';
+                }).join('');
+                quotesEl.style.display = '';
+            }
+
+            function loadSnapshotQuotesForSelect(selectEl) {
+                if (!selectEl || !selectEl.classList.contains('contract-choice')) {
+                    return;
+                }
+
+                var contractTicker = (selectEl.value || '').trim();
+                if (!contractTicker) {
+                    clearSnapshotQuotesForSelect(selectEl);
+                    return;
+                }
+
+                if (snapshotQuotesCache[contractTicker]) {
+                    renderSnapshotQuotes(selectEl, snapshotQuotesCache[contractTicker]);
+                    return;
+                }
+
+                var quotesEl = snapshotSelectForContractSelect(selectEl);
+                if (quotesEl) {
+                    quotesEl.disabled = true;
+                    quotesEl.style.display = '';
+                    quotesEl.innerHTML = '<option value="">Loading snapshots...</option>';
+                }
+
+                fetch('/trade/openoptiontrade/snapshots?contractTicker=' + encodeURIComponent(contractTicker))
+                    .then(function (response) {
+                        if (!response.ok) {
+                            throw new Error('Failed to load snapshots');
+                        }
+                        return response.json();
+                    })
+                    .then(function (rows) {
+                        var normalized = sortSnapshotRows(Array.isArray(rows) ? rows : []);
+                        snapshotQuotesCache[contractTicker] = normalized;
+                        renderSnapshotQuotes(selectEl, normalized);
+                    })
+                    .catch(function (error) {
+                        if (quotesEl) {
+                            quotesEl.disabled = true;
+                            quotesEl.style.display = '';
+                            quotesEl.innerHTML = '<option value="">'
+                                + escapeHtml(error && error.message ? error.message : 'Unable to load snapshots.')
+                                + '</option>';
+                        }
+                    });
+            }
+
+            function getSelectedContracts() {
+                return Array.from(contractSelectionContainer.querySelectorAll('select.contract-choice'))
+                    .map(function (el) { return (el.value || '').trim(); })
+                    .filter(function (value) { return value.length > 0; });
+            }
+
+            function getSelectedLegContracts() {
+                return Array.from(contractSelectionContainer.querySelectorAll('select.contract-choice'))
+                    .map(function (el) {
+                        var contractTicker = (el.value || '').trim();
+                        var optionStrategyDefinitionLegId = toLong(el.getAttribute('data-option-strategy-definition-leg-id'));
+                        if (!contractTicker || !optionStrategyDefinitionLegId) {
+                            return null;
+                        }
+                        return {
+                            optionStrategyDefinitionLegId: optionStrategyDefinitionLegId,
+                            contractTicker: contractTicker
+                        };
+                    })
+                    .filter(function (row) { return row !== null; });
+            }
+
+            function resolveSelectedStockId(selectedContracts, selectedTicker, selectedExpiration) {
+                var contractMatch = (selectedContracts || []).map(function (contractTicker) {
+                    return contractRows.find(function (contract) {
+                        return contract.contractTicker === contractTicker;
+                    });
+                }).find(function (contract) {
+                    return contract && contract.stockId;
+                });
+
+                if (contractMatch && contractMatch.stockId) {
+                    return contractMatch.stockId;
+                }
+
+                var tickerMatch = contractRows.find(function (contract) {
+                    return contract.ticker === selectedTicker && contract.stockId;
+                });
+
+                if (tickerMatch && tickerMatch.stockId) {
+                    return tickerMatch.stockId;
+                }
+
+                var filteredMatch = contractRows.find(function (contract) {
+                    return contract.ticker === selectedTicker
+                        && contract.expirationDate === selectedExpiration
+                        && contract.stockId;
+                });
+
+                return filteredMatch ? filteredMatch.stockId : null;
+            }
+
+            function renderTradeDropdown(selectedTradeId) {
+                existingTradeSelect.innerHTML = '';
+
+                var defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = '-- select trade --';
+                existingTradeSelect.appendChild(defaultOption);
+
+                var addNewOption = document.createElement('option');
+                addNewOption.value = '__ADD_NEW__';
+                addNewOption.textContent = 'Add New';
+                existingTradeSelect.appendChild(addNewOption);
+
+                openTradesCache.forEach(function (trade) {
+                    var option = document.createElement('option');
+                    option.value = String(trade.id == null ? '' : trade.id);
+                    option.textContent = trade.tradeName + ' (' + trade.tradeMode + ')';
+                    existingTradeSelect.appendChild(option);
+                });
+
+                if (selectedTradeId != null) {
+                    existingTradeSelect.value = String(selectedTradeId);
+                }
+            }
+
+            function setTradeMessage(message, isError) {
+                tradeNameMessage.textContent = message || '';
+                tradeNameMessage.style.color = isError ? '#b42318' : '';
+            }
+
+            function showTradeSectionIfNeeded() {
+                var selectedTicker = (tradeTickerInput.value || '').trim().toUpperCase();
+
+                if (!selectedTicker) {
+                    tradeNameShell.style.display = 'none';
+                    optionTimeShell.style.display = 'none';
+                    newTradeForm.style.display = 'none';
+                    setTradeMessage('', false);
+                    return false;
+                }
+
+                tradeNameShell.style.display = '';
+                return true;
+            }
+
+            function loadOpenTradesForTicker() {
+                var selectedTicker = (tradeTickerInput.value || '').trim().toUpperCase();
+                if (!selectedTicker) {
+                    showTradeSectionIfNeeded();
+                    return;
+                }
+
+                showTradeSectionIfNeeded();
+                selectedStockId = resolveSelectedStockId([], selectedTicker, '');
+
+                if (!selectedStockId) {
+                    tradeNameShell.style.display = '';
+                    setTradeMessage('Loading open trades...', false);
+                }
+
+                fetch('/trade/openoptiontrade/open-trades-by-ticker?ticker=' + encodeURIComponent(selectedTicker))
+                    .then(function (response) {
+                        if (!response.ok) {
+                            throw new Error('Failed to load open trades');
+                        }
+                        return response.json();
+                    })
+                    .then(function (rows) {
+                        openTradesCache = Array.isArray(rows) ? rows : [];
+                        renderTradeDropdown(null);
+                        newTradeForm.style.display = 'none';
+                        setTradeMessage(openTradesCache.length
+                            ? 'Select an existing open trade or choose Add New.'
+                            : 'No open trades found. Choose Add New to create one.', false);
+                    })
+                    .catch(function (error) {
+                        setTradeMessage(error && error.message ? error.message : 'Unable to load open trades.', true);
+                    });
+            }
+
+            function saveNewTrade() {
+                var tradeName = (newTradeNameInput.value || '').trim();
+                var tradeMode = (newTradeModeSelect.value || '').trim().toUpperCase();
+                var withHistoricData = !!(newTradeWithHistoricData && newTradeWithHistoricData.checked);
+
+                if (!selectedStockId) {
+                    setTradeMessage('Select ticker before creating a trade.', true);
+                    return;
+                }
+                if (!tradeName) {
+                    setTradeMessage('Trade name is required.', true);
+                    return;
+                }
+
+                var payload = new URLSearchParams();
+                payload.set('stockId', String(selectedStockId));
+                payload.set('tradeName', tradeName);
+                payload.set('tradeMode', tradeMode);
+                payload.set('withHistoricData', withHistoricData ? 'true' : 'false');
+
+                setTradeMessage('Creating trade...', false);
+                fetch('/trade/openoptiontrade/open-trades', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    },
+                    body: payload.toString()
+                })
+                    .then(function (response) {
+                        if (!response.ok) {
+                            return response.text().then(function (text) {
+                                throw new Error(text || 'Failed to create trade');
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(function (result) {
+                        var createdTrade = result && result.trade ? result.trade : null;
+                        return fetch('/trade/openoptiontrade/open-trades?stockId=' + encodeURIComponent(String(selectedStockId)))
+                            .then(function (response) {
+                                if (!response.ok) {
+                                    throw new Error('Trade created but failed to refresh list');
+                                }
+                                return response.json();
+                            })
+                            .then(function (rows) {
+                                openTradesCache = Array.isArray(rows) ? rows : [];
+                                renderTradeDropdown(createdTrade ? createdTrade.id : null);
+                                newTradeForm.style.display = 'none';
+                                newTradeNameInput.value = '';
+                                newTradeModeSelect.value = 'LIVE';
+                                if (newTradeWithHistoricData) {
+                                    newTradeWithHistoricData.checked = false;
+                                }
+                                setTradeMessage('Trade created successfully.', false);
+                            });
+                    })
+                    .catch(function (error) {
+                        setTradeMessage(error && error.message ? error.message : 'Unable to create trade.', true);
+                    });
+            }
+
+            function createStrategySnapshot() {
+                var strategyDefinitionId = toInt(tradeStrategyDefinition.value);
+                var optionTradeId = toLong(existingTradeSelect.value);
+                var optionTime = (optionTimeInput.value || '').trim();
+                var selectedLegs = getSelectedLegContracts();
+
+                if (!strategyDefinitionId) {
+                    setTradeMessage('Select strategy before creating snapshot.', true);
+                    return;
+                }
+                if (!selectedStockId) {
+                    setTradeMessage('Select ticker and contracts first.', true);
+                    return;
+                }
+                if (!optionTradeId) {
+                    setTradeMessage('Select an OPEN trade from Trade Name dropdown.', true);
+                    return;
+                }
+                if (!optionTime) {
+                    setTradeMessage('Option Time is required (DD:MM:YYYY HH:MM).', true);
+                    return;
+                }
+                if (!selectedLegs.length) {
+                    setTradeMessage('Select strike for each leg.', true);
+                    return;
+                }
+
+                setTradeMessage('Creating option strategy snapshot...', false);
+
+                fetch('/trade/openoptiontrade/strategy-snapshot', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        strategyDefinitionId: strategyDefinitionId,
+                        stockId: selectedStockId,
+                        optionTradeId: optionTradeId,
+                        optionTime: optionTime,
+                        selectedLegs: selectedLegs
+                    })
+                })
+                    .then(function (response) {
+                        if (!response.ok) {
+                            return response.text().then(function (text) {
+                                throw new Error(text || 'Failed to create strategy snapshot');
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(function (result) {
+                        setTradeMessage('Created option_strategy #' + result.optionStrategyId
+                            + ' and option_strategy_snapshot #' + result.optionStrategySnapshotId
+                            + ' at ' + result.resolvedOptionTime + '.', false);
+                    })
+                    .catch(function (error) {
+                        setTradeMessage(error && error.message ? error.message : 'Unable to create strategy snapshot.', true);
+                    });
+            }
+
+            function renderContractSelections() {
+                var definitionId = toInt(tradeStrategyDefinition.value);
+                var selectedTicker = (tradeTickerInput.value || '').trim().toUpperCase();
+                var selectedExpiration = (tradeExpirationDateSelect.value || '').trim();
+
+                contractSelectionContainer.innerHTML = '';
+                optionTradeEmptyState.style.display = 'none';
+                optionTimeShell.style.display = 'none';
+                newTradeForm.style.display = 'none';
+                setTradeMessage('', false);
+
+                if (!definitionId || !selectedTicker || !selectedExpiration) {
+                    optionTradeHint.textContent = 'Select strategy, ticker, and expiration date to load contract options.';
+                    optionTradeEmptyState.style.display = '';
+                    optionTradeEmptyState.textContent = 'All three fields are required to load contract choices.';
+                    return;
+                }
+
+                var definition = strategyById(definitionId);
+                var legs = legsByDefinitionId(definitionId);
+
+                if (!definition || !legs.length) {
+                    optionTradeHint.textContent = 'Selected strategy configuration is incomplete.';
+                    optionTradeEmptyState.style.display = '';
+                    optionTradeEmptyState.textContent = 'No strategy leg definitions found.';
+                    return;
+                }
+
+                optionTradeHint.textContent = 'Loading contracts for selected ticker and expiration...';
+                fetch('/trade/openoptiontrade/contracts?ticker=' + encodeURIComponent(selectedTicker)
+                    + '&expirationDate=' + encodeURIComponent(selectedExpiration))
+                    .then(function (response) {
+                        if (!response.ok) {
+                            throw new Error('Failed to load contracts');
+                        }
+                        return response.json();
+                    })
+                    .then(function (rows) {
+                        contractRows = normalizeContracts(Array.isArray(rows) ? rows : []);
+                        selectedStockId = resolveSelectedStockId([], selectedTicker, selectedExpiration);
+
+                        var filteredContracts = contractRows.filter(function (contract) {
+                            return contract.ticker === selectedTicker && contract.expirationDate === selectedExpiration;
+                        });
+
+                        if (!filteredContracts.length) {
+                            optionTradeHint.textContent = 'No contracts available for selected ticker and expiration date.';
+                            optionTradeEmptyState.style.display = '';
+                            optionTradeEmptyState.textContent = 'Try a different ticker or expiration date.';
+                            return;
+                        }
+
+                        optionTradeHint.textContent = 'Strategy: ' + definition.displayName + ' (' + definition.strategyCode + ') | Ticker: ' + selectedTicker + ' | Expiration: ' + selectedExpiration;
+
+                        contractSelectionContainer.innerHTML = legs.map(function (leg, index) {
+                            var matchingContracts = filteredContracts.filter(function (contract) {
+                                return contract.contractType === leg.contractType;
+                            });
+                            return renderContractSelector(leg, index, matchingContracts);
+                        }).join('');
+                    })
+                    .catch(function (error) {
+                        optionTradeHint.textContent = error && error.message ? error.message : 'Unable to load contracts.';
+                        optionTradeEmptyState.style.display = '';
+                        optionTradeEmptyState.textContent = 'Please retry with a different ticker or expiration date.';
+                    });
+
+            }
+
+            function resetTradeSection() {
+                contractSelectionContainer.innerHTML = '';
+                optionTradeEmptyState.style.display = 'none';
+                optionTradeHint.textContent = 'Select strategy, ticker, and expiration date to load contract options.';
+                tradeNameShell.style.display = 'none';
+                optionTimeShell.style.display = 'none';
+                newTradeForm.style.display = 'none';
+                snapshotQuotesCache = {};
+                selectedStockId = null;
+                setTradeMessage('', false);
+            }
+
+            function handleFilterChange() {
+                resetTradeSection();
+                var definitionId = toInt(tradeStrategyDefinition.value);
+                var selectedTicker = (tradeTickerInput.value || '').trim().toUpperCase();
+                var selectedExpiration = (tradeExpirationDateSelect.value || '').trim();
+
+                if (selectedTicker) {
+                    loadOpenTradesForTicker();
+                }
+
+                if (!definitionId || !selectedTicker || !selectedExpiration) {
+                    return;
+                }
+                renderContractSelections();
+            }
+
+            tradeStrategyDefinition.addEventListener('change', handleFilterChange);
+            tradeTickerInput.addEventListener('change', handleFilterChange);
+            tradeExpirationDateSelect.addEventListener('change', handleFilterChange);
+
+            contractSelectionContainer.addEventListener('change', function (event) {
+                if (!event.target || !event.target.classList.contains('contract-choice')) {
+                    return;
+                }
+
+                loadSnapshotQuotesForSelect(event.target);
+                optionTimeShell.style.display = getSelectedContracts().length ? '' : 'none';
+                loadOpenTradesForTicker();
+            });
+
+            existingTradeSelect.addEventListener('change', function () {
+                if (existingTradeSelect.value === '__ADD_NEW__') {
+                    newTradeForm.style.display = '';
+                    setTradeMessage('Create a new open trade for this ticker.', false);
+                    return;
+                }
+
+                newTradeForm.style.display = 'none';
+                if ((existingTradeSelect.value || '').trim()) {
+                    setTradeMessage('Trade selected.', false);
+                } else {
+                    setTradeMessage('', false);
+                }
+            });
+
+            saveNewTradeBtn.addEventListener('click', saveNewTrade);
+            cancelNewTradeBtn.addEventListener('click', function () {
+                newTradeForm.style.display = 'none';
+                newTradeNameInput.value = '';
+                newTradeModeSelect.value = 'LIVE';
+                if (newTradeWithHistoricData) {
+                    newTradeWithHistoricData.checked = false;
+                }
+                if (existingTradeSelect.value === '__ADD_NEW__') {
+                    existingTradeSelect.value = '';
+                }
+                setTradeMessage('', false);
+            });
+
+            createStrategySnapshotBtn.addEventListener('click', createStrategySnapshot);
+
+            optionTradeHint.textContent = 'Select strategy, ticker, and expiration date to load contract options.';
+            initializeHistoryPreference();
+        })();
+    </script>
+</div>
+</body>
+</html>

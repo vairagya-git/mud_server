@@ -108,14 +108,15 @@ public class OptionSnapshotRepository {
     }
 
     public List<OptionSnapshot> listOptionSnapshotsByContractId(Long optionContractId) {
-        String sql = "SELECT os.option_quote_time, os.underlying_price, os.bid, os.ask, os.midpoint, os.implied_volatility, "
+        String sql = "SELECT os.snapshot_time, os.option_quote_time, os.underlying_price, os.bid, os.ask, os.midpoint, os.implied_volatility, "
             + "os.delta, os.gamma, os.theta, os.vega, os.open_interest, os.day_volume "
             + "FROM option_snapshot os "
             + "WHERE os.option_contract_id = ? "
-            + "ORDER BY os.option_quote_time DESC";
+            + "ORDER BY COALESCE(os.option_quote_time, os.snapshot_time) DESC";
 
         return jdbc.query(sql, (rs, rowNum) -> {
             OptionSnapshot row = new OptionSnapshot();
+            row.setSnapshotTime(rs.getTimestamp("snapshot_time"));
             row.setOptionQuoteTime(rs.getTimestamp("option_quote_time"));
             row.setUnderlyingPrice(rs.getBigDecimal("underlying_price"));
             row.setBid(rs.getBigDecimal("bid"));
@@ -144,6 +145,46 @@ public class OptionSnapshotRepository {
             + "AND unix_time = ? "
             + "LIMIT 1";
         List<Long> rows = jdbc.queryForList(sql, Long.class, optionContractId, unixTime);
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    public OptionSnapshot findNearestSnapshotByContractAndOptionTime(Long optionContractId, Timestamp targetTime) {
+        if (optionContractId == null || targetTime == null) {
+            return null;
+        }
+
+        String sql = "SELECT id, option_contract_id, stock_id, snapshot_time, option_quote_time, "
+            + "underlying_price, bid, ask, midpoint, last_trade_price, implied_volatility, "
+            + "delta, gamma, theta, vega, open_interest, day_volume "
+            + "FROM option_snapshot "
+            + "WHERE option_contract_id = ? "
+            + "ORDER BY ABS(TIMESTAMPDIFF(SECOND, COALESCE(option_quote_time, snapshot_time), ?)), "
+            + "COALESCE(option_quote_time, snapshot_time) DESC "
+            + "LIMIT 1";
+
+        List<OptionSnapshot> rows = jdbc.query(sql, (rs, rowNum) -> {
+            OptionSnapshot snapshot = new OptionSnapshot();
+            snapshot.setId(rs.getLong("id"));
+            snapshot.setOptionContractId(rs.getLong("option_contract_id"));
+            snapshot.setStockId(rs.getLong("stock_id"));
+            snapshot.setSnapshotTime(rs.getTimestamp("snapshot_time"));
+            snapshot.setOptionQuoteTime(rs.getTimestamp("option_quote_time"));
+            snapshot.setUnderlyingPrice(rs.getBigDecimal("underlying_price"));
+            snapshot.setBid(rs.getBigDecimal("bid"));
+            snapshot.setAsk(rs.getBigDecimal("ask"));
+            snapshot.setMidpoint(rs.getBigDecimal("midpoint"));
+            snapshot.setLastTradePrice(rs.getBigDecimal("last_trade_price"));
+            snapshot.setImpliedVolatility(rs.getBigDecimal("implied_volatility"));
+            snapshot.setDelta(rs.getBigDecimal("delta"));
+            snapshot.setGamma(rs.getBigDecimal("gamma"));
+            snapshot.setTheta(rs.getBigDecimal("theta"));
+            snapshot.setVega(rs.getBigDecimal("vega"));
+            int openInterest = rs.getInt("open_interest");
+            snapshot.setOpenInterest(rs.wasNull() ? null : openInterest);
+            int dayVolume = rs.getInt("day_volume");
+            snapshot.setDayVolume(rs.wasNull() ? null : dayVolume);
+            return snapshot;
+        }, optionContractId, targetTime);
         return rows.isEmpty() ? null : rows.get(0);
     }
 }

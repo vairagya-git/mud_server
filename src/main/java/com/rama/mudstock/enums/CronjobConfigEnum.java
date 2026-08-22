@@ -17,6 +17,10 @@ public enum CronjobConfigEnum {
     WATCHLIST_CODES("watchlist-codes", "StringArray", "Watchlist Codes"),
     PULL_STOCK_HISTORY("pullStockHistory", "StringArray", "Pull the stock history for the ticker for the period pullStockHistoryDays"),
     PULL_STOCK_HISTORY_DAYS("pullStockHistoryDays", "Integer", "No of Days to pull the stock history"),
+    OPTION_SNAPSHOT_INTERVAL("optionSnapshotInterval", "Integer", "Option Snapshot Data Interval"),
+    LAST_FETCHED_SNAPSHOT_TIME("lastFetchedSnapshotTime", "DateTime", "Last fetched option_snapshot data time"),
+    LAST_FETCHED_FLAT_FILE_TIME("lastFetchedFlatFileTime", "DateTime", "Last fetched option_flat_file data time"),
+    LAST_FETCHED_MANUAL_ENTRY_TIME("lastFetchedManualEntryTime", "DateTime", "Last fetched option_manual_entry data time"),
     LOCATION("location", "String", "Output Location");
 
     private final String code;
@@ -105,7 +109,9 @@ public enum CronjobConfigEnum {
         OPTIONS_INTERVAL_ANALYSE_DAILY_JOB("OptionsIntervalAnalyseDailyJob"),
         OPTION_SNAPSHOT_IV_METRICS("OptionSnapshotIVMetrics"),
         OPTION_API_SNAPSHOT_FETCHER_JOB("OptionAPISnapshotFetcherJob"),
-        OPTION_FLAT_FILE_SNAPSHOT_FETCHER_JOB("OptionFlatFileSnapshotFetcherJob");
+        OPTION_FLAT_FILE_SNAPSHOT_FETCHER_JOB("OptionFlatFileSnapshotFetcherJob"),
+        OPTION_STRATEGY_SNAPSHOT_REFINEMENT_JOB("OptionStrategySnapshotRefinementJob"),
+        OPTION_STRATEGY_SNAPSHOT_REFINEMENT_HISTORY_DATA_JOB("OptionStrategySnapshotRefinementHistoryDataJob");
 
         private final String value;
 

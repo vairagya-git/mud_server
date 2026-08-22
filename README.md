@@ -21,13 +21,13 @@ mvn -q -DskipTests exec:java   -Dexec.mainClass=com.rama.mudstock.util.TestDataC
 Local Development details available Data Dates 
 
 option_snapshot_flatfile >  13 to 17 July 2026, 20 to 24 July 2026
-option_snapshot > 10 July 2026
+option_snapshot > 10 - 31 July 2026.  Best is Strike 31-July-2026
 option_contract > 17 July, 24-July
 day_stock_movement_entry > 
   Adjusted for MU 20, 21, 22, 23 & 24 July 2026. 23 & 24 data adjusted for snapshot & flatfile. 
 
 
-
+Import CSV > mvn org.codehaus.mojo:exec-maven-plugin:3.5.0:java  -Dexec.mainClass=com.rama.mudstock.util.TestDataCsvImportUtil  -Dexec.args="--spring.profiles.active=local"
 
 
 SAMPLE QUERY:  

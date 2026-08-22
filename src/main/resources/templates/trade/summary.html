@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{fragments/layout :: layout(~{::title}, ~{::#page-content})}">
+<head><title>Trade Summary - MudStock</title></head>
+<body>
+<div id="page-content" th:fragment="content">
+    <style>
+        .summary-shell {
+            max-width: 1120px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 12px;
+        }
+
+        .strategy-list {
+            margin-top: 12px;
+            display: grid;
+            gap: 10px;
+        }
+
+        .strategy-card {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            background: #fafdf8;
+        }
+
+        .strategy-title {
+            font-weight: 700;
+            color: #285f28;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .toggle-btn {
+            border: 1px solid var(--border);
+            background: #ffffff;
+            border-radius: 6px;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .strategy-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 8px;
+            font-size: .86rem;
+        }
+
+        .summary-empty {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: #fff7e6;
+            border: 1px solid #f4d39c;
+            color: #7b4e00;
+            font-size: .86rem;
+        }
+
+        .legs-box {
+            margin-top: 10px;
+            border-top: 1px dashed var(--border);
+            padding-top: 10px;
+        }
+
+        .nested-box {
+            margin-top: 10px;
+            border-top: 1px dashed var(--border);
+            padding-top: 10px;
+        }
+
+        .nested-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-size: .86rem;
+            color: #285f28;
+            font-weight: 700;
+        }
+
+        .snapshot-row {
+            border: 1px solid #edf2ea;
+            border-radius: 8px;
+            padding: 8px;
+            margin-top: 8px;
+            background: #ffffff;
+        }
+
+        .snapshot-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 8px;
+            font-size: .84rem;
+            margin-top: 6px;
+        }
+
+        .snapshot-leg-box {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #e4ebdf;
+        }
+
+        .snapshot-leg-row {
+            font-size: .83rem;
+            padding: 6px 0;
+            border-bottom: 1px solid #edf2ea;
+        }
+
+        .snapshot-leg-row:last-child {
+            border-bottom: 0;
+        }
+
+        .legs-row {
+            font-size: .85rem;
+            padding: 6px 0;
+            border-bottom: 1px solid #edf2ea;
+        }
+
+        .legs-row:last-child {
+            border-bottom: 0;
+        }
+
+        .legs-empty {
+            font-size: .84rem;
+            color: #6b6b6b;
+        }
+    </style>
+
+    <div class="page-header">
+        <h1>Trade Summary</h1>
+        <div class="subtitle">Alive trades (OPEN)</div>
+    </div>
+
+    <div class="card summary-shell" style="padding:16px 18px 14px;">
+        <h3 style="margin:0 0 10px">Alive Trade</h3>
+
+        <div th:if="${#lists.isEmpty(aliveTrades)}" class="subtitle">No alive trades found.</div>
+
+        <div th:if="${!#lists.isEmpty(aliveTrades)}">
+            <div class="summary-grid">
+                <div class="form-group" style="margin:0;">
+                    <label>Active Trade</label>
+                    <select id="activeTradeSelect">
+                        <option value="" selected>-- select active trade --</option>
+                        <option th:each="t : ${aliveTrades}"
+                                th:value="${t.id}"
+                                th:text="${t.tradeName + ' | ' + t.ticker + ' | ' + t.tradeMode}">
+                        </option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="strategyList" class="strategy-list"></div>
+            <div id="strategyEmpty" class="summary-empty" style="display:none"></div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        (function () {
+            var activeTradeSelect = document.getElementById('activeTradeSelect');
+            var strategyList = document.getElementById('strategyList');
+            var strategyEmpty = document.getElementById('strategyEmpty');
+            var optionStrategies = /*[[${optionStrategies}]]*/ [];
+            var optionStrategyLegs = /*[[${optionStrategyLegs}]]*/ [];
+            var optionStrategySnapshots = /*[[${optionStrategySnapshots}]]*/ [];
+            var optionStrategySnapshotLegs = /*[[${optionStrategySnapshotLegs}]]*/ [];
+
+            if (!activeTradeSelect) {
+                return;
+            }
+
+            function toLong(value) {
+                if (value === null || value === undefined || value === '') return null;
+                var parsed = Number(String(value));
+                return Number.isFinite(parsed) ? parsed : null;
+            }
+
+            function esc(value) {
+                return String(value == null ? '' : value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function normalizeStrategies(rows) {
+                return (rows || []).map(function (row) {
+                    return {
+                        id: toLong(row.id),
+                        optionTradeId: toLong(row.optionTradeId),
+                        strategyCode: row.strategyCode || '',
+                        displayName: row.displayName || '',
+                        strategyAction: row.strategyAction || '',
+                        status: row.status || '',
+                        tradeMode: row.tradeMode || '',
+                        entryTime: row.entryTime || ''
+                    };
+                });
+            }
+
+            function normalizeStrategyLegs(rows) {
+                return (rows || []).map(function (row) {
+                    return {
+                        id: toLong(row.id),
+                        optionStrategyId: toLong(row.optionStrategyId),
+                        legNumber: row.legNumber,
+                        contractTicker: row.contractTicker || '',
+                        contractType: row.contractType || '',
+                        positionSide: row.positionSide || '',
+                        quantity: row.quantity,
+                        entryPrice: row.entryPrice
+                    };
+                });
+            }
+
+            function normalizeStrategySnapshots(rows) {
+                return (rows || []).map(function (row) {
+                    return {
+                        id: toLong(row.id),
+                        optionStrategyId: toLong(row.optionStrategyId),
+                        snapshotTime: row.snapshotTime || '',
+                        underlyingPrice: row.underlyingPrice,
+                        currentMarketValue: row.currentMarketValue,
+                        totalPnl: row.totalPnl
+                    };
+                });
+            }
+
+            function normalizeStrategySnapshotLegs(rows) {
+                return (rows || []).map(function (row) {
+                    return {
+                        id: toLong(row.id),
+                        optionStrategySnapshotId: toLong(row.optionStrategySnapshotId),
+                        optionStrategyLegId: toLong(row.optionStrategyLegId),
+                        legNumber: row.legNumber,
+                        contractTicker: row.contractTicker || '',
+                        currentMarketValue: row.currentMarketValue,
+                        unrealizedPnl: row.unrealizedPnl,
+                        unrealizedPnlPct: row.unrealizedPnlPct
+                    };
+                });
+            }
+
+            var strategyRows = normalizeStrategies(optionStrategies);
+            var strategyLegRows = normalizeStrategyLegs(optionStrategyLegs);
+            var strategySnapshotRows = normalizeStrategySnapshots(optionStrategySnapshots);
+            var strategySnapshotLegRows = normalizeStrategySnapshotLegs(optionStrategySnapshotLegs);
+
+            function legsHtmlForStrategy(strategyId) {
+                var rows = strategyLegRows
+                    .filter(function (row) { return row.optionStrategyId === strategyId; })
+                    .sort(function (a, b) {
+                        return (Number(a.legNumber) || 0) - (Number(b.legNumber) || 0);
+                    });
+
+                if (!rows.length) {
+                    return '<div class="legs-empty">No option_strategy_leg rows for this strategy.</div>';
+                }
+
+                return rows.map(function (leg) {
+                    return ''
+                        + '<div class="legs-row">'
+                        + '<strong>Leg ' + esc(leg.legNumber) + '</strong>'
+                        + ' | ' + esc(leg.positionSide) + ' ' + esc(leg.contractType)
+                        + ' | Qty: ' + esc(leg.quantity)
+                        + ' | Contract: ' + esc(leg.contractTicker)
+                        + ' | Entry: ' + esc(leg.entryPrice)
+                        + '</div>';
+                }).join('');
+            }
+
+            function snapshotLegsHtml(snapshotId) {
+                var rows = strategySnapshotLegRows
+                    .filter(function (row) { return row.optionStrategySnapshotId === snapshotId; })
+                    .sort(function (a, b) {
+                        return (Number(a.legNumber) || 0) - (Number(b.legNumber) || 0);
+                    });
+
+                if (!rows.length) {
+                    return '<div class="legs-empty">No option_strategy_leg_snapshot rows for this snapshot.</div>';
+                }
+
+                return rows.map(function (row) {
+                    return ''
+                        + '<div class="snapshot-leg-row">'
+                        + '<strong>Leg ' + esc(row.legNumber) + '</strong>'
+                        + ' | Contract: ' + esc(row.contractTicker)
+                        + ' | MV: ' + esc(row.currentMarketValue)
+                        + ' | UPNL: ' + esc(row.unrealizedPnl)
+                        + ' | UPNL%: ' + esc(row.unrealizedPnlPct)
+                        + '</div>';
+                }).join('');
+            }
+
+            function snapshotsHtmlForStrategy(strategyId) {
+                var rows = strategySnapshotRows
+                    .filter(function (row) { return row.optionStrategyId === strategyId; });
+
+                if (!rows.length) {
+                    return '<div class="legs-empty">No option_strategy_snapshot rows for this strategy.</div>';
+                }
+
+                return rows.map(function (snapshot) {
+                    return ''
+                        + '<div class="snapshot-row">'
+                        + '<div class="nested-header">'
+                        + '<span>Snapshot #' + esc(snapshot.id) + '</span>'
+                        + '<button type="button" class="toggle-btn" data-toggle-snapshot-legs data-snapshot-id="' + esc(snapshot.id) + '" aria-expanded="false">+</button>'
+                        + '</div>'
+                        + '<div class="snapshot-meta">'
+                        + '<div><strong>Time:</strong> ' + esc(snapshot.snapshotTime) + '</div>'
+                        + '<div><strong>Underlying:</strong> ' + esc(snapshot.underlyingPrice) + '</div>'
+                        + '<div><strong>Market Value:</strong> ' + esc(snapshot.currentMarketValue) + '</div>'
+                        + '<div><strong>Total PnL:</strong> ' + esc(snapshot.totalPnl) + '</div>'
+                        + '</div>'
+                        + '<div class="snapshot-leg-box" data-snapshot-legs-box="' + esc(snapshot.id) + '" style="display:none">'
+                        + snapshotLegsHtml(snapshot.id)
+                        + '</div>'
+                        + '</div>';
+                }).join('');
+            }
+
+            function renderStrategies() {
+                var selectedTradeId = toLong(activeTradeSelect.value);
+                strategyList.innerHTML = '';
+                strategyEmpty.style.display = 'none';
+
+                if (!selectedTradeId) {
+                    strategyEmpty.textContent = 'Select an active trade to view option_strategy.';
+                    strategyEmpty.style.display = '';
+                    return;
+                }
+
+                var filtered = strategyRows.filter(function (row) {
+                    return row.optionTradeId === selectedTradeId;
+                });
+
+                if (!filtered.length) {
+                    strategyEmpty.textContent = 'No option_strategy found for selected trade.';
+                    strategyEmpty.style.display = '';
+                    return;
+                }
+
+                strategyList.innerHTML = filtered.map(function (row) {
+                    var title = row.displayName || row.strategyCode || ('Strategy #' + row.id);
+                    return ''
+                        + '<div class="strategy-card">'
+                        + '<div class="strategy-title">'
+                        + '<span>' + esc(title) + '</span>'
+                        + '<button type="button" class="toggle-btn" data-toggle-legs data-strategy-id="' + esc(row.id) + '" aria-expanded="false">+</button>'
+                        + '</div>'
+                        + '<div class="strategy-meta">'
+                        + '<div><strong>ID:</strong> ' + esc(row.id) + '</div>'
+                        + '<div><strong>Code:</strong> ' + esc(row.strategyCode) + '</div>'
+                        + '<div><strong>Action:</strong> ' + esc(row.strategyAction) + '</div>'
+                        + '<div><strong>Status:</strong> ' + esc(row.status) + '</div>'
+                        + '<div><strong>Mode:</strong> ' + esc(row.tradeMode) + '</div>'
+                        + '<div><strong>Entry Time:</strong> ' + esc(row.entryTime) + '</div>'
+                        + '</div>'
+                        + '<div class="legs-box" data-legs-box="' + esc(row.id) + '" style="display:none">'
+                        + legsHtmlForStrategy(row.id)
+                        + '</div>'
+                        + '<div class="nested-box" style="display:none" data-snapshots-box="' + esc(row.id) + '">'
+                        + '<div class="nested-header">'
+                        + '<span>Option Strategy Snapshots</span>'
+                        + '</div>'
+                        + snapshotsHtmlForStrategy(row.id)
+                        + '</div>'
+                        + '</div>';
+                }).join('');
+            }
+
+            activeTradeSelect.addEventListener('change', renderStrategies);
+
+            strategyList.addEventListener('click', function (event) {
+                var button = event.target.closest('[data-toggle-legs]');
+                if (!button) {
+                    return;
+                }
+
+                var strategyId = button.getAttribute('data-strategy-id');
+                var legsBox = strategyList.querySelector('[data-legs-box="' + strategyId + '"]');
+                if (!legsBox) {
+                    return;
+                }
+
+                var isOpen = legsBox.style.display !== 'none';
+                legsBox.style.display = isOpen ? 'none' : '';
+                button.textContent = isOpen ? '+' : '-';
+                button.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+
+                var snapshotsBox = strategyList.querySelector('[data-snapshots-box="' + strategyId + '"]');
+                if (snapshotsBox) {
+                    snapshotsBox.style.display = isOpen ? 'none' : '';
+                }
+            });
+
+            strategyList.addEventListener('click', function (event) {
+                var button = event.target.closest('[data-toggle-snapshot-legs]');
+                if (!button) {
+                    return;
+                }
+
+                var snapshotId = button.getAttribute('data-snapshot-id');
+                var box = strategyList.querySelector('[data-snapshot-legs-box="' + snapshotId + '"]');
+                if (!box) {
+                    return;
+                }
+
+                var isOpen = box.style.display !== 'none';
+                box.style.display = isOpen ? 'none' : '';
+                button.textContent = isOpen ? '+' : '-';
+                button.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+            });
+
+            renderStrategies();
+        })();
+    </script>
+</div>
+</body>
+</html>

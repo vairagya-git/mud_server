@@ -178,4 +178,23 @@ WHERE DATE(dsme.day_stock_movement_date) = '2026-07-31'
 
       AND ROUND(os.underlying_price, 2) = 930.88;
 
-select * from option_snapshot where stock_id = 1  ;
+select * from option_snapshot 
+order by option_quote_time asc;
+
+
+
+SELECT os.snapshot_time, os.option_quote_time, os.underlying_price, os.bid, os.ask, os.midpoint, os.implied_volatility, os.delta, os.gamma, os.theta, os.vega, os.open_interest, os.day_volume 
+FROM option_snapshot os 
+WHERE os.option_contract_id = 187 
+ORDER BY COALESCE(os.option_quote_time, os.snapshot_time) DESC;
+
+
+select * from option_contract oc 
+join option_snapshot os on oc.id = os.option_contract_id
+where oc.contract_ticker like "O:MU260731%";
+
+
+
+select * from option_snapshot os 
+join stock s on os.stock_id = s.id
+where s.ticker = "MU" ;
