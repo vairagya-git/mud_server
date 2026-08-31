@@ -10,26 +10,26 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.rama.mudstock.enums.CronjobConfigEnum;
-import com.rama.mudstock.facade.OptionStrategySnapshotRefinementFacade;
+import com.rama.mudstock.facade.optiontrade.OptionTradeStrategySnapshotHistoryRefinementFacade;
 import com.rama.mudstock.service.MarketCalendarService;
 import com.rama.mudstock.service.SystemConfigService;
 
 /**
- * Periodic cronjob mirroring OptionStrategySnapshotRefinementJob scheduling structure.
+ * Periodic cronjob mirroring OptionTradeStrategySnapshotRefinementJob scheduling structure.
  */
 @Component
 @Profile("cronjob")
-public class OptionStrategySnapshotRefinementHistoryDataJob extends AbstractOptionStrategySnapshotRefinementJob {
+public class OptionTradeStrategySnapshotRefinementHistoryDataJob extends AbstractOptionStrategySnapshotRefinementJob {
 
     private final MarketCalendarService marketCalendarService;
-    private final OptionStrategySnapshotRefinementFacade optionStrategySnapshotRefinementFacade;
-    private final Logger log = LoggerFactory.getLogger(OptionStrategySnapshotRefinementHistoryDataJob.class);
+    private final OptionTradeStrategySnapshotHistoryRefinementFacade optionTradeStrategySnapshotHistoryRefinementFacade;
+    private final Logger log = LoggerFactory.getLogger(OptionTradeStrategySnapshotRefinementHistoryDataJob.class);
 
-    public OptionStrategySnapshotRefinementHistoryDataJob(OptionStrategySnapshotRefinementFacade optionStrategySnapshotRefinementFacade,
-                                                          SystemConfigService systemConfigService,
-                                                          MarketCalendarService marketCalendarService) {
+    public OptionTradeStrategySnapshotRefinementHistoryDataJob(OptionTradeStrategySnapshotHistoryRefinementFacade optionTradeStrategySnapshotHistoryRefinementFacade,
+                                                               SystemConfigService systemConfigService,
+                                                               MarketCalendarService marketCalendarService) {
         super(systemConfigService, CronjobConfigEnum.Purpose.OPTION_STRATEGY_SNAPSHOT_REFINEMENT_HISTORY_DATA_JOB.value());
-        this.optionStrategySnapshotRefinementFacade = optionStrategySnapshotRefinementFacade;
+        this.optionTradeStrategySnapshotHistoryRefinementFacade = optionTradeStrategySnapshotHistoryRefinementFacade;
         this.marketCalendarService = marketCalendarService;
     }
 
@@ -37,19 +37,19 @@ public class OptionStrategySnapshotRefinementHistoryDataJob extends AbstractOpti
     public void refineSnapshots() {
         loadAndLogSharedConfig(log);
 
-        if (!shouldExecuteBySchedule(getPurpose()) || marketCalendarService.isMarketClosed(LocalDate.now())) {
+        if (!shouldExecuteBySchedule(getPurpose())) {
             log.info("{}: market is closed or outside trading hours", getPurpose());
             return;
         }
 
         try {
-            int inserted = optionStrategySnapshotRefinementFacade.refineStrategySnapshot(
-                true,
+            int inserted = optionTradeStrategySnapshotHistoryRefinementFacade.enrichTradeStrategySnapshot(
+                com.rama.mudstock.repository.option.OptionTradeRepository.TradeMode.HISTORY,
                 optionSnapshotInterval(),
                 lastFetchedSnapshotTime(),
                 lastFetchedFlatFileTime(),
                 lastFetchedManualEntryTime());
-            log.info("{}: inserted {} option_snapshot row(s)", getPurpose(), inserted);
+            log.info("{}: inserted {} option_strategy_snapshot row(s)", getPurpose(), inserted);
             updateLastUpdatedNowUtc(getPurpose());
         } catch (Exception ex) {
             log.error("{}: snapshot fetch failed", getPurpose(), ex);

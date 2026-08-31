@@ -88,4 +88,36 @@ public class OptionSnapshotFlatfileRepository {
             return row;
         }, optionContractId);
     }
+
+    public FlatFileLookupRow findNearestFlatFileByContractAndTime(Long optionContractId, Timestamp targetTime) {
+        if (optionContractId == null || targetTime == null) {
+            return null;
+        }
+
+        String sql = "SELECT id, local_time, near_option_snapshot_id, opt_close "
+            + "FROM option_snapshot_flatfile "
+            + "WHERE option_contract_id = ? "
+            + "ORDER BY ABS(TIMESTAMPDIFF(SECOND, local_time, ?)), local_time DESC "
+            + "LIMIT 1";
+
+        List<FlatFileLookupRow> rows = jdbc.query(sql, (rs, rowNum) -> new FlatFileLookupRow(
+            rs.getLong("id"),
+            rs.getTimestamp("local_time"),
+            getNullableLong(rs, "near_option_snapshot_id"),
+            rs.getBigDecimal("opt_close")),
+            optionContractId,
+            targetTime);
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    private Long getNullableLong(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
+        long value = rs.getLong(column);
+        return rs.wasNull() ? null : value;
+    }
+
+    public record FlatFileLookupRow(Long id,
+                                    Timestamp localTime,
+                                    Long nearOptionSnapshotId,
+                                    BigDecimal optClose) {
+    }
 }

@@ -1,4 +1,4 @@
-package com.rama.mudstock.facade;
+package com.rama.mudstock.facade.optiontrade;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -24,7 +24,7 @@ import com.rama.mudstock.repository.option.OptionStrategyRepository;
 import com.rama.mudstock.repository.option.OptionTradeRepository;
 import com.rama.mudstock.model.option.OptionContract;
 import com.rama.mudstock.model.option.OptionSnapshot;
-import com.rama.mudstock.service.ApplicationFilterService;
+import com.rama.mudstock.service.app.ApplicationFilterService;
 
 @Service
 public class OptionTradeFacade {
@@ -140,23 +140,19 @@ public class OptionTradeFacade {
 
     public OpenTradeOption createOpenTrade(Long stockId,
                                            String tradeName,
-                                           String tradeMode,
                                            boolean withHistoricData) {
         if (stockId == null) {
             throw new IllegalArgumentException("stock_id is required");
         }
 
         String normalizedTradeName = tradeName == null ? "" : tradeName.trim();
-        String normalizedTradeMode = tradeMode == null ? "" : tradeMode.trim().toUpperCase();
         if (normalizedTradeName.isBlank()) {
             throw new IllegalArgumentException("trade_name is required");
         }
-        if (!"LIVE".equals(normalizedTradeMode) && !"SIMULATION".equals(normalizedTradeMode)) {
-            throw new IllegalArgumentException("trade_mode must be LIVE or SIMULATION");
-        }
+        String resolvedTradeMode = OptionTradeRepository.TradeMode.LIVE.name();
 
-        Long tradeId = optionTradeRepository.insertOpenTrade(stockId, normalizedTradeName, normalizedTradeMode, withHistoricData, LocalDateTime.now());
-        return new OpenTradeOption(tradeId, normalizedTradeName, normalizedTradeMode);
+        Long tradeId = optionTradeRepository.insertOpenTrade(stockId, normalizedTradeName, resolvedTradeMode, withHistoricData, LocalDateTime.now());
+        return new OpenTradeOption(tradeId, normalizedTradeName, resolvedTradeMode);
     }
 
     public List<SnapshotQuoteOption> listSnapshotQuoteOptions(String contractTicker) {
@@ -184,13 +180,14 @@ public class OptionTradeFacade {
     }
 
     public TradeSummaryData loadTradeSummaryData() {
-        List<OptionTradeRepository.AliveTradeRow> aliveTrades = optionTradeRepository.listAliveTradesWithTicker();
+        List<OptionTradeRepository.TradeRow> aliveTrades = optionTradeRepository
+            .listOpenTradesByModeWithTicker(OptionTradeRepository.Status.OPEN);
         if (aliveTrades.isEmpty()) {
             return new TradeSummaryData(List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         List<Long> tradeIds = aliveTrades.stream()
-            .map(OptionTradeRepository.AliveTradeRow::id)
+            .map(OptionTradeRepository.TradeRow::id)
             .filter(Objects::nonNull)
             .distinct()
             .toList();
@@ -408,9 +405,8 @@ public class OptionTradeFacade {
             strategyDefinitionId,
             stockId,
             optionTradeId,
-            tradeMode,
-            "NEW",
-            "OPEN",
+            OptionStrategyRepository.Type.NEW.name(),
+            OptionStrategyRepository.Status.OPEN.name(),
             requestedOptionTime,
             underlyingPrice.setScale(6, RoundingMode.HALF_UP));
 
@@ -460,6 +456,7 @@ public class OptionTradeFacade {
                 optionStrategySnapshotId,
                 insertedLeg.optionStrategyLegId(),
                 leg.optionSnapshotId(),
+                null,
                 signedMarketValue,
                 BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP),
                 BigDecimal.ZERO.setScale(4, RoundingMode.HALF_UP));
@@ -585,7 +582,7 @@ public class OptionTradeFacade {
                                       String displayValue) {
     }
 
-    public record TradeSummaryData(List<OptionTradeRepository.AliveTradeRow> aliveTrades,
+    public record TradeSummaryData(List<OptionTradeRepository.TradeRow> aliveTrades,
                                    List<OptionStrategyRepository.StrategySummaryRow> optionStrategies,
                                    List<OptionStrategyRepository.StrategyLegSummaryRow> optionStrategyLegs,
                                    List<OptionStrategyRepository.StrategySnapshotSummaryRow> optionStrategySnapshots,

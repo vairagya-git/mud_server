@@ -8,6 +8,7 @@ public class OptionSnapshot {
     private Long id;
     private Long optionContractId;
     private Long stockId;
+    private Long unixTime;
     private Timestamp snapshotTime;
     private Timestamp optionQuoteTime;
     private BigDecimal underlyingPrice;
@@ -53,6 +54,14 @@ public class OptionSnapshot {
 
     public void setSnapshotTime(Timestamp snapshotTime) {
         this.snapshotTime = snapshotTime;
+    }
+
+    public Long getUnixTime() {
+        return unixTime;
+    }
+
+    public void setUnixTime(Long unixTime) {
+        this.unixTime = unixTime;
     }
 
     public Timestamp getOptionQuoteTime() {

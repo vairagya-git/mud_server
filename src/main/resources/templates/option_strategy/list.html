@@ -93,7 +93,7 @@
                                 <th>Previous Strategy</th>
                                 <th>Type</th>
                                 <th>Mode</th>
-                                <th>Action</th>
+                                <th>Type</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -104,7 +104,7 @@
                                 <td th:text="${s.previous_strategy_name != null ? s.previous_strategy_name : '-'}"></td>
                                 <td th:text="${s.strategy_type}"></td>
                                 <td th:text="${s.strategy_mode}"></td>
-                                <td th:text="${s.strategy_action}"></td>
+                                <td th:text="${s.type}"></td>
                                 <td><span class="badge badge-blue" th:text="${s.status}"></span></td>
                             </tr>
                         </tbody>
@@ -159,10 +159,10 @@
                         </div>
 
                         <div class="form-group">
-                            <label>Strategy Action</label>
-                            <select name="strategyAction" required>
+                            <label>Type</label>
+                            <select name="type" required>
                                 <option value="" selected>-- select --</option>
-                                <option th:each="action : ${strategyActions}" th:value="${action}" th:text="${action}"></option>
+                                <option th:each="type : ${types}" th:value="${type}" th:text="${type}"></option>
                             </select>
                         </div>
 

@@ -18,7 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.rama.mudstock.facade.OptionTrackingFacade;
 import com.rama.mudstock.model.option.OptionTrackingSnapshotRow;
-import com.rama.mudstock.service.ApplicationFilterService;
+import com.rama.mudstock.service.app.ApplicationFilterService;
 
 @Controller
 @RequestMapping("/option-analysis/tracking")

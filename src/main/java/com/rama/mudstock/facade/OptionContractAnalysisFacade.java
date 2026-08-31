@@ -16,7 +16,7 @@ import com.rama.mudstock.repository.option.OptionIntervalAnalyseRepository;
 import com.rama.mudstock.repository.option.OptionSnapshotFlatfileRepository;
 import com.rama.mudstock.repository.option.OptionSnapshotIVMetricRepository;
 import com.rama.mudstock.repository.option.OptionSnapshotRepository;
-import com.rama.mudstock.service.ApplicationFilterService;
+import com.rama.mudstock.service.app.ApplicationFilterService;
 
 @Service
 public class OptionContractAnalysisFacade {

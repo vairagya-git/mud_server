@@ -391,32 +391,30 @@ INSERT INTO system_config (`code`, `value`, `type`, `purpose`, `description`) VA
 ('minuteHourlyFrequency', '5', 'Integer', 'OptionAPISnapshotFetcherJob', 'CronExpression for the cronjob'),
 ('forceExecute', 'false', 'boolean', 'OptionAPISnapshotFetcherJob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
 
-/*OptionStrategySnapshotRefinementJob Settings*/
-('useage', 'useage', 'String', 'OptionStrategySnapshotRefinementJob', 'Fetch Option snapshot data for the given ticker, strike and expiration date'),
-('enabled', 'true', 'boolean', 'OptionStrategySnapshotRefinementJob', 'OptionStrategySnapshotRefinementJob  Enable property'),
-('execution', 'minutes', 'String', 'OptionStrategySnapshotRefinementJob', 'CronExpression for the cronjob'),
-('lastUpdated', '', 'DateTime', 'OptionStrategySnapshotRefinementJob', 'Create and Close Optoin Contract entry'),
-('startTime', '14:30', 'Time', 'OptionStrategySnapshotRefinementJob', 'Cronjob Start Time'),
-('endTime', '21:00', 'Time', 'OptionStrategySnapshotRefinementJob', 'Cronjob End Time'),
-('minuteHourlyFrequency', '5', 'Integer', 'OptionStrategySnapshotRefinementJob', 'CronExpression for the cronjob'),
-('optionSnapshotInterval', '5', 'Integer', 'OptionStrategySnapshotRefinementJob', 'Option Snapshot Data Interval'),
-('forceExecute', 'false', 'boolean', 'OptionStrategySnapshotRefinementJob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
+/*OptionTradeStrategySnapshotRefinementJob Settings*/
+('useage', 'useage', 'String', 'OptionTradeStrategySnapshotRefinementJob', 'Fetch Option snapshot data for the given ticker, strike and expiration date'),
+('enabled', 'true', 'boolean', 'OptionTradeStrategySnapshotRefinementJob', 'OptionTradeStrategySnapshotRefinementJob  Enable property'),
+('execution', 'minutes', 'String', 'OptionTradeStrategySnapshotRefinementJob', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'OptionTradeStrategySnapshotRefinementJob', 'Create and Close Optoin Contract entry'),
+('startTime', '14:30', 'Time', 'OptionTradeStrategySnapshotRefinementJob', 'Cronjob Start Time'),
+('endTime', '21:00', 'Time', 'OptionTradeStrategySnapshotRefinementJob', 'Cronjob End Time'),
+('minuteHourlyFrequency', '5', 'Integer', 'OptionTradeStrategySnapshotRefinementJob', 'CronExpression for the cronjob'),
+('optionSnapshotInterval', '5', 'Integer', 'OptionTradeStrategySnapshotRefinementJob', 'Option Snapshot Data Interval'),
+('forceExecute', 'false', 'boolean', 'OptionTradeStrategySnapshotRefinementJob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
 
-
-
-/*OptionStrategySnapshotRefinementHistoryDataJob Settings*/
-('useage', 'useage', 'String', 'OptionStrategySnapshotRefinementHistoryDataJob', 'Fetch Option snapshot data for the given ticker, strike and expiration date'),
-('enabled', 'true', 'boolean', 'OptionStrategySnapshotRefinementHistoryDataJob', 'OptionStrategySnapshotRefinementHistoryDataJob  Enable property'),
-('execution', 'minutes', 'String', 'OptionStrategySnapshotRefinementHistoryDataJob', 'CronExpression for the cronjob'),
-('lastUpdated', '', 'DateTime', 'OptionStrategySnapshotRefinementHistoryDataJob', 'Create and Close Optoin Contract entry'),
-('startTime', '14:30', 'Time', 'OptionStrategySnapshotRefinementHistoryDataJob', 'Cronjob Start Time'),
-('endTime', '21:00', 'Time', 'OptionStrategySnapshotRefinementHistoryDataJob', 'Cronjob End Time'),
-('minuteHourlyFrequency', '5', 'Integer', 'OptionStrategySnapshotRefinementHistoryDataJob', 'CronExpression for the cronjob'),
-('optionSnapshotInterval', '5', 'Integer', 'OptionStrategySnapshotRefinementHistoryDataJob', 'Option Snapshot Data Interval'),
-('lastFetchedSnapshotTime', '', 'DateTime', 'OptionStrategySnapshotRefinementHistoryDataJob', 'Last fetched option_snapshot data time'),
-('lastFetchedFlatFileTime', '', 'DateTime', 'OptionStrategySnapshotRefinementHistoryDataJob', 'Last fetched option_flat_file data time'),
-('lastFetchedManualEntryTime', '', 'DateTime', 'OptionStrategySnapshotRefinementHistoryDataJob', 'Last fetched option_manual_entry data time'),
-('forceExecute', 'false', 'boolean', 'OptionStrategySnapshotRefinementHistoryDataJob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
+/*OptionTradeStrategySnapshotRefinementHistoryDataJob Settings*/
+('useage', 'useage', 'String', 'OptionTradeStrategySnapshotRefinementHistoryDataJob', 'Fetch Option snapshot data for the given ticker, strike and expiration date'),
+('enabled', 'true', 'boolean', 'OptionTradeStrategySnapshotRefinementHistoryDataJob', 'OptionTradeStrategySnapshotRefinementHistoryDataJob  Enable property'),
+('execution', 'minutes', 'String', 'OptionTradeStrategySnapshotRefinementHistoryDataJob', 'CronExpression for the cronjob'),
+('lastUpdated', '', 'DateTime', 'OptionTradeStrategySnapshotRefinementHistoryDataJob', 'Create and Close Optoin Contract entry'),
+('startTime', '14:30', 'Time', 'OptionTradeStrategySnapshotRefinementHistoryDataJob', 'Cronjob Start Time'),
+('endTime', '21:00', 'Time', 'OptionTradeStrategySnapshotRefinementHistoryDataJob', 'Cronjob End Time'),
+('minuteHourlyFrequency', '5', 'Integer', 'OptionTradeStrategySnapshotRefinementHistoryDataJob', 'CronExpression for the cronjob'),
+('optionSnapshotInterval', '5', 'Integer', 'OptionTradeStrategySnapshotRefinementHistoryDataJob', 'Option Snapshot Data Interval'),
+('lastFetchedSnapshotTime', '', 'DateTime', 'OptionTradeStrategySnapshotRefinementHistoryDataJob', 'Last fetched option_snapshot data time'),
+('lastFetchedFlatFileTime', '', 'DateTime', 'OptionTradeStrategySnapshotRefinementHistoryDataJob', 'Last fetched option_flat_file data time'),
+('lastFetchedManualEntryTime', '', 'DateTime', 'OptionTradeStrategySnapshotRefinementHistoryDataJob', 'Last fetched option_manual_entry data time'),
+('forceExecute', 'false', 'boolean', 'OptionTradeStrategySnapshotRefinementHistoryDataJob', 'Set this flag if you want to execute this cronjob by overriding all the other flag'),
 
 
 /*OptionFlatFileSnapshotFetcherJob Settings*/
@@ -529,7 +527,7 @@ CREATE TABLE option_snapshot (
     snapshot_time DATETIME(6) NOT NULL,
 
 -- Provider timestamps
-	unix_time bigint unsigned NOT NULL,
+	  unix_time bigint unsigned NOT NULL,
     option_quote_time DATETIME(6),
     option_trade_time DATETIME(6),
     underlying_time DATETIME(6),
@@ -1035,6 +1033,13 @@ WHERE strategy_code = 'REVERSE_IRON_CONDOR';
 
 select * from option_trade;
 
+UPDATE option_trade
+SET trade_mode = 'HISTORY'
+WHERE trade_mode = 'SIMULATION';
+
+ALTER TABLE option_trade
+MODIFY COLUMN trade_mode ENUM('LIVE', 'HISTORY') NOT NULL;
+
 CREATE TABLE option_trade (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 
@@ -1044,7 +1049,7 @@ CREATE TABLE option_trade (
 
     trade_mode ENUM(
         'LIVE',
-        'SIMULATION'
+        'HISTORY'
     ) NOT NULL,
 
     status ENUM(
@@ -1073,6 +1078,18 @@ CREATE TABLE option_trade (
 );
 
 
+alter table option_strategy
+drop column trade_mode;
+
+ALTER TABLE option_strategy
+RENAME COLUMN strategy_action TO `type`;
+
+
+ALTER TABLE option_strategy
+ADD COLUMN last_snapshot_unix_time bigint unsigned default NULL,
+ADD COLUMN  last_flat_file_unix_time bigint unsigned default NULL;
+
+
 CREATE TABLE option_strategy (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 
@@ -1083,12 +1100,7 @@ CREATE TABLE option_strategy (
     trade_group_id BIGINT UNSIGNED NULL, 
     trade_group_name VARCHAR(150) NULL, 
 
-    trade_mode ENUM(
-        'LIVE',
-        'SIMULATION'
-    ) NOT NULL,
-
-    strategy_action ENUM(
+    type ENUM(
         'NEW',
         'ROLL',
         'REBALANCE'
@@ -1107,6 +1119,9 @@ CREATE TABLE option_strategy (
 
     entry_underlying_price DECIMAL(18,6) NULL,
     exit_underlying_price DECIMAL(18,6) NULL,
+
+    last_snapshot_unix_time bigint unsigned default NULL,
+    last_flat_file_unix_time bigint unsigned default NULL,
 
     realized_pnl DECIMAL(18,6) NULL,
 
@@ -1128,6 +1143,9 @@ CREATE TABLE option_strategy (
         FOREIGN KEY (previous_strategy_id)
         REFERENCES option_strategy (id)
 );
+
+
+select * from option_strategy;
 
 
 CREATE TABLE option_strategy_leg (
@@ -1256,6 +1274,10 @@ CREATE TABLE option_strategy_snapshot (
     )
 );
 
+
+ALTER TABLE option_strategy_leg_snapshot
+ADD COLUMN unix_time bigint unsigned default NULL;
+
 CREATE TABLE option_strategy_leg_snapshot (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 
@@ -1268,6 +1290,8 @@ CREATE TABLE option_strategy_leg_snapshot (
     current_market_value DECIMAL(18,4) NOT NULL,
     unrealized_pnl DECIMAL(18,4) NOT NULL,
     unrealized_pnl_pct DECIMAL(12,4),
+
+    unix_time bigint unsigned default NULL,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 

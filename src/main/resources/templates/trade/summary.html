@@ -202,9 +202,8 @@
                         optionTradeId: toLong(row.optionTradeId),
                         strategyCode: row.strategyCode || '',
                         displayName: row.displayName || '',
-                        strategyAction: row.strategyAction || '',
+                        type: row.type || '',
                         status: row.status || '',
-                        tradeMode: row.tradeMode || '',
                         entryTime: row.entryTime || ''
                     };
                 });
@@ -364,9 +363,8 @@
                         + '<div class="strategy-meta">'
                         + '<div><strong>ID:</strong> ' + esc(row.id) + '</div>'
                         + '<div><strong>Code:</strong> ' + esc(row.strategyCode) + '</div>'
-                        + '<div><strong>Action:</strong> ' + esc(row.strategyAction) + '</div>'
+                        + '<div><strong>Type:</strong> ' + esc(row.type) + '</div>'
                         + '<div><strong>Status:</strong> ' + esc(row.status) + '</div>'
-                        + '<div><strong>Mode:</strong> ' + esc(row.tradeMode) + '</div>'
                         + '<div><strong>Entry Time:</strong> ' + esc(row.entryTime) + '</div>'
                         + '</div>'
                         + '<div class="legs-box" data-legs-box="' + esc(row.id) + '" style="display:none">'

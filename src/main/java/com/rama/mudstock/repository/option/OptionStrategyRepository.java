@@ -23,7 +23,7 @@ public class OptionStrategyRepository {
 
     public List<Map<String, Object>> listAllWithTicker() {
         String sql = "SELECT s.id, s.stock_id, st.ticker, s.previous_strategy_id, ps.strategy_name AS previous_strategy_name, "
-            + "s.strategy_name, s.strategy_type, s.strategy_mode, s.strategy_action, s.status, s.created_at, s.updated_at "
+            + "s.strategy_name, s.strategy_type, s.strategy_mode, s.`type`, s.status, s.created_at, s.updated_at "
             + "FROM option_strategy s "
             + "JOIN stock st ON st.id = s.stock_id "
             + "LEFT JOIN option_strategy ps ON ps.id = s.previous_strategy_id "
@@ -43,7 +43,7 @@ public class OptionStrategyRepository {
 
         String placeholders = String.join(",", java.util.Collections.nCopies(tradeIds.size(), "?"));
         String sql = "SELECT s.id, s.option_trade_id, s.strategy_definition_id, d.strategy_code, d.display_name, "
-            + "s.trade_mode, s.strategy_action, s.status, s.entry_time, s.created_at "
+            + "s.`type`, s.status, s.entry_time, s.created_at "
             + "FROM option_strategy s "
             + "LEFT JOIN option_strategy_definition d ON d.id = s.strategy_definition_id "
             + "WHERE s.option_trade_id IN (" + placeholders + ") "
@@ -54,8 +54,7 @@ public class OptionStrategyRepository {
             rs.getLong("strategy_definition_id"),
             rs.getString("strategy_code"),
             rs.getString("display_name"),
-            rs.getString("trade_mode"),
-            rs.getString("strategy_action"),
+            rs.getString("type"),
             rs.getString("status"),
             rs.getTimestamp("entry_time"),
             rs.getTimestamp("created_at")),
@@ -69,8 +68,10 @@ public class OptionStrategyRepository {
 
         String placeholders = String.join(",", java.util.Collections.nCopies(strategyIds.size(), "?"));
         String sql = "SELECT l.id, l.option_strategy_id, l.option_contract_id, l.leg_number, l.position_side, l.quantity, "
-            + "l.entry_price, l.entry_snapshot_id, l.exit_price, l.exit_snapshot_id, oc.contract_ticker, oc.contract_type "
+            + "l.entry_price, l.entry_snapshot_id, l.exit_price, l.exit_snapshot_id, "
+            + "s.last_snapshot_unix_time, s.last_flat_file_unix_time, oc.contract_ticker, oc.contract_type "
             + "FROM option_strategy_leg l "
+            + "JOIN option_strategy s ON s.id = l.option_strategy_id "
             + "LEFT JOIN option_contract oc ON oc.id = l.option_contract_id "
             + "WHERE l.option_strategy_id IN (" + placeholders + ") "
             + "ORDER BY l.option_strategy_id, l.leg_number, l.id";
@@ -85,9 +86,48 @@ public class OptionStrategyRepository {
             getNullableLong(rs, "entry_snapshot_id"),
             rs.getBigDecimal("exit_price"),
             getNullableLong(rs, "exit_snapshot_id"),
+            getNullableLong(rs, "last_snapshot_unix_time"),
+            getNullableLong(rs, "last_flat_file_unix_time"),
             rs.getString("contract_ticker"),
             rs.getString("contract_type")),
             strategyIds.toArray());
+    }
+
+    public List<StrategyLegSummaryRow> listOpenStrategyLegsByTradeIds(List<Long> tradeIds, Status status) {
+        if (tradeIds == null || tradeIds.isEmpty() || status == null) {
+            return List.of();
+        }
+
+        String placeholders = String.join(",", java.util.Collections.nCopies(tradeIds.size(), "?"));
+        String sql = "SELECT l.id, l.option_strategy_id, l.option_contract_id, l.leg_number, l.position_side, l.quantity, "
+            + "l.entry_price, l.entry_snapshot_id, l.exit_price, l.exit_snapshot_id, "
+            + "s.last_snapshot_unix_time, s.last_flat_file_unix_time, "
+            + "oc.contract_ticker, oc.contract_type "
+            + "FROM option_strategy_leg l "
+            + "JOIN option_strategy s ON s.id = l.option_strategy_id "
+            + "LEFT JOIN option_contract oc ON oc.id = l.option_contract_id "
+            + "WHERE s.option_trade_id IN (" + placeholders + ") "
+            + "AND UPPER(s.status) = ? "
+            + "ORDER BY l.option_strategy_id, l.leg_number, l.id";
+
+        List<Object> params = new java.util.ArrayList<>(tradeIds);
+        params.add(status.name());
+        return jdbc.query(sql, (rs, rowNum) -> new StrategyLegSummaryRow(
+            rs.getLong("id"),
+            rs.getLong("option_strategy_id"),
+            rs.getLong("option_contract_id"),
+            rs.getInt("leg_number"),
+            rs.getString("position_side"),
+            rs.getInt("quantity"),
+            rs.getBigDecimal("entry_price"),
+            getNullableLong(rs, "entry_snapshot_id"),
+            rs.getBigDecimal("exit_price"),
+            getNullableLong(rs, "exit_snapshot_id"),
+            getNullableLong(rs, "last_snapshot_unix_time"),
+            getNullableLong(rs, "last_flat_file_unix_time"),
+            rs.getString("contract_ticker"),
+            rs.getString("contract_type")),
+            params.toArray());
     }
 
     public List<StrategySnapshotSummaryRow> listStrategySnapshotsByStrategyIds(List<Long> strategyIds) {
@@ -177,10 +217,10 @@ public class OptionStrategyRepository {
                       String strategyName,
                       String strategyType,
                       String strategyMode,
-                      String strategyAction,
+                      String type,
                       String status) {
         String sql = "INSERT INTO option_strategy "
-            + "(stock_id, previous_strategy_id, strategy_name, strategy_type, strategy_mode, strategy_action, status) "
+            + "(stock_id, previous_strategy_id, strategy_name, strategy_type, strategy_mode, `type`, status) "
             + "VALUES (?, ?, ?, ?, ?, ?, ?)";
         return jdbc.update(sql,
             stockId,
@@ -188,7 +228,7 @@ public class OptionStrategyRepository {
             strategyName,
             strategyType,
             strategyMode,
-            strategyAction,
+            type,
             status);
     }
 
@@ -220,14 +260,13 @@ public class OptionStrategyRepository {
     public Long insertStrategyAndReturnId(Long strategyDefinitionId,
                                           Long stockId,
                                           Long optionTradeId,
-                                          String tradeMode,
-                                          String strategyAction,
+                                          String type,
                                           String status,
                                           Timestamp entryTime,
                                           BigDecimal entryUnderlyingPrice) {
         String sql = "INSERT INTO option_strategy "
-            + "(strategy_definition_id, stock_id, option_trade_id, trade_mode, strategy_action, status, entry_time, entry_underlying_price) "
-            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            + "(strategy_definition_id, stock_id, option_trade_id, `type`, status, entry_time, entry_underlying_price) "
+            + "VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(connection -> {
@@ -235,11 +274,10 @@ public class OptionStrategyRepository {
             ps.setLong(1, strategyDefinitionId);
             ps.setLong(2, stockId);
             ps.setLong(3, optionTradeId);
-            ps.setString(4, tradeMode);
-            ps.setString(5, strategyAction);
-            ps.setString(6, status);
-            ps.setTimestamp(7, entryTime);
-            ps.setBigDecimal(8, entryUnderlyingPrice);
+            ps.setString(4, type);
+            ps.setString(5, status);
+            ps.setTimestamp(6, entryTime);
+            ps.setBigDecimal(7, entryUnderlyingPrice);
             return ps;
         }, keyHolder);
 
@@ -335,23 +373,59 @@ public class OptionStrategyRepository {
         return key == null ? null : key.longValue();
     }
 
+    public Long findStrategySnapshotIdByStrategyAndTime(Long optionStrategyId, Timestamp snapshotTime) {
+        if (optionStrategyId == null || snapshotTime == null) {
+            return null;
+        }
+
+        String sql = "SELECT id FROM option_strategy_snapshot "
+            + "WHERE option_strategy_id = ? "
+            + "AND snapshot_time = ? "
+            + "LIMIT 1";
+        List<Long> rows = jdbc.queryForList(sql, Long.class, optionStrategyId, snapshotTime);
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
     public int insertStrategyLegSnapshot(Long optionStrategySnapshotId,
                                          Long optionStrategyLegId,
                                          Long optionSnapshotId,
+                                         Long optionFlatFileId,
                                          BigDecimal currentMarketValue,
                                          BigDecimal unrealizedPnl,
                                          BigDecimal unrealizedPnlPct) {
         String sql = "INSERT INTO option_strategy_leg_snapshot "
-            + "(option_strategy_snapshot_id, option_strategy_leg_id, option_snapshot_id, current_market_value, unrealized_pnl, unrealized_pnl_pct) "
-            + "VALUES (?, ?, ?, ?, ?, ?)";
+            + "(option_strategy_snapshot_id, option_strategy_leg_id, option_snapshot_id, option_flat_file_id, unix_time, current_market_value, unrealized_pnl, unrealized_pnl_pct) "
+            + "VALUES (?, ?, ?, ?, (SELECT os.unix_time FROM option_snapshot os WHERE os.id = ? LIMIT 1), ?, ?, ?)";
 
-        return jdbc.update(sql,
+        int inserted = jdbc.update(sql,
             optionStrategySnapshotId,
             optionStrategyLegId,
+            optionSnapshotId,
+            optionFlatFileId,
             optionSnapshotId,
             currentMarketValue,
             unrealizedPnl,
             unrealizedPnlPct);
+
+        if (inserted > 0 && optionStrategyLegId != null) {
+            String updateLastSnapshotUnixTimeSql = "UPDATE option_strategy s "
+                + "SET last_snapshot_unix_time = CASE WHEN ? IS NULL THEN last_snapshot_unix_time ELSE ("
+                + "SELECT os.unix_time FROM option_snapshot os WHERE os.id = ? LIMIT 1"
+                + ") END, "
+                + "last_flat_file_unix_time = CASE WHEN ? IS NULL THEN last_flat_file_unix_time ELSE ("
+                + "SELECT off.unix_time FROM option_snapshot_flatfile off WHERE off.id = ? LIMIT 1"
+                + ") END "
+                + "WHERE s.id = (SELECT l.option_strategy_id FROM option_strategy_leg l WHERE l.id = ? LIMIT 1)";
+
+            jdbc.update(updateLastSnapshotUnixTimeSql,
+                optionSnapshotId,
+                optionSnapshotId,
+                optionFlatFileId,
+                optionFlatFileId,
+                optionStrategyLegId);
+        }
+
+        return inserted;
     }
 
     public record StrategyDefinitionLegRow(Long id,
@@ -371,8 +445,7 @@ public class OptionStrategyRepository {
                                      Long strategyDefinitionId,
                                      String strategyCode,
                                      String displayName,
-                                     String tradeMode,
-                                     String strategyAction,
+                                     String type,
                                      String status,
                                      Timestamp entryTime,
                                      Timestamp createdAt) {
@@ -388,6 +461,8 @@ public class OptionStrategyRepository {
                                         Long entrySnapshotId,
                                         BigDecimal exitPrice,
                                         Long exitSnapshotId,
+                                        Long lastSnapshotUnixTime,
+                                        Long lastFlatFileUnixTime,
                                         String contractTicker,
                                         String contractType) {
     }
@@ -419,5 +494,22 @@ public class OptionStrategyRepository {
                                                 BigDecimal unrealizedPnlPct,
                                                 Integer legNumber,
                                                 String contractTicker) {
+    }
+
+    public enum Type {
+        NEW,
+        ROLL,
+        REBALANCE
+    }
+
+    public enum Status {
+        OPEN,
+        CLOSED,
+        CANCELLED
+    }
+
+    public enum PositionSide {
+        LONG,
+        SHORT
     }
 }

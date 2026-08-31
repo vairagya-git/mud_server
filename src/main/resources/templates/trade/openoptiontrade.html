@@ -187,8 +187,7 @@
                         <div class="form-group">
                             <label>Trade Mode</label>
                             <select id="newTradeModeSelect">
-                                <option value="LIVE">LIVE</option>
-                                <option value="SIMULATION">SIMULATION</option>
+                                <option th:each="mode : ${tradeModes}" th:value="${mode}" th:text="${mode}"></option>
                             </select>
                         </div>
                         <div class="form-group" style="display:flex; align-items:flex-end;">
@@ -710,7 +709,7 @@
                                 renderTradeDropdown(createdTrade ? createdTrade.id : null);
                                 newTradeForm.style.display = 'none';
                                 newTradeNameInput.value = '';
-                                newTradeModeSelect.value = 'LIVE';
+                                resetTradeModeSelection();
                                 if (newTradeWithHistoricData) {
                                     newTradeWithHistoricData.checked = false;
                                 }
@@ -912,7 +911,7 @@
             cancelNewTradeBtn.addEventListener('click', function () {
                 newTradeForm.style.display = 'none';
                 newTradeNameInput.value = '';
-                newTradeModeSelect.value = 'LIVE';
+                resetTradeModeSelection();
                 if (newTradeWithHistoricData) {
                     newTradeWithHistoricData.checked = false;
                 }
@@ -921,6 +920,13 @@
                 }
                 setTradeMessage('', false);
             });
+
+            function resetTradeModeSelection() {
+                if (!newTradeModeSelect || !newTradeModeSelect.options || !newTradeModeSelect.options.length) {
+                    return;
+                }
+                newTradeModeSelect.selectedIndex = 0;
+            }
 
             createStrategySnapshotBtn.addEventListener('click', createStrategySnapshot);
 

@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.rama.mudstock.repository.analyst.FirmAnalystQueryRepository;
-import com.rama.mudstock.service.ApplicationFilterService;
+import com.rama.mudstock.service.app.ApplicationFilterService;
 import com.rama.mudstock.service.BenzingaFirmService;
 
 // Sync

@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.rama.mudstock.repository.option.OptionStrategyRepository;
-import com.rama.mudstock.service.ApplicationFilterService;
+import com.rama.mudstock.service.app.ApplicationFilterService;
 
 @Controller
 @RequestMapping("/option-strategy")
@@ -34,7 +34,7 @@ public class OptionStrategyController {
         model.addAttribute("strategyNames", applicationFilterService.listOptionStrategyNameOptions());
         model.addAttribute("strategyTypes", applicationFilterService.listOptionStrategyTypes());
         model.addAttribute("strategyModes", applicationFilterService.listOptionStrategyModes());
-        model.addAttribute("strategyActions", applicationFilterService.listOptionStrategyActions());
+        model.addAttribute("types", applicationFilterService.listOptionStrategyEntryTypes());
         model.addAttribute("strategyStatuses", applicationFilterService.listOptionStrategyStatuses());
 
         return hxRequest != null ? "option_strategy/list :: content" : "option_strategy/list";
@@ -46,14 +46,14 @@ public class OptionStrategyController {
                          @RequestParam String strategyName,
                          @RequestParam String strategyType,
                          @RequestParam String strategyMode,
-                         @RequestParam String strategyAction,
+                         @RequestParam String type,
                          @RequestParam String status,
                          RedirectAttributes redirectAttributes) {
         try {
             String normalizedStrategyName = normalizeText(strategyName);
             String normalizedStrategyType = normalizeEnum(strategyType);
             String normalizedStrategyMode = normalizeEnum(strategyMode);
-            String normalizedStrategyAction = normalizeEnum(strategyAction);
+            String normalizedType = normalizeEnum(type);
             String normalizedStatus = normalizeEnum(status);
 
             optionStrategyRepository.insert(
@@ -62,7 +62,7 @@ public class OptionStrategyController {
                 normalizedStrategyName,
                 normalizedStrategyType,
                 normalizedStrategyMode,
-                normalizedStrategyAction,
+                normalizedType,
                 normalizedStatus);
 
             redirectAttributes.addFlashAttribute("message", "Option strategy saved.");

@@ -191,10 +191,34 @@ ORDER BY COALESCE(os.option_quote_time, os.snapshot_time) DESC;
 
 select * from option_contract oc 
 join option_snapshot os on oc.id = os.option_contract_id
-where oc.contract_ticker like "O:MU260731%";
+where oc.contract_ticker like "O:INTC260717C00115000";
 
+
+INTC260717C00115000 = 113
+
+INTC260717P00112000 = 108
+
+select * from option_snapshot
+where option_contract_id in (113, 108);
 
 
 select * from option_snapshot os 
 join stock s on os.stock_id = s.id
 where s.ticker = "MU" ;
+
+
+select * from option_strategy os join stock s on os.stock_id = s.id
+where s.ticker = "INTC" ;
+
+select * from option_strategy_leg osl
+where osl.option_strategy_id in (1, 4,7);
+
+
+
+select * from option_strategy_leg_snapshot osls
+join option_strategy_snapshot oss on osls.option_strategy_snapshot_id = oss.id
+join option_strategy os on os.id = oss.option_strategy_id
+join option_trade ot on ot.id = os.option_trade_id
+where ot.trade_name like "INTC Sec%";
+
+select * from option_trade;

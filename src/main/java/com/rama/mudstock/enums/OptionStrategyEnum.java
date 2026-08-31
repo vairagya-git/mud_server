@@ -25,11 +25,10 @@ public final class OptionStrategyEnum {
         SIMULATION
     }
 
-    public enum StrategyAction {
-        OPEN,
-        ADJUST,
+    public enum Type {
+        NEW,
         ROLL,
-        CLOSE
+        REBALANCE
     }
 
     public enum StrategyStatus {

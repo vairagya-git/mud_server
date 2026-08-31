@@ -110,8 +110,8 @@ public enum CronjobConfigEnum {
         OPTION_SNAPSHOT_IV_METRICS("OptionSnapshotIVMetrics"),
         OPTION_API_SNAPSHOT_FETCHER_JOB("OptionAPISnapshotFetcherJob"),
         OPTION_FLAT_FILE_SNAPSHOT_FETCHER_JOB("OptionFlatFileSnapshotFetcherJob"),
-        OPTION_STRATEGY_SNAPSHOT_REFINEMENT_JOB("OptionStrategySnapshotRefinementJob"),
-        OPTION_STRATEGY_SNAPSHOT_REFINEMENT_HISTORY_DATA_JOB("OptionStrategySnapshotRefinementHistoryDataJob");
+        OPTION_STRATEGY_SNAPSHOT_REFINEMENT_JOB("OptionTradeStrategySnapshotRefinementJob"),
+        OPTION_STRATEGY_SNAPSHOT_REFINEMENT_HISTORY_DATA_JOB("OptionTradeStrategySnapshotRefinementHistoryDataJob");
 
         private final String value;
 

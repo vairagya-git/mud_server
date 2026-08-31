@@ -36,40 +36,27 @@ public class OptionTradeRepository {
             stockId);
     }
 
-    public List<AliveTradeRow> listAliveTradesWithTicker() {
+    public List<TradeRow> listOpenTradesByModeWithTicker(Status status) {
+        if (status == null) {
+            return List.of();
+        }
+
         String sql = "SELECT t.id, t.stock_id, s.ticker, t.trade_name, t.trade_mode, t.status, t.with_historic_data, t.opened_at, t.created_at "
             + "FROM option_trade t "
             + "JOIN stock s ON s.id = t.stock_id "
-            + "WHERE t.status = 'OPEN' "
+            + "WHERE UPPER(t.status) = ? "
             + "ORDER BY t.opened_at DESC, t.id DESC";
-        return jdbc.query(sql, (rs, rowNum) -> new AliveTradeRow(
+        return jdbc.query(sql, (rs, rowNum) -> new TradeRow(
             rs.getLong("id"),
             rs.getLong("stock_id"),
             rs.getString("ticker"),
             rs.getString("trade_name"),
             rs.getString("trade_mode"),
             rs.getString("status"),
-                rs.getBoolean("with_historic_data"),
+            rs.getBoolean("with_historic_data"),
             rs.getTimestamp("opened_at"),
-            rs.getTimestamp("created_at")));
-    }
-
-    public List<HistoricLiveTradeRow> listOpenHistoricLiveTrades() {
-        String sql = "SELECT t.id, t.stock_id, s.ticker, t.trade_name, t.trade_mode, t.status, t.with_historic_data "
-            + "FROM option_trade t "
-            + "JOIN stock s ON s.id = t.stock_id "
-            + "WHERE t.status = 'OPEN' "
-            + "AND UPPER(t.trade_mode) = 'LIVE' "
-            + "AND t.with_historic_data = 1 "
-            + "ORDER BY t.opened_at DESC, t.id DESC";
-        return jdbc.query(sql, (rs, rowNum) -> new HistoricLiveTradeRow(
-            rs.getLong("id"),
-            rs.getLong("stock_id"),
-            rs.getString("ticker"),
-            rs.getString("trade_name"),
-            rs.getString("trade_mode"),
-            rs.getString("status"),
-            rs.getBoolean("with_historic_data")));
+            rs.getTimestamp("created_at")),
+                status.name());
     }
 
     public String findOpenTradeModeByIdAndStockId(Long tradeId, Long stockId) {
@@ -113,23 +100,25 @@ public class OptionTradeRepository {
                                String tradeMode) {
     }
 
-    public record AliveTradeRow(Long id,
-                                Long stockId,
-                                String ticker,
-                                String tradeName,
-                                String tradeMode,
-                                String status,
-                                boolean withHistoricData,
-                                Timestamp openedAt,
-                                Timestamp createdAt) {
+    public record TradeRow(Long id,
+                           Long stockId,
+                           String ticker,
+                           String tradeName,
+                           String tradeMode,
+                           String status,
+                           boolean withHistoricData,
+                           Timestamp openedAt,
+                           Timestamp createdAt) {
     }
 
-    public record HistoricLiveTradeRow(Long id,
-                                       Long stockId,
-                                       String ticker,
-                                       String tradeName,
-                                       String tradeMode,
-                                       String status,
-                                       boolean withHistoricData) {
+    public enum TradeMode {
+        LIVE,
+        HISTORY
+    }
+
+    public enum Status {
+        OPEN,
+        CLOSED,
+        CANCELLED
     }
 }

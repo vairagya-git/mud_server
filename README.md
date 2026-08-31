@@ -30,6 +30,13 @@ day_stock_movement_entry >
 Import CSV > mvn org.codehaus.mojo:exec-maven-plugin:3.5.0:java  -Dexec.mainClass=com.rama.mudstock.util.TestDataCsvImportUtil  -Dexec.args="--spring.profiles.active=local"
 
 
+
+TODOS > OPTION_SNAPSHOT
+
+* OptionStrategyRepository.insertStrategySnapshotAndReturnId this should carry the snapshot after the leg is populated. 
+* 
+
+
 SAMPLE QUERY:  
 SELECT DATE(local_time) AS data_date, COUNT(*) AS row_count
 FROM option_snapshot_flatfile

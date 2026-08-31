@@ -10,7 +10,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.rama.mudstock.enums.CronjobConfigEnum;
-import com.rama.mudstock.facade.OptionStrategySnapshotRefinementFacade;
+import com.rama.mudstock.facade.optiontrade.OptionTradeStrategySnapshotLiveRefinementFacade;
 import com.rama.mudstock.service.MarketCalendarService;
 import com.rama.mudstock.service.SystemConfigService;
 
@@ -19,17 +19,17 @@ import com.rama.mudstock.service.SystemConfigService;
  */
 @Component
 @Profile("cronjob")
-public class OptionStrategySnapshotRefinementJob extends AbstractOptionStrategySnapshotRefinementJob {
+public class OptionTradeStrategySnapshotRefinementJob extends AbstractOptionStrategySnapshotRefinementJob {
 
     private final MarketCalendarService marketCalendarService;
-    private final OptionStrategySnapshotRefinementFacade optionStrategySnapshotRefinementFacade;
-    private final Logger log = LoggerFactory.getLogger(OptionStrategySnapshotRefinementJob.class);
+    private final OptionTradeStrategySnapshotLiveRefinementFacade optionTradeStrategySnapshotLiveRefinementFacade;
+    private final Logger log = LoggerFactory.getLogger(OptionTradeStrategySnapshotRefinementJob.class);
 
-    public OptionStrategySnapshotRefinementJob(OptionStrategySnapshotRefinementFacade optionStrategySnapshotRefinementFacade,
-                                               SystemConfigService systemConfigService,
-                                               MarketCalendarService marketCalendarService) {
+    public OptionTradeStrategySnapshotRefinementJob(OptionTradeStrategySnapshotLiveRefinementFacade optionTradeStrategySnapshotLiveRefinementFacade,
+                                                    SystemConfigService systemConfigService,
+                                                    MarketCalendarService marketCalendarService) {
         super(systemConfigService, CronjobConfigEnum.Purpose.OPTION_STRATEGY_SNAPSHOT_REFINEMENT_JOB.value());
-        this.optionStrategySnapshotRefinementFacade = optionStrategySnapshotRefinementFacade;
+        this.optionTradeStrategySnapshotLiveRefinementFacade = optionTradeStrategySnapshotLiveRefinementFacade;
         this.marketCalendarService = marketCalendarService;
     }
 
@@ -43,13 +43,13 @@ public class OptionStrategySnapshotRefinementJob extends AbstractOptionStrategyS
         }
 
         try {
-            int inserted = optionStrategySnapshotRefinementFacade.refineStrategySnapshot(
-                false,
+            int inserted = optionTradeStrategySnapshotLiveRefinementFacade.enrichTradeStrategySnapshot(
+                com.rama.mudstock.repository.option.OptionTradeRepository.TradeMode.LIVE,
                 optionSnapshotInterval(),
                 lastFetchedSnapshotTime(),
                 lastFetchedFlatFileTime(),
                 lastFetchedManualEntryTime());
-            log.info("{}: inserted {} option_snapshot row(s)", getPurpose(), inserted);
+            log.info("{}: inserted {} option_strategy_snapshot row(s)", getPurpose(), inserted);
             updateLastUpdatedNowUtc(getPurpose());
         } catch (Exception ex) {
             log.error("{}: snapshot fetch failed", getPurpose(), ex);

@@ -153,7 +153,7 @@ public class OptionSnapshotRepository {
             return null;
         }
 
-        String sql = "SELECT id, option_contract_id, stock_id, snapshot_time, option_quote_time, "
+        String sql = "SELECT id, option_contract_id, stock_id, unix_time, snapshot_time, option_quote_time, "
             + "underlying_price, bid, ask, midpoint, last_trade_price, implied_volatility, "
             + "delta, gamma, theta, vega, open_interest, day_volume "
             + "FROM option_snapshot "
@@ -167,6 +167,7 @@ public class OptionSnapshotRepository {
             snapshot.setId(rs.getLong("id"));
             snapshot.setOptionContractId(rs.getLong("option_contract_id"));
             snapshot.setStockId(rs.getLong("stock_id"));
+            snapshot.setUnixTime(getNullableLong(rs, "unix_time"));
             snapshot.setSnapshotTime(rs.getTimestamp("snapshot_time"));
             snapshot.setOptionQuoteTime(rs.getTimestamp("option_quote_time"));
             snapshot.setUnderlyingPrice(rs.getBigDecimal("underlying_price"));
@@ -186,6 +187,57 @@ public class OptionSnapshotRepository {
             return snapshot;
         }, optionContractId, targetTime);
         return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    public OptionSnapshot findNearestSnapshotByContractAndUnixTime(Long optionContractId,
+                                                                   Long targetUnixTime,
+                                                                   Long minimumExclusiveUnixTime) {
+        if (optionContractId == null || targetUnixTime == null) {
+            return null;
+        }
+
+        String sql = "SELECT id, option_contract_id, stock_id, unix_time, snapshot_time, option_quote_time, "
+            + "underlying_price, bid, ask, midpoint, last_trade_price, implied_volatility, "
+            + "delta, gamma, theta, vega, open_interest, day_volume "
+            + "FROM option_snapshot "
+            + "WHERE option_contract_id = ? "
+            + "AND unix_time IS NOT NULL "
+            + "AND unix_time > ? "
+            + "ORDER BY ABS(unix_time - ?), unix_time ASC "
+            + "LIMIT 1";
+
+        long minimumUnix = minimumExclusiveUnixTime == null ? Long.MIN_VALUE : minimumExclusiveUnixTime;
+        List<OptionSnapshot> rows = jdbc.query(sql, (rs, rowNum) -> {
+            OptionSnapshot snapshot = new OptionSnapshot();
+            snapshot.setId(rs.getLong("id"));
+            snapshot.setOptionContractId(rs.getLong("option_contract_id"));
+            snapshot.setStockId(rs.getLong("stock_id"));
+            snapshot.setUnixTime(getNullableLong(rs, "unix_time"));
+            snapshot.setSnapshotTime(rs.getTimestamp("snapshot_time"));
+            snapshot.setOptionQuoteTime(rs.getTimestamp("option_quote_time"));
+            snapshot.setUnderlyingPrice(rs.getBigDecimal("underlying_price"));
+            snapshot.setBid(rs.getBigDecimal("bid"));
+            snapshot.setAsk(rs.getBigDecimal("ask"));
+            snapshot.setMidpoint(rs.getBigDecimal("midpoint"));
+            snapshot.setLastTradePrice(rs.getBigDecimal("last_trade_price"));
+            snapshot.setImpliedVolatility(rs.getBigDecimal("implied_volatility"));
+            snapshot.setDelta(rs.getBigDecimal("delta"));
+            snapshot.setGamma(rs.getBigDecimal("gamma"));
+            snapshot.setTheta(rs.getBigDecimal("theta"));
+            snapshot.setVega(rs.getBigDecimal("vega"));
+            int openInterest = rs.getInt("open_interest");
+            snapshot.setOpenInterest(rs.wasNull() ? null : openInterest);
+            int dayVolume = rs.getInt("day_volume");
+            snapshot.setDayVolume(rs.wasNull() ? null : dayVolume);
+            return snapshot;
+        }, optionContractId, minimumUnix, targetUnixTime);
+
+        return rows.isEmpty() ? null : rows.get(0);
+    }
+
+    private Long getNullableLong(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
+        long value = rs.getLong(column);
+        return rs.wasNull() ? null : value;
     }
 }
 

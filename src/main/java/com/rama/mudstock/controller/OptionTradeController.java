@@ -16,7 +16,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.rama.mudstock.enums.SystemRepositoryEnum.OptionContractStatusEnum;
-import com.rama.mudstock.facade.OptionTradeFacade;
+import com.rama.mudstock.facade.optiontrade.OptionTradeFacade;
+import com.rama.mudstock.service.app.ApplicationMetaDataService;
 
 import java.util.List;
 import java.util.Map;
@@ -26,9 +27,12 @@ import java.util.Map;
 public class OptionTradeController {
 
     private final OptionTradeFacade optionTradeFacade;
+    private final ApplicationMetaDataService applicationMetaDataService;
 
-    public OptionTradeController(OptionTradeFacade optionTradeFacade) {
+    public OptionTradeController(OptionTradeFacade optionTradeFacade,
+                                 ApplicationMetaDataService applicationMetaDataService) {
         this.optionTradeFacade = optionTradeFacade;
+        this.applicationMetaDataService = applicationMetaDataService;
     }
 
     @GetMapping
@@ -99,10 +103,9 @@ public class OptionTradeController {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> createOpenTrade(@RequestParam Long stockId,
                                                                @RequestParam String tradeName,
-                                                               @RequestParam String tradeMode,
                                                                @RequestParam(value = "withHistoricData", defaultValue = "false") boolean withHistoricData) {
         try {
-            OptionTradeFacade.OpenTradeOption created = optionTradeFacade.createOpenTrade(stockId, tradeName, tradeMode, withHistoricData);
+            OptionTradeFacade.OpenTradeOption created = optionTradeFacade.createOpenTrade(stockId, tradeName, withHistoricData);
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "trade", created
@@ -143,6 +146,7 @@ public class OptionTradeController {
         model.addAttribute("strategyDefinitionLegs", filterData.strategyDefinitionLegs());
         model.addAttribute("tradeTickers", filterData.tickers());
         model.addAttribute("tradeExpirationDates", filterData.expirationDates());
+        model.addAttribute("tradeModes", applicationMetaDataService.listOptionTradeModes());
     }
 
     private List<OptionTradeFacade.SelectedLegInput> toFacadeSelectedLegs(List<SelectedLegRequest> selectedLegs) {

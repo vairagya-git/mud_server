@@ -1,4 +1,4 @@
-package com.rama.mudstock.service;
+package com.rama.mudstock.service.app;
 
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -15,6 +15,9 @@ import com.rama.mudstock.repository.analyst.FirmAnalystQueryRepository;
 import com.rama.mudstock.repository.option.OptionContractRepository;
 import com.rama.mudstock.repository.option.OptionStrategyRepository;
 import com.rama.mudstock.repository.stockwatchlist.StockRepository;
+import com.rama.mudstock.service.DayStockMovementService;
+import com.rama.mudstock.service.OptionDataContractService;
+import com.rama.mudstock.service.WatchlistStockService;
 
 @Service
 public class ApplicationFilterService {
@@ -133,8 +136,8 @@ public class ApplicationFilterService {
         return OptionStrategyEnum.StrategyMode.values();
     }
 
-    public OptionStrategyEnum.StrategyAction[] listOptionStrategyActions() {
-        return OptionStrategyEnum.StrategyAction.values();
+    public OptionStrategyEnum.Type[] listOptionStrategyEntryTypes() {
+        return OptionStrategyEnum.Type.values();
     }
 
     public OptionStrategyEnum.StrategyStatus[] listOptionStrategyStatuses() {
